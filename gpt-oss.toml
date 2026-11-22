@@ -13,9 +13,12 @@ endpoint = "http://127.0.0.1:9032"
 # ~28 MB of binaries copied out of node_modules.
 staged_source = "node_modules/@llama-haswell"
 runtime_dir = "runtime/llama"
-# An external full CPU build is preferred when present; otherwise `prepare` stages the npm package
-# into runtime/llama/. A directory is accepted and llama-server.exe is appended.
-executable = "C:/Users/canna/.llama-win-cpu-x64/llama-server.exe"
+# The runnable server, relative to this file. runtime/llama/ is the server-only subset of the
+# llama-haswell package that `prepare` copies in: the same build as C:/Users/canna/.llama-win-cpu-x64
+# (version 9968), but only the haswell CPU backend — the extra CLI tools and CPU backends in that
+# folder are not needed to serve. A directory is accepted and llama-server.exe is appended; an
+# absolute path points at an outside build instead.
+executable = "runtime/llama/llama-server.exe"
 default_model = "gpt-oss-20b"   # alias from [models]; model_path is the fallback
 context = 8192
 threads = 4
