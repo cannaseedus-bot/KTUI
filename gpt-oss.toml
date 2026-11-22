@@ -34,18 +34,20 @@ max_tokens = 768
 temperature = 0.2
 repeat_penalty = 1.05
 
-# Every local model, by alias. The terminal (`--model <alias>`), `models` and chat_app.py all read this
-# table, so adding a file here makes it selectable everywhere at once. A bare filename is resolved
-# against model_dir; an absolute path is used as given.
+# Every local model, by alias, ordered fastest first and deepest last. The order is the feature: the
+# terminal (`models`, `--model`), the chat app's `/models` and the command palette all list this table
+# top to bottom, so the quickest thing to try is always the first row and the heavyweight is the last
+# one. A bare filename resolves against model_dir; an absolute path is used as given.
 model_dir = "C:/Users/canna/.models"
 
 [models]
-"gpt-oss-20b" = "gpt-oss-20b-MXFP4.gguf"
-"qwen3-4b" = "Qwen3-4B-Q8_0.gguf"
-"qwen3-1.7b" = "Qwen3-1.7B-Q8_0.gguf"
-"qwen3-1.7b-q4" = "Qwen3-1.7B-Q4_K_M.gguf"
-"gemma-3-1b" = "gemma-3-1B-it-QAT-Q4_0.gguf"
-"lfm2.5-1.2b" = "LFM2.5-1.2B-Instruct-Q8_0.gguf"
+# Speed dial: 0.7 GB answers before you finish reading, 11.5 GB is the one to hand real work to.
+"gemma-3-1b"    = "gemma-3-1B-it-QAT-Q4_0.gguf"        # 0.67 GB  fastest    · routing, one-line replies
+"lfm2.5-1.2b"   = "LFM2.5-1.2B-Instruct-Q8_0.gguf"     # 1.16 GB  fast       · terse chat, tiny footprint
+"qwen3-1.7b-q4" = "Qwen3-1.7B-Q4_K_M.gguf"             # 1.19 GB  fast       · Qwen3 quality at 4-bit
+"qwen3-1.7b"    = "Qwen3-1.7B-Q8_0.gguf"               # 2.02 GB  balanced   · 8-bit 1.7B, better wording
+"qwen3-4b"      = "Qwen3-4B-Q8_0.gguf"                 # 3.99 GB  strong     · tool calling, multi-step tasks
+"gpt-oss-20b"   = "gpt-oss-20b-MXFP4.gguf"             # 11.28 GB deep       · the default when it matters
 
 [sandbox]
 # Relative to this file, and "." is this file's directory, which is the repository root: the sandbox

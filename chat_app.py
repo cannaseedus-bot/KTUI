@@ -29,17 +29,22 @@ except ImportError:  # pragma: no cover
 import math
 import subprocess
 import shutil
+import requests
 from pathlib import Path
 from enum import Enum
 from typing import Callable
 from textual import on, work
 from textual.app import App, ComposeResult
+from textual.command import DiscoveryHit, Hit, Hits
+from textual.command import Provider as CommandProvider
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.fuzzy import Matcher
 from textual.widgets import Header, Input, Footer, Markdown, Static
 from openai import OpenAI, pydantic_function_tool
 from pydantic import BaseModel, Field
 import aiml
 from bs4 import BeautifulSoup
+from functools import partial
 from urllib.parse import quote_plus
 
 # =====================================================================
@@ -176,6 +181,28 @@ def model_path_for(alias: str) -> Path:
     return path if path.is_absolute() else MODEL_DIR / target
 
 
+def ordered_models() -> list[str]:
+    """Aliases in gpt-oss.toml order: fastest first, deepest last. The table is the speed dial."""
+    return list(MODEL_REGISTRY)
+
+
+def tier_for(alias: str) -> str:
+    """Speed tier read off the weights themselves, so the label cannot drift from the file."""
+    path = model_path_for(alias)
+    if not path.is_file():
+        return "unavailable"
+    gb = path.stat().st_size / (1024 ** 3)
+    if gb < 1:
+        return "fastest"
+    if gb < 1.5:
+        return "fast"
+    if gb < 3:
+        return "balanced"
+    if gb < 8:
+        return "strong"
+    return "deep"
+
+
 class Provider(Enum):
     OLLAMA = "ollama"
     LLAMA_SERVER = "llama-server"
@@ -195,7 +222,23 @@ class Prompt(Markdown): BORDER_TITLE = "You"
 class Response(Markdown): BORDER_TITLE = "Assistant"
 class ToolLog(Markdown): BORDER_TITLE = "System Log"
 
+class ChatCommands(CommandProvider):
+    """Ctrl+P palette. One entry per model, in gpt-oss.toml order — fastest first, deepest last."""
+
+    async def discover(self) -> Hits:
+        for label, callback, help_text in self.app.get_commands().values():
+            yield DiscoveryHit(label, callback, text=label, help=help_text)
+
+    async def search(self, query: str) -> Hits:
+        matcher = Matcher(query)
+        for label, callback, help_text in self.app.get_commands().values():
+            score = matcher.match(label)
+            if score > 0:
+                yield Hit(score, matcher.highlight(label), callback, text=label, help=help_text)
+
 class ChatApp(App):
+    # The palette is the model switcher: system commands (screen, quit…) plus ChatCommands below.
+    COMMANDS = App.COMMANDS | {ChatCommands}
     CSS = """
     Screen { layout: vertical; }
     #main { height: 1fr; }
@@ -219,16 +262,16 @@ class ChatApp(App):
         self.update_client()
         self.router = self.get_semantic_router()
 
-    def update_client(self):
+    def update_client(self, model: str | None = None):
         config = PROVIDER_CONFIGS[self.current_provider]
-        self.model_name = config["default_model"]
+        self.model_name = model or config["default_model"]
         if self.current_provider is Provider.LLAMA_SERVER and self.model_name == "auto":
             self.model_name = self.served_model() or DEFAULT_MODEL_ALIAS
         if config["base_url"]:
             self.client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
         else:
             self.client = OpenAI(api_key=config["api_key"])
-        self.notify(f"Switched to {self.current_provider.value}")
+        self.notify(f"Switched to {self.current_provider.value} · {self.model_name}")
 
     def served_model(self) -> str:
         """What llama-server actually loaded, or '' when it is not answering."""
@@ -247,14 +290,19 @@ class ChatApp(App):
             return "No models registered in gpt-oss.toml"
         served = self.served_model()
         lines = [f"Endpoint: {LLAMA_ENDPOINT}", f"Serving:  {served or '(nothing loaded)'}", ""]
-        for alias in sorted(MODEL_REGISTRY):
+        lines.append("   #  alias            tier         size   notes")
+        for index, alias in enumerate(ordered_models(), start=1):
             path = model_path_for(alias)
-            state = "ok" if path.is_file() else "MISSING"
-            gb = f"{path.stat().st_size / (1024 ** 3):.2f} GB" if path.is_file() else "? GB"
-            mark = "*" if alias == DEFAULT_MODEL_ALIAS else " "
-            lines.append(f"{mark} {alias:<16} {gb:>8}  {state}")
+            state = f"{path.stat().st_size / (1024 ** 3):5.2f} GB" if path.is_file() else "   ? GB"
+            mark = "*" if alias == self.model_name else " "
+            notes = []
+            if alias == DEFAULT_MODEL_ALIAS:
+                notes.append("default")
+            if not path.is_file():
+                notes.append("MISSING")
+            lines.append(f"{mark}{index:2}. {alias:<16} {tier_for(alias):<11} {state}   {', '.join(notes)}".rstrip())
         lines.append("")
-        lines.append("* default  ·  switch with switch_llama, then launch that model in the terminal")
+        lines.append("fastest → deepest, top to bottom  ·  `/model <alias>` or Ctrl+P to switch")
         return "\n".join(lines)
 
     def get_semantic_router(self):
@@ -270,22 +318,64 @@ class ChatApp(App):
         kernel.setBotPredicate("name", "KNUMATIC")
         return kernel
 
-    def get_commands(self):
-        return {
-            "switch_ollama": ("Switch to Ollama", lambda: self.action_switch(Provider.OLLAMA)),
-            "switch_openai": ("Switch to OpenAI", lambda: self.action_switch(Provider.OPENAI)),
-            "switch_deepseek": ("Switch to DeepSeek", lambda: self.action_switch(Provider.DEEPSEEK)),
-            "switch_llama": ("Switch to local llama-server", lambda: self.action_switch(Provider.LLAMA_SERVER)),
-            "models": ("List local models", self.action_models),
-            "clear": ("Clear Chat", self.action_clear),
-        }
+    def get_commands(self) -> dict[str, tuple[str, Callable[[], object], str]]:
+        """What Ctrl+P and `/commands` offer: models first, fastest to deepest, then providers."""
+        commands: dict[str, tuple[str, Callable[[], object], str]] = {}
+        for alias in ordered_models():
+            commands[f"model:{alias}"] = (
+                f"Model: {alias} ({tier_for(alias)})",
+                partial(self.action_use_model, alias),
+                f"Point the chat at {MODEL_REGISTRY[alias]}",
+            )
+        commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
+        commands["switch_llama"] = ("Provider: local llama-server", partial(self.action_switch, Provider.LLAMA_SERVER), "127.0.0.1:9032")
+        commands["switch_ollama"] = ("Provider: Ollama", partial(self.action_switch, Provider.OLLAMA), "localhost:11434")
+        commands["switch_openai"] = ("Provider: OpenAI", partial(self.action_switch, Provider.OPENAI), "hosted, needs OPENAI_API_KEY")
+        commands["switch_deepseek"] = ("Provider: DeepSeek", partial(self.action_switch, Provider.DEEPSEEK), "hosted, needs DEEPSEEK_API_KEY")
+        commands["clear"] = ("Chat: clear", self.action_clear, "Drop the conversation, keep the system prompt")
+        return commands
+
+    def handle_command(self, text: str) -> None:
+        """`/models`, `/model <alias>`, or any key from get_commands()."""
+        name, _, argument = text[1:].partition(" ")
+        name, argument = name.strip().lower(), argument.strip()
+        if name in {"model", "models"}:
+            if argument:
+                self.action_use_model(argument)
+            else:
+                self.action_models()
+            return
+        commands = self.get_commands()
+        if name in commands:
+            commands[name][1]()
+            return
+        known = ", ".join(f"/{key}" for key in commands)
+        self.say_system(f"Unknown command `/{name}`. Known: {known}")
+
+    def say_system(self, markdown: str) -> None:
+        """Mount a system-log block in the chat view; only the app thread may touch widgets."""
+        view = self.query_one("#chat-view", VerticalScroll)
+        view.mount(ToolLog(markdown))
+        view.scroll_end(animate=False)
 
     def action_switch(self, p): self.current_provider = p; self.update_client()
 
+    def action_use_model(self, alias: str) -> None:
+        """Select one alias. llama-server serves what it was launched with, so name the gap."""
+        if alias not in MODEL_REGISTRY:
+            self.notify(f"Unknown alias: {alias}", severity="error")
+            return
+        self.current_provider = Provider.LLAMA_SERVER
+        self.update_client(alias)
+        served = self.served_model()
+        if served and served != alias:
+            self.say_system(f"Chat pinned to **{alias}** ({tier_for(alias)}), but llama-server is serving **{served}**.\n\nRestart it with `python task-engine.py launch --model {alias} --keep-alive`.")
+        elif not served:
+            self.say_system(f"Chat pinned to **{alias}** ({tier_for(alias)}), but nothing is answering on {LLAMA_ENDPOINT}.\n\nStart it with `python task-engine.py launch --model {alias} --keep-alive`.")
+
     def action_models(self):
-        view = self.query_one("#chat-view", VerticalScroll)
-        view.mount(ToolLog("Local models\n\n" + self.list_models()))
-        view.scroll_end(animate=False)
+        self.say_system("Local models\n\n" + self.list_models())
+
     def action_clear(self):
         self.messages = self.messages[:1]
         v = self.query_one("#chat-view", VerticalScroll); v.clear(); v.mount(Response("Cleared."))
@@ -294,7 +384,7 @@ class ChatApp(App):
         yield Header()
         with Horizontal(id="main"):
             with VerticalScroll(id="chat-view"):
-                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.")
+                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one, Ctrl+P opens the palette.")
             with Vertical(id="task-panel"):
                 yield Static("TASKS", id="task-title")
                 yield Static("", id="task-body")
@@ -328,14 +418,19 @@ class ChatApp(App):
         v.mount(Prompt(text))
         v.scroll_end(animate=False)
 
-        # 0. Task-list commands, resolved through the AIML bank by the bus.
+        # 0. Slash commands: /models, /model <alias>, /clear, /switch_llama …
+        if text.startswith("/"):
+            self.handle_command(text)
+            return
+
+        # 1. Task-list commands, resolved through the AIML bank by the bus.
         if self.bus:
             outcome = self.bus.apply(text)
             if outcome["ok"] or outcome.get("intent"):
                 v.mount(Response(f"**[Tasks]**\n\n{outcome['reply']}"))
                 return
 
-        # 1. Regex Fast-Path
+        # 2. Regex Fast-Path
         intent, arg = check_regex_fast_path(text)
         if intent:
             v.mount(ToolLog(f"Fast-Path Triggered: {intent}"))
@@ -344,13 +439,13 @@ class ChatApp(App):
             v.mount(Response(f"**[Local Execution]**\n\n{res}"))
             return
 
-        # 2. AIML
+        # 3. AIML
         aiml_res = self.router.respond(text.upper())
         if aiml_res and "__LLM_FALLBACK__" not in aiml_res:
             v.mount(Response(f"**[Local AIML]**\n\n{aiml_res}"))
             return
 
-        # 3. LLM with Tools
+        # 4. LLM with Tools
         v.mount(ToolLog("Delegating to LLM with Sandbox Tools..."))
         self.stream_llm_response(text)
 

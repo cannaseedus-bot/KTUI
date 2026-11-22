@@ -723,18 +723,37 @@ def resolve_model_path(config: dict, value: str | None = None) -> Path:
     return candidate
 
 
+def model_tier(gb: float | None) -> str:
+    """Speed tier from the file size, so the label tracks the weights instead of a second list."""
+    if gb is None:
+        return "unavailable"
+    if gb < 1:
+        return "fastest"
+    if gb < 1.5:
+        return "fast"
+    if gb < 3:
+        return "balanced"
+    if gb < 8:
+        return "strong"
+    return "deep"
+
+
 def describe_models(config: dict) -> list[dict]:
+    """Every alias in gpt-oss.toml order: fastest first, deepest last. That order is the speed dial."""
     registry = model_registry(config)
     default = str(config["server"].get("default_model") or "").strip()
     rows = []
-    for alias, target in sorted(registry.items()):
+    for rank, alias in enumerate(registry, start=1):
         path = resolve_model_path(config, alias)
         size = path.stat().st_size if path.is_file() else 0
+        gb = round(size / (1024 ** 3), 2) if size else None
         rows.append({
+            "rank": rank,
             "alias": alias,
             "path": str(path),
             "exists": path.is_file(),
-            "gb": round(size / (1024 ** 3), 2) if size else None,
+            "gb": gb,
+            "tier": model_tier(gb),
             "default": alias == default,
         })
     return rows
@@ -990,15 +1009,17 @@ def command_models(config: dict, args: argparse.Namespace) -> int:
         return 1
     width = max(len(row["alias"]) for row in rows)
     print(f"model dir: {model_dir(config)}")
+    print(f"\n   #  {'alias':<{width}}  {'tier':<11}  {'size':>9}  state")
     missing = 0
     for row in rows:
-        state = "ok" if row["exists"] else "MISSING"
         if not row["exists"]:
             missing += 1
         marker = "*" if row["default"] else " "
         size = f"{row['gb']:>6.2f} GB" if row["gb"] else "     ? GB"
-        print(f"{marker} {row['alias'].ljust(width)}  {size}  {state:8}  {row['path']}")
-    print("\n* default; launch with: python task-engine.py launch --model <alias>")
+        state = "ok" if row["exists"] else f"MISSING  {row['path']}"
+        print(f"{marker}{row['rank']:2}. {row['alias'].ljust(width)}  {row['tier']:<11}  {size}  {state}")
+    print("\nfastest → deepest, top to bottom")
+    print("* default; launch with: python task-engine.py launch --model <alias>")
     return 0 if missing == 0 else 1
 
 
@@ -1072,7 +1093,7 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("status", help="Report the runtime, the model and the server")
     sub.add_parser("tools", help="List the sandbox tools and allowlisted programs")
-    sub.add_parser("models", help="List every registered model, its size and whether the file is present")
+    sub.add_parser("models", help="List models fastest first: tier, size, and whether the file is present")
     tasks = sub.add_parser("tasks", help="Show the shared task list, or run one AIML command against it")
     tasks.add_argument("command_text", nargs=argparse.REMAINDER)
     prepare = sub.add_parser("prepare", help="Copy the staged llama-haswell binaries into runnable names")
@@ -1080,7 +1101,7 @@ def main(argv: list[str] | None = None) -> int:
     prepare.add_argument("--to-dir", help="Runtime directory (default: runtime/llama)")
     prepare.add_argument("--force", action="store_true", help="Copy even when the size already matches")
     launch = sub.add_parser("launch", help="Start llama-server, optionally run one task, then stop it")
-    launch.add_argument("--model", help="Model alias from [models], a filename, or an absolute path (default: default_model)")
+    launch.add_argument("--model", help="Alias from [models] (listed fastest first by `models`), a filename, or an absolute path (default: default_model)")
     launch.add_argument("--task", nargs=argparse.REMAINDER, help="Task to run once the server is healthy")
     launch.add_argument("--keep-alive", action="store_true", help="Leave the server running until Ctrl+C")
     chat = sub.add_parser("chat", help="Run one task against an already-running server")
