@@ -47,6 +47,36 @@ from bs4 import BeautifulSoup
 from functools import partial
 from urllib.parse import quote_plus
 
+# gpt-oss.toml lives here, so this is the repository root: the sandbox, the corpus, .env, the task
+# list and the logs all resolve against it, never against the shell's working directory.
+APP_ROOT = Path(__file__).resolve().parent
+
+
+def load_env(path: Path = APP_ROOT / ".env") -> dict[str, str]:
+    """Read KEY=value pairs from .env into os.environ; a real environment variable always wins.
+
+    Only the optional cloud advisors need a secret, and start.bat is what writes it here. The file
+    is gitignored and on the sandbox blocklist, so it can never be read by the model.
+    """
+    loaded: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8-sig")  # tolerate a BOM from any editor
+    except OSError:
+        return loaded
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key, value = key.strip(), value.strip().strip('"').strip("'")
+        if key and value:
+            loaded[key] = value
+            os.environ.setdefault(key, value)
+    return loaded
+
+
+ADVISOR_KEYS = load_env()
+
 # =====================================================================
 # 1. THE SANDBOX (Adapted from task-engine.py)
 # =====================================================================
@@ -108,9 +138,7 @@ class Sandbox:
         except Exception as e:
             return str(e)
 
-# gpt-oss.toml lives in the repository root, so that directory — not the shell's working directory —
-# is the sandbox root and the anchor for every path below (corpus, override, task list, logs).
-APP_ROOT = Path(__file__).resolve().parent
+# The sandbox is the repository root (APP_ROOT above), so the model cannot wander into the profile.
 sandbox = Sandbox(APP_ROOT)
 
 # =====================================================================
@@ -209,6 +237,11 @@ class Provider(Enum):
     OPENAI = "openai"
     DEEPSEEK = "deepseek"
 
+# Cloud advisors read their token from the environment, which load_env() filled from .env. A missing
+# key is a normal state, not an error: the app stays on the local server until one exists.
+CLOUD_PROVIDERS = {Provider.OPENAI, Provider.DEEPSEEK}
+ADVISOR_ENV = {Provider.OPENAI: "OPENAI_API_KEY", Provider.DEEPSEEK: "DEEPSEEK_API_KEY"}
+
 PROVIDER_CONFIGS = {
     Provider.OLLAMA: {"base_url": "http://localhost:11434/v1", "api_key": "ollama", "default_model": "llama3"},
     # The local llama-server the terminal launches; it serves one model, so "auto" is resolved from
@@ -254,7 +287,10 @@ class ChatApp(App):
 
     def __init__(self):
         super().__init__()
-        self.current_provider = Provider.OLLAMA
+        # Local first: runtime/llama serves the weights, so the app is useful with no keys and no
+        # network. Cloud providers are advisors — reached from the palette or /advisor <name> —
+        # never the default.
+        self.current_provider = Provider.LLAMA_SERVER
         self.client = None
         self.model_name = ""
         self.messages = [{"role": "system", "content": "You are a helpful coding assistant. Use tools to inspect the repo."}]
@@ -266,12 +302,24 @@ class ChatApp(App):
         config = PROVIDER_CONFIGS[self.current_provider]
         self.model_name = model or config["default_model"]
         if self.current_provider is Provider.LLAMA_SERVER and self.model_name == "auto":
+            # Whatever the server actually loaded wins; the configured default is the fallback.
             self.model_name = self.served_model() or DEFAULT_MODEL_ALIAS
         if config["base_url"]:
             self.client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
         else:
             self.client = OpenAI(api_key=config["api_key"])
-        self.notify(f"Switched to {self.current_provider.value} · {self.model_name}")
+        role = "local" if self.current_provider is Provider.LLAMA_SERVER else "advisor/cloud"
+        self.sub_title = f"{role} · {self.current_provider.value} · {self.model_label()}"
+        self.notify(f"Switched to {self.current_provider.value} · {self.model_label()}")
+
+    def model_label(self) -> str:
+        """The alias behind the id on the wire: llama-server advertises a full .gguf path, which is
+        the id to send but a terrible thing to read in a title bar."""
+        name = Path(str(self.model_name)).name
+        for alias, target in MODEL_REGISTRY.items():
+            if Path(target).name == name:
+                return alias
+        return self.model_name or "(none)"
 
     def served_model(self) -> str:
         """What llama-server actually loaded, or '' when it is not answering."""
@@ -294,7 +342,7 @@ class ChatApp(App):
         for index, alias in enumerate(ordered_models(), start=1):
             path = model_path_for(alias)
             state = f"{path.stat().st_size / (1024 ** 3):5.2f} GB" if path.is_file() else "   ? GB"
-            mark = "*" if alias == self.model_name else " "
+            mark = "*" if alias == self.model_label() else " "
             notes = []
             if alias == DEFAULT_MODEL_ALIAS:
                 notes.append("default")
@@ -319,24 +367,29 @@ class ChatApp(App):
         return kernel
 
     def get_commands(self) -> dict[str, tuple[str, Callable[[], object], str]]:
-        """What Ctrl+P and `/commands` offer: models first, fastest to deepest, then providers."""
+        """Ctrl+P and `/commands`: local models first (fastest to deepest), then advisors."""
         commands: dict[str, tuple[str, Callable[[], object], str]] = {}
         for alias in ordered_models():
             commands[f"model:{alias}"] = (
                 f"Model: {alias} ({tier_for(alias)})",
                 partial(self.action_use_model, alias),
-                f"Point the chat at {MODEL_REGISTRY[alias]}",
+                f"Local, served by runtime/llama: {MODEL_REGISTRY[alias]}",
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
-        commands["switch_llama"] = ("Provider: local llama-server", partial(self.action_switch, Provider.LLAMA_SERVER), "127.0.0.1:9032")
-        commands["switch_ollama"] = ("Provider: Ollama", partial(self.action_switch, Provider.OLLAMA), "localhost:11434")
-        commands["switch_openai"] = ("Provider: OpenAI", partial(self.action_switch, Provider.OPENAI), "hosted, needs OPENAI_API_KEY")
-        commands["switch_deepseek"] = ("Provider: DeepSeek", partial(self.action_switch, Provider.DEEPSEEK), "hosted, needs DEEPSEEK_API_KEY")
+        commands["switch_llama"] = ("Local: llama-server (default)", partial(self.action_switch, Provider.LLAMA_SERVER), f"{LLAMA_ENDPOINT}, no keys needed")
+        commands["switch_ollama"] = ("Local: Ollama daemon", partial(self.action_switch, Provider.OLLAMA), "localhost:11434, if you run one")
+        for provider, label in ((Provider.OPENAI, "OpenAI gpt-4o"), (Provider.DEEPSEEK, "DeepSeek chat")):
+            token = ADVISOR_ENV[provider]
+            commands[f"advisor_{provider.value}"] = (
+                f"Advisor: {label} (cloud)",
+                partial(self.action_switch, provider),
+                f"{token} loaded from .env" if PROVIDER_CONFIGS[provider]["api_key"] else f"no {token} yet - run start.bat advisor",
+            )
         commands["clear"] = ("Chat: clear", self.action_clear, "Drop the conversation, keep the system prompt")
         return commands
 
     def handle_command(self, text: str) -> None:
-        """`/models`, `/model <alias>`, or any key from get_commands()."""
+        """`/models`, `/model <alias>`, `/advisor <name>`, or any key from get_commands()."""
         name, _, argument = text[1:].partition(" ")
         name, argument = name.strip().lower(), argument.strip()
         if name in {"model", "models"}:
@@ -344,6 +397,17 @@ class ChatApp(App):
                 self.action_use_model(argument)
             else:
                 self.action_models()
+            return
+        if name in {"local", "llama"}:
+            self.action_switch(Provider.LLAMA_SERVER)
+            return
+        if name == "advisor":
+            advisors = {"openai": "advisor_openai", "deepseek": "advisor_deepseek"}
+            key = advisors.get(argument.lower())
+            if key:
+                self.get_commands()[key][1]()
+            else:
+                self.say_system("Advisors are the cloud second opinions: `/advisor openai` or `/advisor deepseek`. `/local` returns to the local server.")
             return
         commands = self.get_commands()
         if name in commands:
@@ -358,7 +422,16 @@ class ChatApp(App):
         view.mount(ToolLog(markdown))
         view.scroll_end(animate=False)
 
-    def action_switch(self, p): self.current_provider = p; self.update_client()
+    def action_switch(self, p):
+        if p in CLOUD_PROVIDERS and not PROVIDER_CONFIGS[p]["api_key"]:
+            self.say_system(
+                f"**{p.value}** is an advisor and needs a token. Add `{ADVISOR_ENV[p]}=...` to "
+                f"`{APP_ROOT / '.env'}` (start.bat offers to save it), then restart the app.\n\n"
+                "The local server keeps answering meanwhile."
+            )
+            return
+        self.current_provider = p
+        self.update_client()
 
     def action_use_model(self, alias: str) -> None:
         """Select one alias. llama-server serves what it was launched with, so name the gap."""

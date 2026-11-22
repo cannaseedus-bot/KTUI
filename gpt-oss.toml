@@ -4,6 +4,10 @@
 # small sandboxed tool set, and executes only what the sandbox allows. Everything here is a ceiling:
 # a value can be lowered at run time with a CLI flag, never raised past these numbers.
 
+# Where the .gguf files live. This is a top-level key (above every table) because the terminal, the
+# chat app and start.bat all read it from there; a bare filename in [models] resolves against it.
+model_dir = "C:/Users/canna/.models"
+
 [server]
 endpoint = "http://127.0.0.1:9032"
 
@@ -37,8 +41,7 @@ repeat_penalty = 1.05
 # Every local model, by alias, ordered fastest first and deepest last. The order is the feature: the
 # terminal (`models`, `--model`), the chat app's `/models` and the command palette all list this table
 # top to bottom, so the quickest thing to try is always the first row and the heavyweight is the last
-# one. A bare filename resolves against model_dir; an absolute path is used as given.
-model_dir = "C:/Users/canna/.models"
+# one. A bare filename resolves against the top-level model_dir; an absolute path is used as given.
 
 [models]
 # Speed dial: 0.7 GB answers before you finish reading, 11.5 GB is the one to hand real work to.
