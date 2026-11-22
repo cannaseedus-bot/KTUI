@@ -1,0 +1,4 @@
+# This checkout is LF on disk (the AIML corpus ships LF), and this machine's system gitconfig sets
+# core.autocrlf=true. Pin the worktree to LF so a `git restore` / `git checkout` returns the exact
+# bytes that were committed instead of rewriting every line ending to CRLF.
+* text=auto eol=lf

@@ -1,0 +1,69 @@
+# gpt-oss terminal configuration.
+#
+# The terminal talks to a local llama-server over its OpenAI-compatible REST API, offers the model a
+# small sandboxed tool set, and executes only what the sandbox allows. Everything here is a ceiling:
+# a value can be lowered at run time with a CLI flag, never raised past these numbers.
+
+[server]
+endpoint = "http://127.0.0.1:9032"
+
+# The llama-haswell npm package ships its binaries staged: dot-prefixed with a hash suffix
+# (`.llama-server.exe-JRUIIeUq`), and there is no package.json to rename them. `prepare` copies them
+# into runtime/llama/ under their real names so they can execute. That folder is gitignored: it is
+# ~28 MB of binaries copied out of node_modules.
+staged_source = "node_modules/@llama-haswell"
+runtime_dir = "runtime/llama"
+# An external full CPU build is preferred when present; otherwise `prepare` stages the npm package
+# into runtime/llama/. A directory is accepted and llama-server.exe is appended.
+executable = "C:/Users/canna/.llama-win-cpu-x64/llama-server.exe"
+default_model = "gpt-oss-20b"   # alias from [models]; model_path is the fallback
+context = 8192
+threads = 4
+port = 9032
+# Passed verbatim to llama-server. --jinja enables the chat template's native tool calling, which is
+# what lets the model emit OpenAI tool_calls instead of prose about them.
+server_args = ["--jinja"]
+server_start_timeout_seconds = 180
+
+model = "auto"                    # "auto" asks /v1/models for the loaded model name
+timeout_seconds = 300
+max_tokens = 768
+temperature = 0.2
+repeat_penalty = 1.05
+
+# Every local model, by alias. The terminal (`--model <alias>`), `models` and chat_app.py all read this
+# table, so adding a file here makes it selectable everywhere at once. A bare filename is resolved
+# against model_dir; an absolute path is used as given.
+model_dir = "C:/Users/canna/.models"
+
+[models]
+"gpt-oss-20b" = "gpt-oss-20b-MXFP4.gguf"
+"qwen3-4b" = "Qwen3-4B-Q8_0.gguf"
+"qwen3-1.7b" = "Qwen3-1.7B-Q8_0.gguf"
+"qwen3-1.7b-q4" = "Qwen3-1.7B-Q4_K_M.gguf"
+"gemma-3-1b" = "gemma-3-1B-it-QAT-Q4_0.gguf"
+"lfm2.5-1.2b" = "LFM2.5-1.2B-Instruct-Q8_0.gguf"
+
+[sandbox]
+# Relative to this file. The repository root is the sandbox; nothing outside it is readable.
+root = ".."
+allow_write = false               # reads and searches only until a human passes --allow-write
+allow_network = false             # no curl/wget/ssh in the program allowlist, and no proxy env passed
+command_timeout_seconds = 60
+max_output_chars = 12000
+max_steps = 12                    # tool round trips per task before the terminal stops the model
+max_read_bytes = 200000
+max_write_bytes = 200000
+max_search_results = 80
+
+# What goes over the wire versus what the terminal keeps. The loop re-sends the conversation every
+# step, so a 2048-context model pays for every byte twice; the full result stays in the local log and
+# in the in-memory conversation, while the model receives a trimmed recent result and an elision
+# marker for older ones.
+compact_tool_results = true
+max_tool_result_chars = 2000
+keep_recent_tool_results = 2
+# The newest result is the one the model reasons from; trimming its middle turned a six-item
+# config into "2 aliases". Send it whole and elide only the older ones.
+keep_newest_whole = true
+blocked = [".git", "node_modules", "dist", "logs", ".env", ".env.local", ".env.example"]

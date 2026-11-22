@@ -1,0 +1,22 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Runtime output: task transcripts and llama-server logs (see task-engine.py: logs/ is gitignored)
+logs/
+
+# Binaries staged out of node_modules by `task-engine.py prepare` (~28 MB, see gpt-oss.toml)
+runtime/llama/
+node_modules/
+
+# Rendered task state; task_list.py is the only writer and rewrites it on every command
+task-list.json
+
+# Local configuration the sandbox already blocks
+.env
+.env.*
+
+# The vendored AIML corpus keeps its own Mercurial checkout metadata (.hg, ~6 MB)
+aiml-en-us-foundation-alice/.hg/
