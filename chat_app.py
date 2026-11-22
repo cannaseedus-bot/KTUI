@@ -103,8 +103,10 @@ class Sandbox:
         except Exception as e:
             return str(e)
 
-# Initialize Sandbox to the current directory
-sandbox = Sandbox(Path("."))
+# gpt-oss.toml lives in the repository root, so that directory — not the shell's working directory —
+# is the sandbox root and the anchor for every path below (corpus, override, task list, logs).
+APP_ROOT = Path(__file__).resolve().parent
+sandbox = Sandbox(APP_ROOT)
 
 # =====================================================================
 # 2. TOOLS & INTENTS
@@ -146,7 +148,7 @@ def check_regex_fast_path(text: str):
 # 3. THE AGENT (LLM + Tools)
 # =====================================================================
 def load_terminal_config() -> dict:
-    """Read the same patches/gpt-oss.toml the terminal uses.
+    """Read the same gpt-oss.toml the terminal uses.
 
     One table of models means the chat app and the terminal can never disagree about which weights an
     alias points at, or which one is the default.
@@ -242,7 +244,7 @@ class ChatApp(App):
 
     def list_models(self) -> str:
         if not MODEL_REGISTRY:
-            return "No models registered in patches/gpt-oss.toml"
+            return "No models registered in gpt-oss.toml"
         served = self.served_model()
         lines = [f"Endpoint: {LLAMA_ENDPOINT}", f"Serving:  {served or '(nothing loaded)'}", ""]
         for alias in sorted(MODEL_REGISTRY):
@@ -257,13 +259,14 @@ class ChatApp(App):
 
     def get_semantic_router(self):
         kernel = aiml.Kernel()
-        alice_dir = Path("aiml-en-us-foundation-alice")
+        alice_dir = APP_ROOT / "aiml-en-us-foundation-alice"
         if alice_dir.exists():
             startup = alice_dir / "startup.xml"
             if startup.exists(): kernel.learn(str(startup))
-        
-        # Fallback override
-        kernel.learn("_override.aiml") if Path("_override.aiml").exists() else None
+
+        # Fallback override, also anchored to the repository root
+        override = APP_ROOT / "_override.aiml"
+        kernel.learn(str(override)) if override.exists() else None
         kernel.setBotPredicate("name", "KNUMATIC")
         return kernel
 

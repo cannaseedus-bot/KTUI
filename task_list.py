@@ -14,10 +14,10 @@ substitution, resolved by the same rules the hosted daemon uses (literal-word sp
 redirects). A template ends in `COMMAND <intent> <args>`, which is data — the resolver returns an
 intent and the store decides what it means.
 
-    python patches/task_list.py list
-    python patches/task_list.py add "wire the task bus"
-    python patches/task_list.py command "done 2"
-    python patches/task_list.py watch
+    python task_list.py list
+    python task_list.py add "wire the task bus"
+    python task_list.py command "done 2"
+    python task_list.py watch
 """
 
 from __future__ import annotations
@@ -33,7 +33,9 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+# gpt-oss.toml sits next to this module, so its directory is the repository root: task-list.json
+# belongs there. Resolving one level up would write it outside the project, into the user profile.
+REPO_ROOT = Path(__file__).resolve().parent
 DEFAULT_PATH = REPO_ROOT / "task-list.json"
 SCHEMA = "knumatic.task-list/1"
 

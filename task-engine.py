@@ -12,10 +12,10 @@ actually do. Two rules carry the whole design:
      scrubbed of everything but PATH.
 
 Usage:
-    python patches/task-engine.py status
-    python patches/task-engine.py tools
-    python patches/task-engine.py chat "why does the build fail?" --allow-write
-    python patches/task-engine.py shell
+    python task-engine.py status
+    python task-engine.py tools
+    python task-engine.py chat "why does the build fail?" --allow-write
+    python task-engine.py shell
 
 A transcript of every task is appended to logs/gpt-oss-terminal/<stamp>.jsonl (logs/ is gitignored).
 
@@ -58,6 +58,10 @@ except ModuleNotFoundError:  # pragma: no cover - older interpreters
     tomllib = None
 
 CONFIG_PATH = Path(__file__).resolve().parent / "gpt-oss.toml"
+# The repository root is this file's directory, which is where gpt-oss.toml lives. The sandbox, the
+# logs, the runtime directory and the staged llama binaries all resolve from here — never from the
+# shell's working directory, and never one level up (that would be the user profile).
+REPO_ROOT = CONFIG_PATH.parent
 
 # Programs the model may run. Read-only by character: nothing here writes to the repository except
 # `git` subcommands that are themselves checked, and nothing reaches the network.
@@ -226,7 +230,7 @@ def load_config(path: Path = CONFIG_PATH) -> dict:
             "repeat_penalty": 1.05,
         },
         "sandbox": {
-            "root": "..",
+            "root": ".",
             "allow_write": False,
             "allow_network": False,
             "command_timeout_seconds": 60,
@@ -692,7 +696,7 @@ def run_task(config: dict, sandbox: Sandbox, task: str, *, max_steps: int | None
 
 # -- model registry ----------------------------------------------------------------------------------
 #
-# One table, in patches/gpt-oss.toml, listing every local model by alias. `--model` accepts an alias, a
+# One table, in gpt-oss.toml, listing every local model by alias. `--model` accepts an alias, a
 # bare filename or an absolute path, and the default alias is used when nothing is given, so the
 # terminal never guesses which weights to load.
 
@@ -711,7 +715,7 @@ def resolve_model_path(config: dict, value: str | None = None) -> Path:
     registry = model_registry(config)
     choice = str(value or "").strip() or str(config["server"].get("default_model") or "").strip()
     if not choice:
-        raise ValueError("no model given; add one to [models] and set default_model in patches/gpt-oss.toml")
+        raise ValueError("no model given; add one to [models] and set default_model in gpt-oss.toml")
     target = registry.get(choice, choice)
     candidate = Path(target)
     if not candidate.is_absolute():
@@ -787,14 +791,13 @@ def prepare_runtime(source: Path, target: Path, *, force: bool = False) -> dict:
 
 
 def runtime_paths(config: dict) -> tuple[Path, Path]:
-    base = Path(__file__).resolve().parent
     server = config["server"]
     source = Path(server.get("staged_source", "node_modules/@llama-haswell"))
     if not source.is_absolute():
-        source = Path(__file__).resolve().parents[1] / source
+        source = REPO_ROOT / source
     target = Path(server.get("runtime_dir", "runtime/llama"))
     if not target.is_absolute():
-        target = base / target
+        target = REPO_ROOT / target
     return source, target
 
 
@@ -803,7 +806,7 @@ def resolve_executable(config: dict) -> Path:
     server = config["server"]
     candidate = Path(server.get("executable", "runtime/llama/llama-server.exe"))
     if not candidate.is_absolute():
-        candidate = Path(__file__).resolve().parent / candidate
+        candidate = REPO_ROOT / candidate
     if candidate.is_dir():
         candidate = candidate / "llama-server.exe"
     if candidate.is_file():
@@ -814,7 +817,7 @@ def resolve_executable(config: dict) -> Path:
         prepare_runtime(source, target)
         if candidate.is_file():
             return candidate
-    raise ValueError(f"llama-server.exe is missing; run: python patches/task-engine.py prepare")
+    raise ValueError(f"llama-server.exe is missing; run: python task-engine.py prepare")
 
 
 def build_server_argv(config: dict, *, model_path: str | None = None) -> list[str]:
@@ -844,7 +847,7 @@ def start_server(config: dict, *, model_path: str | None = None) -> subprocess.P
     timeout = int(config["server"].get("server_start_timeout_seconds", 180))
     # stdout/stderr go to a file: llama-server logs a great deal while loading, and an unread pipe
     # would fill and block the server before it ever became healthy.
-    log_dir = Path(__file__).resolve().parents[1] / "logs" / "llama-server"
+    log_dir = REPO_ROOT / "logs" / "llama-server"
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.log"
     log_file = log_path.open("w", encoding="utf-8", errors="replace")
@@ -896,7 +899,7 @@ def record_run(task: str, sandbox: "Sandbox", result: dict) -> Path:
 
 
 def transcript_path() -> Path:
-    folder = Path(__file__).resolve().parents[1] / "logs" / "gpt-oss-terminal"
+    folder = REPO_ROOT / "logs" / "gpt-oss-terminal"
     folder.mkdir(parents=True, exist_ok=True)
     return folder / f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.jsonl"
 
@@ -983,7 +986,7 @@ def command_launch(config: dict, args: argparse.Namespace) -> int:
 def command_models(config: dict, args: argparse.Namespace) -> int:
     rows = describe_models(config)
     if not rows:
-        print("no models registered; add them under [models] in patches/gpt-oss.toml", file=sys.stderr)
+        print("no models registered; add them under [models] in gpt-oss.toml", file=sys.stderr)
         return 1
     width = max(len(row["alias"]) for row in rows)
     print(f"model dir: {model_dir(config)}")
@@ -995,7 +998,7 @@ def command_models(config: dict, args: argparse.Namespace) -> int:
         marker = "*" if row["default"] else " "
         size = f"{row['gb']:>6.2f} GB" if row["gb"] else "     ? GB"
         print(f"{marker} {row['alias'].ljust(width)}  {size}  {state:8}  {row['path']}")
-    print("\n* default; launch with: python patches/task-engine.py launch --model <alias>")
+    print("\n* default; launch with: python task-engine.py launch --model <alias>")
     return 0 if missing == 0 else 1
 
 
@@ -1074,7 +1077,7 @@ def main(argv: list[str] | None = None) -> int:
     tasks.add_argument("command_text", nargs=argparse.REMAINDER)
     prepare = sub.add_parser("prepare", help="Copy the staged llama-haswell binaries into runnable names")
     prepare.add_argument("--from-dir", help="Staged source directory (default: node_modules/@llama-haswell)")
-    prepare.add_argument("--to-dir", help="Runtime directory (default: patches/runtime/llama)")
+    prepare.add_argument("--to-dir", help="Runtime directory (default: runtime/llama)")
     prepare.add_argument("--force", action="store_true", help="Copy even when the size already matches")
     launch = sub.add_parser("launch", help="Start llama-server, optionally run one task, then stop it")
     launch.add_argument("--model", help="Model alias from [models], a filename, or an absolute path (default: default_model)")

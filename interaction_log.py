@@ -21,7 +21,9 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+# gpt-oss.toml sits next to this module, so its directory is the repository root: logs/ belongs
+# there. (Resolving one level up would write outside the project, into the user profile.)
+REPO_ROOT = Path(__file__).resolve().parent
 DEFAULT_DIR = REPO_ROOT / "logs" / "llm-interactions"
 MAX_TEXT = 8000
 

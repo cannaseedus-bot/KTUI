@@ -45,8 +45,9 @@ model_dir = "C:/Users/canna/.models"
 "lfm2.5-1.2b" = "LFM2.5-1.2B-Instruct-Q8_0.gguf"
 
 [sandbox]
-# Relative to this file. The repository root is the sandbox; nothing outside it is readable.
-root = ".."
+# Relative to this file, and "." is this file's directory, which is the repository root: the sandbox
+# is exactly this project. Nothing outside it is readable.
+root = "."
 allow_write = false               # reads and searches only until a human passes --allow-write
 allow_network = false             # no curl/wget/ssh in the program allowlist, and no proxy env passed
 command_timeout_seconds = 60
