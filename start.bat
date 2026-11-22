@@ -9,6 +9,7 @@ rem    start.bat pick           pick a model from the list for this run only
 rem    start.bat default        pick a model from the list and make it the default every launch uses
 rem    start.bat default qwen3-4b   same, without the menu
 rem    start.bat advisor        add or replace a cloud advisor token in .env, then exit
+rem    start.bat keys           print the page where each provider's key comes from
 rem    start.bat stop           stop the llama-server this stack leaves running
 rem
 rem  Local models are the default: with weights on disk nothing here needs a key or the network.
@@ -29,11 +30,13 @@ set "MODE="
 if /i "%~1"=="advisor" set "MODE=advisor"
 if /i "%~1"=="pick" set "MODE=pick"
 if /i "%~1"=="default" set "MODE=default"
+if /i "%~1"=="keys" set "MODE=keys"
 
 where python >nul 2>&1 || goto :nopython
 
 if /i "%MODE%"=="advisor" goto :prepare_advisor
 if /i "%MODE%"=="default" goto :set_default
+if /i "%MODE%"=="keys" goto :show_keys
 
 rem --- which model: the argument, else the menu (pick), else gpt-oss.toml's default ---------------
 set "MODEL=%~1"
@@ -61,19 +64,29 @@ rem --- cloud advisors: free to refuse, saved once, respected forever ----------
 call :env_state
 if defined HAVE_OPENAI echo [start] cloud advisor ready: openai ^(OPENAI_API_KEY in .env^)
 if defined HAVE_DEEPSEEK echo [start] cloud advisor ready: deepseek ^(DEEPSEEK_API_KEY in .env^)
+if defined HAVE_ANTHROPIC echo [start] cloud advisor ready: anthropic ^(ANTHROPIC_API_KEY in .env^)
+rem `start.bat advisor` always asks, even when a key is already stored, so a second advisor can be
+rem added without deleting .env first.
+if /i "%MODE%"=="advisor" goto :ask_advisor
 if defined HAVE_OPENAI goto :after_advisor
 if defined HAVE_DEEPSEEK goto :after_advisor
+if defined HAVE_ANTHROPIC goto :after_advisor
+
+:ask_advisor
 
 echo.
 echo [start] Local models need no key and no network.
 echo [start] A cloud advisor is optional - press Enter to skip and stay local.
+call :key_pages
 echo.
 set "PICK="
-set /p "PICK=[start] add one? [openai / deepseek / skip] : "
+set /p "PICK=[start] add one? [openai / deepseek / anthropic / skip] : "
 if not defined PICK goto :local_only
 if /i "%PICK%"=="skip" goto :local_only
 if /i "%PICK%"=="openai" goto :key_openai
 if /i "%PICK%"=="deepseek" goto :key_deepseek
+if /i "%PICK%"=="anthropic" goto :key_anthropic
+if /i "%PICK%"=="claude" goto :key_anthropic
 echo [start] "%PICK%" is not a choice - staying local.
 goto :local_only
 
@@ -83,6 +96,10 @@ goto :after_advisor
 
 :key_deepseek
 call :read_key DEEPSEEK_API_KEY
+goto :after_advisor
+
+:key_anthropic
+call :read_key ANTHROPIC_API_KEY
 goto :after_advisor
 
 :local_only
@@ -158,6 +175,14 @@ exit /b 1
 echo [start] nothing selected - leaving things as they are.
 exit /b 0
 
+rem `start.bat keys` - the addresses, without asking for anything.
+:show_keys
+echo [start] where each credential comes from:
+call :key_pages
+echo.
+echo [start] save one with:  start.bat advisor
+exit /b 0
+
 rem --- subroutines ------------------------------------------------------------------------------
 :is_up
 powershell -NoProfile -NonInteractive -Command "try { $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 '%HEALTH%'; if ($r.StatusCode -eq 200) { exit 0 } } catch { }; exit 1" >nul 2>&1
@@ -177,11 +202,22 @@ goto :wait_loop
 :env_state
 set "HAVE_OPENAI="
 set "HAVE_DEEPSEEK="
+set "HAVE_ANTHROPIC="
 if not exist ".env" exit /b 0
 for /f "usebackq tokens=1,2 delims==" %%A in (".env") do (
     if /i "%%A"=="OPENAI_API_KEY" if not "%%B"=="" set "HAVE_OPENAI=1"
     if /i "%%A"=="DEEPSEEK_API_KEY" if not "%%B"=="" set "HAVE_DEEPSEEK=1"
+    if /i "%%A"=="ANTHROPIC_API_KEY" if not "%%B"=="" set "HAVE_ANTHROPIC=1"
 )
+exit /b 0
+
+rem Where to grab each credential. Windows Terminal and most modern consoles turn bare URLs into
+rem Ctrl+clickable links, which is the whole point of printing them here.
+:key_pages
+echo [start]   openai      https://platform.openai.com/api-keys
+echo [start]   deepseek    https://platform.deepseek.com/api_keys
+echo [start]   anthropic   https://platform.claude.com/settings/keys
+echo [start]   ollama      https://ollama.com/download        ^(local daemon, no key^)
 exit /b 0
 
 rem %1 is the variable name. Preferred path: typed hidden, written straight to .env by PowerShell, so

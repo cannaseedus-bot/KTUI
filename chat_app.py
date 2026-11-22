@@ -34,6 +34,7 @@ import math
 import subprocess
 import shutil
 import requests
+import webbrowser
 from pathlib import Path
 from enum import Enum
 from typing import Callable
@@ -240,11 +241,26 @@ class Provider(Enum):
     LLAMA_SERVER = "llama-server"
     OPENAI = "openai"
     DEEPSEEK = "deepseek"
+    ANTHROPIC = "anthropic"
+
+# Where a human goes to get the credential (or the local daemon) for each provider. Printed with
+# markdown links, so a terminal that speaks OSC 8 makes the address clickable; the palette entries
+# open the browser outright for terminals that do not.
+KEY_PAGES = {
+    Provider.OPENAI: ("platform.openai.com/api-keys", "https://platform.openai.com/api-keys"),
+    Provider.DEEPSEEK: ("platform.deepseek.com/api_keys", "https://platform.deepseek.com/api_keys"),
+    Provider.ANTHROPIC: ("platform.claude.com/settings/keys", "https://platform.claude.com/settings/keys"),
+    Provider.OLLAMA: ("ollama.com/download", "https://ollama.com/download"),
+}
 
 # Cloud advisors read their token from the environment, which load_env() filled from .env. A missing
 # key is a normal state, not an error: the app stays on the local server until one exists.
-CLOUD_PROVIDERS = {Provider.OPENAI, Provider.DEEPSEEK}
-ADVISOR_ENV = {Provider.OPENAI: "OPENAI_API_KEY", Provider.DEEPSEEK: "DEEPSEEK_API_KEY"}
+CLOUD_PROVIDERS = {Provider.OPENAI, Provider.DEEPSEEK, Provider.ANTHROPIC}
+ADVISOR_ENV = {
+    Provider.OPENAI: "OPENAI_API_KEY",
+    Provider.DEEPSEEK: "DEEPSEEK_API_KEY",
+    Provider.ANTHROPIC: "ANTHROPIC_API_KEY",
+}
 
 PROVIDER_CONFIGS = {
     Provider.OLLAMA: {"base_url": "http://localhost:11434/v1", "api_key": "ollama", "default_model": "llama3"},
@@ -253,6 +269,9 @@ PROVIDER_CONFIGS = {
     Provider.LLAMA_SERVER: {"base_url": LLAMA_ENDPOINT + "/v1", "api_key": "local", "default_model": "auto"},
     Provider.OPENAI: {"base_url": None, "api_key": os.environ.get("OPENAI_API_KEY"), "default_model": "gpt-4o"},
     Provider.DEEPSEEK: {"base_url": "https://api.deepseek.com/v1", "api_key": os.environ.get("DEEPSEEK_API_KEY"), "default_model": "deepseek-chat"},
+    # Claude speaks the OpenAI wire format through its compatibility layer; the model id is the one
+    # Anthropic documents as the best speed/intelligence trade-off. Change it here for another Claude.
+    Provider.ANTHROPIC: {"base_url": "https://api.anthropic.com/v1", "api_key": os.environ.get("ANTHROPIC_API_KEY"), "default_model": "claude-sonnet-5-5"},
 }
 
 class Prompt(Markdown): BORDER_TITLE = "You"
@@ -387,14 +406,25 @@ class ChatApp(App):
                 f"Start with {alias} next time — writes gpt-oss.toml",
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
+        commands["keys"] = ("Keys: where to get each API key", self.action_keys, "OpenAI, DeepSeek, Claude, Ollama — with links")
+        for provider, (label, url) in KEY_PAGES.items():
+            commands[f"get_key:{provider.value}"] = (
+                f"Get key: {label}",
+                partial(self.action_open_key, provider),
+                f"Opens {url} in the browser",
+            )
         commands["switch_llama"] = ("Local: llama-server (default)", partial(self.action_switch, Provider.LLAMA_SERVER), f"{LLAMA_ENDPOINT}, no keys needed")
         commands["switch_ollama"] = ("Local: Ollama daemon", partial(self.action_switch, Provider.OLLAMA), "localhost:11434, if you run one")
-        for provider, label in ((Provider.OPENAI, "OpenAI gpt-4o"), (Provider.DEEPSEEK, "DeepSeek chat")):
+        for provider, label in (
+            (Provider.OPENAI, "OpenAI gpt-4o"),
+            (Provider.DEEPSEEK, "DeepSeek chat"),
+            (Provider.ANTHROPIC, "Claude sonnet-5-5"),
+        ):
             token = ADVISOR_ENV[provider]
             commands[f"advisor_{provider.value}"] = (
                 f"Advisor: {label} (cloud)",
                 partial(self.action_switch, provider),
-                f"{token} loaded from .env" if PROVIDER_CONFIGS[provider]["api_key"] else f"no {token} yet - run start.bat advisor",
+                f"{token} loaded from .env" if PROVIDER_CONFIGS[provider]["api_key"] else f"no {token} yet - /keys shows where to get one",
             )
         commands["clear"] = ("Chat: clear", self.action_clear, "Drop the conversation, keep the system prompt")
         return commands
@@ -413,12 +443,17 @@ class ChatApp(App):
             self.action_switch(Provider.LLAMA_SERVER)
             return
         if name == "advisor":
-            advisors = {"openai": "advisor_openai", "deepseek": "advisor_deepseek"}
-            key = advisors.get(argument.lower())
-            if key:
-                self.get_commands()[key][1]()
+            key = f"advisor_{argument.lower()}"
+            commands = self.get_commands()
+            if key in commands:
+                commands[key][1]()
             else:
-                self.say_system("Advisors are the cloud second opinions: `/advisor openai` or `/advisor deepseek`. `/local` returns to the local server.")
+                names = ", ".join(f"`{provider.value}`" for provider in ADVISOR_ENV)
+                self.say_system(
+                    f"Advisors are the cloud second opinions: {names}.\n\n"
+                    "`/advisor <name>` switches to one, `/keys` shows where each key comes from, "
+                    "`/local` returns to the local server."
+                )
             return
         if name == "default":
             self.action_set_default(argument or None)
@@ -438,14 +473,45 @@ class ChatApp(App):
 
     def action_switch(self, p):
         if p in CLOUD_PROVIDERS and not PROVIDER_CONFIGS[p]["api_key"]:
+            label, url = KEY_PAGES[p]
             self.say_system(
-                f"**{p.value}** is an advisor and needs a token. Add `{ADVISOR_ENV[p]}=...` to "
-                f"`{APP_ROOT / '.env'}` (start.bat offers to save it), then restart the app.\n\n"
+                f"**{p.value}** is an advisor and needs a token.\n\n"
+                f"- Get one: [{label}]({url})\n"
+                f"- Save it: `{ADVISOR_ENV[p]}=...` in `{APP_ROOT / '.env'}` — start.bat offers to write it — then restart the app.\n\n"
                 "The local server keeps answering meanwhile."
             )
             return
         self.current_provider = p
         self.update_client()
+
+    def keys_table(self) -> str:
+        """Every provider's key page as a markdown link, with the state of what is already set."""
+        lines = ["Where each credential comes from:", ""]
+        for provider, (label, url) in KEY_PAGES.items():
+            if provider in ADVISOR_ENV:
+                state = " · key set" if PROVIDER_CONFIGS[provider]["api_key"] else " · no key yet"
+            else:
+                state = " · no key needed"
+            lines.append(f"- **{provider.value}** — [{label}]({url}){state}")
+        lines.append("")
+        lines.append("`Ctrl+click` opens a link, or use the palette's `Get key:` entries to launch the browser.")
+        lines.append("Saved keys live in `.env` (gitignored); `start.bat advisor` writes them for you.")
+        return "\n".join(lines)
+
+    def action_keys(self) -> None:
+        self.say_system(self.keys_table())
+
+    def action_open_key(self, provider: Provider) -> None:
+        """Open the provider's key page in the default browser — the click-through path."""
+        label, url = KEY_PAGES[provider]
+        try:
+            opened = webbrowser.open(url, new=2)
+        except Exception:
+            opened = False
+        if opened:
+            self.say_system(f"Opened [{label}]({url}) in your browser.")
+        else:
+            self.say_system(f"No browser came up, so paste this yourself:\n\n[{label}]({url})")
 
     def action_set_default(self, alias: str | None = None) -> None:
         """Persist an alias as [server] default_model, which is what the next launch serves."""
@@ -489,7 +555,7 @@ class ChatApp(App):
         yield Header()
         with Horizontal(id="main"):
             with VerticalScroll(id="chat-view"):
-                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.")
+                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.")
             with Vertical(id="task-panel"):
                 yield Static("TASKS", id="task-title")
                 yield Static("", id="task-body")
