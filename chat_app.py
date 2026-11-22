@@ -30,6 +30,10 @@ try:  # the one place that edits gpt-oss.toml, shared with the terminal and star
     from model_config import set_default_model as persist_default_model
 except ImportError:  # pragma: no cover
     persist_default_model = None
+try:  # session transcripts, so a conversation can be resumed or rewound
+    import session_log
+except ImportError:  # pragma: no cover
+    session_log = None
 import math
 import subprocess
 import shutil
@@ -156,6 +160,21 @@ class ReadFileArgs(BaseModel):
 class RunCommandArgs(BaseModel):
     program: str = Field(..., description="git, python, node")
     args: list[str] = Field(..., description="List of string arguments")
+class HistoryArgs(BaseModel):
+    query: str = Field("", description="Text to look for in earlier sessions; empty lists the newest messages")
+    limit: int = Field(10, description="How many messages to return at most")
+
+
+def format_history(rows: list[dict]) -> str:
+    """The model's view of the transcript: when, which session, who, and a bounded excerpt."""
+    if not rows:
+        return "no earlier messages recorded yet"
+    lines = []
+    for row in rows:
+        when = str(row.get("at") or "")[:16].replace("T", " ")
+        lines.append(f"[{when}] {str(row.get('session') or '')[:6]} {row.get('role')}: {str(row.get('content') or '')[:400]}")
+    return "\n".join(lines)
+
 
 def execute_tool(name: str, args: dict) -> str:
     try:
@@ -165,6 +184,11 @@ def execute_tool(name: str, args: dict) -> str:
             return sandbox.read_file(args["path"])
         elif name == "run_command":
             return sandbox.run_command(args["program"], args["args"])
+        elif name == "search_history":
+            if session_log is None:
+                return "session logging is unavailable"
+            rows = session_log.search(str(args.get("query") or ""), limit=int(args.get("limit") or 10))
+            return format_history(rows)
     except SandboxError as e:
         return f"🚫 [Sandbox Refused]: {e}"
     except Exception as e:
@@ -316,6 +340,9 @@ class ChatApp(App):
         self.current_provider = Provider.LLAMA_SERVER
         self.client = None
         self.model_name = ""
+        # Every conversation is a session on disk: /resume and /rewind work off that file, and the
+        # model can look back at it with the search_history tool.
+        self.session_id = session_log.new_session() if session_log else ""
         self.messages = [{"role": "system", "content": "You are a helpful coding assistant. Use tools to inspect the repo."}]
         self.bus = TaskListBus().start() if TaskListBus else None
         self.update_client()
@@ -406,6 +433,10 @@ class ChatApp(App):
                 f"Start with {alias} next time — writes gpt-oss.toml",
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
+        commands["sessions"] = ("Session: list past sessions", self.action_sessions, "Resume or rewind from here")
+        commands["resume"] = ("Session: resume the most recent", self.action_resume, "Load the last conversation back in")
+        commands["rewind"] = ("Session: rewind one exchange", partial(self.action_rewind, "1"), "Drop the last question and answer")
+        commands["new_session"] = ("Session: start a new one", self.action_new_session, "Fresh transcript, same app")
         commands["keys"] = ("Keys: where to get each API key", self.action_keys, "OpenAI, DeepSeek, Claude, Ollama — with links")
         for provider, (label, url) in KEY_PAGES.items():
             commands[f"get_key:{provider.value}"] = (
@@ -457,6 +488,18 @@ class ChatApp(App):
             return
         if name == "default":
             self.action_set_default(argument or None)
+            return
+        if name in {"sessions", "history"}:
+            self.action_sessions()
+            return
+        if name == "resume":
+            self.action_resume(argument)
+            return
+        if name in {"rewind", "back"}:
+            self.action_rewind(argument)
+            return
+        if name in {"new", "new_session"}:
+            self.action_new_session()
             return
         commands = self.get_commands()
         if name in commands:
@@ -549,7 +592,109 @@ class ChatApp(App):
 
     def action_clear(self):
         self.messages = self.messages[:1]
-        v = self.query_one("#chat-view", VerticalScroll); v.clear(); v.mount(Response("Cleared."))
+        v = self.query_one("#chat-view", VerticalScroll); v.remove_children(); v.mount(Response("Cleared."))
+
+    # -- sessions: resume, rewind, list ------------------------------------------------------------
+    def remember(self, role: str, content: str) -> None:
+        """Append one message to the session file. Logging must never break the conversation."""
+        if session_log is None or not self.session_id:
+            return
+        session_log.append(self.session_id, role, content, model=self.model_name)
+
+    def render_transcript(self) -> None:
+        """Redraw the chat view from self.messages, which is the truth after a rewind or resume."""
+        view = self.query_one("#chat-view", VerticalScroll)
+        view.remove_children()
+        for message in self.messages[1:]:
+            role = message.get("role")
+            if role == "user":
+                view.mount(Prompt(str(message.get("content") or "")))
+            elif role == "assistant":
+                view.mount(Response(str(message.get("content") or "")))
+        view.scroll_end(animate=False)
+
+    def action_sessions(self) -> None:
+        if session_log is None:
+            self.say_system("Session logging is unavailable in this environment.")
+            return
+        rows = session_log.sessions(limit=10)
+        if not rows:
+            self.say_system("No sessions recorded yet — this one starts now.")
+            return
+        lines = ["Recent sessions, newest first:", ""]
+        for index, row in enumerate(rows, start=1):
+            when = str(row["started"])[:16].replace("T", " ")
+            mark = "*" if row["id"] == self.session_id else " "
+            lines.append(f"{mark}{index}. `{row['id']}` · {when} · {row['turns']} turn(s) · {row['preview']}")
+        lines.append("")
+        lines.append("`/resume <number|id>` loads one, `/rewind [n]` drops the last n exchanges, `/new` starts fresh.")
+        lines.append("* marks the session you are in.")
+        self.say_system("\n".join(lines))
+
+    def _session_row(self, which: str) -> dict | None:
+        rows = session_log.sessions(limit=50) if session_log else []
+        if not rows:
+            return None
+        which = (which or "").strip()
+        if not which:
+            return rows[0]
+        if which.isdigit():
+            index = int(which) - 1
+            return rows[index] if 0 <= index < len(rows) else None
+        for row in rows:
+            if row["id"] == which or row["id"].startswith(which):
+                return row
+        return None
+
+    def action_resume(self, which: str = "") -> None:
+        """Load a past session back into the conversation. Without an argument, the most recent one."""
+        if session_log is None:
+            self.say_system("Session logging is unavailable in this environment.")
+            return
+        row = self._session_row(which)
+        if not row:
+            self.say_system(f"No session matches `{which}`. `/sessions` lists them.")
+            return
+        records = session_log.load(row["id"])
+        if not records:
+            self.say_system(f"`{row['id']}` has no messages on disk.")
+            return
+        self.session_id = row["id"]
+        self.messages = [self.messages[0]] + [
+            {"role": record["role"], "content": record["content"]} for record in records
+        ]
+        self.render_transcript()
+        self.say_system(
+            f"Resumed `{row['id']}` — {len(records)} message(s), {row['turns']} turn(s).\n\n"
+            "Continuing here appends to the same file; `/rewind` trims it, `/new` starts a different one."
+        )
+
+    def action_rewind(self, count: str = "") -> None:
+        """Drop the last `count` exchanges (default 1) and persist the shortened transcript."""
+        try:
+            exchanges = max(1, int(str(count or "1").strip()))
+        except ValueError:
+            exchanges = 1
+        users = [index for index, message in enumerate(self.messages) if message.get("role") == "user"]
+        if not users:
+            self.say_system("Nothing to rewind — no user turn in this session yet.")
+            return
+        cut = users[-min(exchanges, len(users))]
+        dropped = len(self.messages) - cut
+        self.messages = self.messages[:cut]
+        if session_log is not None and self.session_id:
+            session_log.rewrite(self.session_id, self.messages[1:], model=self.model_name)
+        self.render_transcript()
+        last = next((m["content"] for m in reversed(self.messages) if m.get("role") == "user"), "")
+        tail = f"\n\nThe conversation now ends at: “{str(last)[:120]}”" if last else ""
+        self.say_system(f"Rewound {dropped} message(s) ({exchanges} exchange(s)).{tail}")
+
+    def action_new_session(self) -> None:
+        if session_log is not None:
+            self.session_id = session_log.new_session()
+        self.messages = self.messages[:1]
+        self.query_one("#chat-view", VerticalScroll).remove_children()
+        self.say_system(f"New session `{self.session_id}`. `/sessions` lists the old ones; `/resume` loads one.")
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -624,15 +769,18 @@ class ChatApp(App):
     async def stream_llm_response(self, user_text: str) -> None:
         v = self.query_one("#chat-view", VerticalScroll)
         self.messages.append({"role": "user", "content": user_text})
+        self.remember("user", user_text)
         resp = Response("")
         v.mount(resp)
         v.scroll_end(animate=False)
 
-        # Register Sandbox Tools for the LLM
+        # Register Sandbox Tools for the LLM. search_history is always available: looking back at
+        # earlier sessions is read-only.
         tools = [
             pydantic_function_tool(ListDirArgs),
             pydantic_function_tool(ReadFileArgs),
             pydantic_function_tool(RunCommandArgs),
+            pydantic_function_tool(HistoryArgs),
         ]
 
         try:
@@ -662,9 +810,12 @@ class ChatApp(App):
                             self.messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
                         except Exception as e:
                             self.messages.append({"role": "tool", "tool_call_id": tc.id, "content": f"Error: {e}"})
-                    
+
                     # Get the LLM to summarize the tool output
                     await self.follow_up_llm_response()
+                elif full.strip():
+                    # The answer arrived inline: this is the turn to remember for /resume and /rewind.
+                    self.remember("assistant", full)
 
         except Exception as e:
             resp.update(f"**LLM Error:** {e}")
@@ -688,6 +839,8 @@ class ChatApp(App):
                         v.scroll_end(animate=False)
                 final = stream.get_final_completion()
                 self.messages.append(final.choices[0].message.model_dump(exclude_none=True))
+                answer = final.choices[0].message.content or ""
+                self.remember("assistant", answer)
                 # One shared log for every local client: the dumper compiles these pairs into AIML.
                 last_user = next((m["content"] for m in reversed(self.messages) if m.get("role") == "user"), "")
                 log_interaction(
