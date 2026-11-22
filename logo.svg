@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KNUMATIC mark - the .aiml header logo.
+
+  This file is data, not code: shapes only, no <script>, no external references, no CSS, no fonts and
+  no <image>. svg_logo.py refuses anything outside its allowlist (tags, attributes and path commands),
+  so a hand-edited file cannot smuggle in anything executable. The animation is the app's: the shape
+  carrying id="pulse" has its colour pulsed over time, which keeps the file itself static.
+
+  The mark is deliberately coarse: at 22 x 22 pixels a hexagon ring plus one marker is about as much
+  detail as survives, and anything busier turns to noise in the terminal grid.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <!-- the ring: a filled hexagon with an erased hexagon inside it -->
+  <polygon points="23,12 17.5,21.5 6.5,21.5 1,12 6.5,2.5 17.5,2.5" fill="#5f8dd3"/>
+  <polygon points="19.5,12 15.75,18.5 8.25,18.5 4.5,12 8.25,5.5 15.75,5.5" fill="none"/>
+
+  <!-- the marker that breathes: a short bar seated on the top edge of the ring -->
+  <rect id="pulse" x="9.6" y="0.2" width="4.8" height="2.2" fill="#7dcfff"/>
+
+  <!-- the core: one bold vertical slot, the "knot" the name refers to -->
+  <rect x="10.6" y="8.5" width="2.8" height="7" fill="#c0caf5"/>
+</svg>

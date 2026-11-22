@@ -34,6 +34,10 @@ try:  # session transcripts, so a conversation can be resumed or rewound
     import session_log
 except ImportError:  # pragma: no cover
     session_log = None
+try:  # the header mark: an allowlisted subset of SVG, rasterised to half blocks
+    import svg_logo
+except ImportError:  # pragma: no cover
+    svg_logo = None
 import math
 import subprocess
 import shutil
@@ -44,11 +48,14 @@ from enum import Enum
 from typing import Callable
 from textual import on, work
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.command import DiscoveryHit, Hit, Hits
 from textual.command import Provider as CommandProvider
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.fuzzy import Matcher
-from textual.widgets import Header, Input, Footer, Markdown, Static
+from textual.screen import ModalScreen
+from textual.widgets import DirectoryTree, Header, Input, Footer, Markdown, Static
+from rich.text import Text as RichText
 from openai import OpenAI, pydantic_function_tool
 from pydantic import BaseModel, Field
 import aiml
@@ -102,8 +109,26 @@ class SandboxError(Exception):
     pass
 
 class Sandbox:
-    def __init__(self, root: Path):
-        self.root = root.resolve()
+    """Reads are always allowed inside the workspace; writes and patches need the human's grant.
+
+    The grant is per workspace and is dropped the moment a different folder is picked, so granting
+    writes in one project cannot quietly follow you into another.
+    """
+
+    MAX_WRITE = 200_000
+
+    def __init__(self, root: Path, *, allow_write: bool = False):
+        self.root = Path(root).resolve()
+        self.allow_write = allow_write
+
+    def set_root(self, root: Path, *, allow_write: bool = False) -> Path:
+        self.root = Path(root).resolve()
+        self.allow_write = allow_write
+        return self.root
+
+    @property
+    def mode(self) -> str:
+        return "read-write" if self.allow_write else "read-only"
 
     def resolve(self, path_str: str, must_exist=False) -> Path:
         if not path_str: raise SandboxError("path required")
@@ -133,6 +158,41 @@ class Sandbox:
         if target.stat().st_size > 200_000: raise SandboxError("file too large")
         return target.read_text(encoding="utf-8", errors="replace")[:4000] # Return first 4000 chars
 
+    def write_file(self, path: str, content: str) -> str:
+        """Create or replace a text file inside the workspace. Needs the write grant."""
+        if not self.allow_write:
+            raise SandboxError("workspace is read-only; `/allow` grants writes and patches")
+        body = "" if content is None else str(content)
+        if len(body.encode("utf-8")) > self.MAX_WRITE:
+            raise SandboxError(f"refusing to write more than {self.MAX_WRITE} bytes")
+        target = self.resolve(path)
+        if target.is_dir():
+            raise SandboxError("that path is a directory")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(body, encoding="utf-8", newline="\n")
+        return f"wrote {len(body)} char(s) to {target.relative_to(self.root).as_posix()}"
+
+    def patch_file(self, path: str, find: str, replace: str, replace_all: bool = False) -> str:
+        """Replace `find` with `replace` in a file. Ambiguous or absent matches are refused."""
+        if not self.allow_write:
+            raise SandboxError("workspace is read-only; `/allow` grants writes and patches")
+        if not find:
+            raise SandboxError("patch needs something to find")
+        target = self.resolve(path, must_exist=True)
+        if not target.is_file():
+            raise SandboxError("not a file")
+        if target.stat().st_size > self.MAX_WRITE:
+            raise SandboxError("file too large to patch")
+        text = target.read_text(encoding="utf-8", errors="replace")
+        hits = text.count(find)
+        if not hits:
+            raise SandboxError("that text is not in the file")
+        if hits > 1 and not replace_all:
+            raise SandboxError(f"'{find[:40]}' appears {hits} times; narrow it or pass replace_all")
+        updated = text.replace(find, "" if replace is None else str(replace), -1 if replace_all else 1)
+        target.write_text(updated, encoding="utf-8", newline="\n")
+        return f"patched {target.relative_to(self.root).as_posix()} ({1 if not replace_all else hits} replacement(s))"
+
     def run_command(self, program: str, args: list[str]):
         if program not in ALLOWED_PROGRAMS:
             raise SandboxError(f"{program} is not allowlisted")
@@ -147,7 +207,8 @@ class Sandbox:
         except Exception as e:
             return str(e)
 
-# The sandbox is the repository root (APP_ROOT above), so the model cannot wander into the profile.
+# The default workspace is the repository root (APP_ROOT above), so the model cannot wander into the
+# profile until a human points it somewhere else with /workspace.
 sandbox = Sandbox(APP_ROOT)
 
 # =====================================================================
@@ -163,6 +224,14 @@ class RunCommandArgs(BaseModel):
 class HistoryArgs(BaseModel):
     query: str = Field("", description="Text to look for in earlier sessions; empty lists the newest messages")
     limit: int = Field(10, description="How many messages to return at most")
+class WriteFileArgs(BaseModel):
+    path: str = Field(..., description="Workspace-relative path to write")
+    content: str = Field(..., description="Full file content; only when the workspace is read-write")
+class PatchFileArgs(BaseModel):
+    path: str = Field(..., description="Workspace-relative file to patch")
+    find: str = Field(..., description="Exact text to replace, long enough to appear once")
+    replace: str = Field("", description="Replacement text; empty string deletes the match")
+    replace_all: bool = Field(False, description="Replace every occurrence instead of refusing ambiguity")
 
 
 def format_history(rows: list[dict]) -> str:
@@ -189,6 +258,10 @@ def execute_tool(name: str, args: dict) -> str:
                 return "session logging is unavailable"
             rows = session_log.search(str(args.get("query") or ""), limit=int(args.get("limit") or 10))
             return format_history(rows)
+        elif name == "write_file":
+            return sandbox.write_file(args["path"], args.get("content", ""))
+        elif name == "patch_file":
+            return sandbox.patch_file(args["path"], args["find"], args.get("replace", ""), bool(args.get("replace_all")))
     except SandboxError as e:
         return f"🚫 [Sandbox Refused]: {e}"
     except Exception as e:
@@ -316,11 +389,125 @@ class ChatCommands(CommandProvider):
             if score > 0:
                 yield Hit(score, matcher.highlight(label), callback, text=label, help=help_text)
 
+class LogoArt(Static):
+    """The header mark, drawn from logo.svg and breathed by a timer.
+
+    Textual has no SVG renderer, so svg_logo.py rasterises an allowlisted subset to half blocks and
+    this widget re-renders it every few frames: the shape tagged id="pulse" brightens and dims. The
+    SVG stays a static, script-free file - the animation lives here, not in the artwork.
+    """
+
+    DEFAULT_CSS = """
+    LogoArt { width: 24; height: 12; content-align: center middle; }
+    """
+
+    def __init__(self, *, cols: int = 22, rows: int = 22, **kwargs) -> None:
+        super().__init__("", markup=False, **kwargs)
+        self.cols = cols
+        self.rows = rows
+        self.phase = 0.0
+        self.logo = None
+        self.problem = ""
+
+    def on_mount(self) -> None:
+        if svg_logo is None:
+            self.problem = "logo module missing"
+        else:
+            try:
+                self.logo = svg_logo.load_default()
+            except Exception as error:  # unsafe, missing or malformed: say so and keep running
+                self.problem = f"logo: {error}"
+        self.draw()
+        self.set_interval(0.16, self.tick)
+
+    def tick(self) -> None:
+        self.phase = (self.phase + 0.16) % 1.0
+        self.draw()
+
+    def pulse(self) -> float:
+        """A smooth 0..0.85 breath, so the marker does not flicker."""
+        return (math.sin(self.phase * 2 * math.pi) + 1) / 2 * 0.85
+
+    def draw(self) -> None:
+        if self.problem:
+            self.update(self.problem)
+            return
+        try:
+            self.update(self.logo.render(self.cols, self.rows, brighten={"pulse": self.pulse()}))
+        except Exception as error:
+            self.problem = f"logo: {error}"
+            self.update(self.problem)
+
+
+class WorkspaceBar(Static):
+    """Which folder the model may touch, in which mode, and which session is recording it."""
+
+    def show(self, root: Path, mode: str, session: str) -> None:
+        home = Path.home()
+        try:
+            shown = "~/" + Path(root).relative_to(home).as_posix()
+        except ValueError:
+            shown = str(root)
+        text = RichText()
+        text.append("workspace  ", style="bold")
+        text.append(f"{shown}\n")
+        text.append("model      ", style="bold")
+        text.append(f"{mode}", style="green" if mode == "read-write" else "yellow")
+        text.append("   `/workspace` picks a folder, `/allow` grants write+patch\n", style="dim")
+        text.append("session    ", style="bold")
+        text.append(session or "(not recording)", style="dim")
+        self.update(text)
+
+
+class WorkspacePicker(ModalScreen[Path | None]):
+    """Folder chooser. Enter expands, `a` takes the highlighted folder, Escape cancels."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel"),
+        Binding("a", "use_current", "Use this folder"),
+    ]
+
+    DEFAULT_CSS = """
+    WorkspacePicker { align: center middle; }
+    WorkspacePicker > Vertical { width: 90; height: 80%; border: round $accent; background: $surface; padding: 1; }
+    WorkspacePicker #picker-title { height: auto; padding: 0 0 1 0; }
+    WorkspacePicker DirectoryTree { height: 1fr; }
+    """
+
+    def __init__(self, start: Path) -> None:
+        super().__init__()
+        self.start = Path(start)
+
+    def compose(self) -> ComposeResult:
+        with Vertical():
+            yield Static(
+                f"Workspace folder — Enter expands, `a` picks the highlighted one, Escape cancels\n{self.start}",
+                id="picker-title",
+                markup=False,
+            )
+            yield DirectoryTree(str(self.start), id="picker-tree")
+
+    @on(DirectoryTree.DirectorySelected)
+    def picked_directory(self, event: DirectoryTree.DirectorySelected) -> None:
+        self.dismiss(Path(str(event.path)))
+
+    def action_use_current(self) -> None:
+        node = self.query_one(DirectoryTree).cursor_node
+        data = getattr(node, "data", None)
+        self.dismiss(Path(str(data.path)) if data is not None else None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+
 class ChatApp(App):
     # The palette is the model switcher: system commands (screen, quit…) plus ChatCommands below.
     COMMANDS = App.COMMANDS | {ChatCommands}
     CSS = """
     Screen { layout: vertical; }
+    #banner { height: 12; padding: 0 1; background: $panel; border-bottom: solid $primary 30%; }
+    #logo { width: 24; height: 12; content-align: center middle; }
+    #workspace-bar { width: 1fr; height: 12; content-align: left middle; }
     #main { height: 1fr; }
     #chat-view { width: 2fr; height: 1fr; padding: 1 2; background: $surface; }
     #task-panel { width: 1fr; border: round $secondary; padding: 0 1; }
@@ -433,6 +620,9 @@ class ChatApp(App):
                 f"Start with {alias} next time — writes gpt-oss.toml",
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
+        commands["workspace"] = ("Workspace: pick the folder the model may edit", self.action_pick_workspace, f"Currently {sandbox.root}")
+        commands["allow"] = ("Workspace: grant write and patch", partial(self.action_allow, "on"), "The model may change files here")
+        commands["readonly"] = ("Workspace: back to read-only", partial(self.action_allow, "off"), "Reads and searches only")
         commands["sessions"] = ("Session: list past sessions", self.action_sessions, "Resume or rewind from here")
         commands["resume"] = ("Session: resume the most recent", self.action_resume, "Load the last conversation back in")
         commands["rewind"] = ("Session: rewind one exchange", partial(self.action_rewind, "1"), "Drop the last question and answer")
@@ -500,6 +690,18 @@ class ChatApp(App):
             return
         if name in {"new", "new_session"}:
             self.action_new_session()
+            return
+        if name in {"workspace", "cwd"}:
+            if argument:
+                self.action_set_workspace(argument)
+            else:
+                self.action_pick_workspace()
+            return
+        if name in {"allow", "writes", "edit"}:
+            self.action_allow(argument or "on")
+            return
+        if name in {"readonly", "read-only"}:
+            self.action_allow("off")
             return
         commands = self.get_commands()
         if name in commands:
@@ -694,13 +896,68 @@ class ChatApp(App):
             self.session_id = session_log.new_session()
         self.messages = self.messages[:1]
         self.query_one("#chat-view", VerticalScroll).remove_children()
+        self.update_workspace_bar()
         self.say_system(f"New session `{self.session_id}`. `/sessions` lists the old ones; `/resume` loads one.")
+
+    # -- workspace: which folder, and what the model may do with it -----------------------------------
+    def update_workspace_bar(self) -> None:
+        try:
+            bar = self.query_one("#workspace-bar", WorkspaceBar)
+        except Exception:
+            return
+        bar.show(sandbox.root, sandbox.mode, self.session_id)
+
+    def action_pick_workspace(self) -> None:
+        """Open the folder chooser; the chosen path comes back through action_apply_workspace."""
+        self.push_screen(WorkspacePicker(sandbox.root), self.action_apply_workspace)
+
+    def action_apply_workspace(self, path: Path | None) -> None:
+        if path is None:
+            self.say_system("Workspace unchanged.")
+            return
+        self.action_set_workspace(str(path))
+
+    def action_set_workspace(self, target: str) -> None:
+        """Point the model at a folder. Picking a workspace always starts read-only."""
+        raw = (target or "").strip().strip('"')
+        if not raw:
+            self.say_system("Usage: `/workspace <folder>` — the folder the model may read.")
+            return
+        resolved = Path(os.path.expandvars(os.path.expanduser(raw))).resolve()
+        if not resolved.is_dir():
+            self.say_system(f"`{raw}` is not a folder.")
+            return
+        was_writable = sandbox.allow_write
+        sandbox.set_root(resolved, allow_write=False)
+        self.update_workspace_bar()
+        note = " Write permission was dropped with the old folder." if was_writable else ""
+        self.say_system(
+            f"Workspace is now `{resolved}` — read-only.{note}\n\n"
+            "`/allow` lets the model write and patch here; `/allow off` takes it back."
+        )
+
+    def action_allow(self, argument: str = "") -> None:
+        """The human's switch for write and patch access on the current workspace."""
+        word = (argument or "").strip().lower()
+        allow = word not in {"off", "no", "read", "readonly", "read-only", "false"}
+        sandbox.allow_write = allow
+        self.update_workspace_bar()
+        if allow:
+            self.say_system(
+                f"**{sandbox.root}** is read-write for this session: the model can `write_file` and "
+                "`patch_file` inside it.\n\n`/allow off` revokes that; choosing another folder resets it."
+            )
+        else:
+            self.say_system(f"**{sandbox.root}** is read-only again: reads, searches and allowlisted commands only.")
 
     def compose(self) -> ComposeResult:
         yield Header()
+        with Horizontal(id="banner"):
+            yield LogoArt(id="logo")
+            yield WorkspaceBar(id="workspace-bar")
         with Horizontal(id="main"):
             with VerticalScroll(id="chat-view"):
-                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.")
+                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.\n\nWorkspace: `/workspace` (or Ctrl+P) picks the folder the model may read, `/allow` grants write and patch, `/allow off` revokes it — choosing another folder resets the grant.\n\nHistory: `/sessions` lists past conversations, `/resume [n]` loads one, `/rewind [n]` drops the last exchanges, `/new` starts fresh.")
             with Vertical(id="task-panel"):
                 yield Static("TASKS", id="task-title")
                 yield Static("", id="task-body")
@@ -708,6 +965,7 @@ class ChatApp(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        self.update_workspace_bar()
         if not self.bus:
             return
         self.render_tasks(self.bus.snapshot())
@@ -782,6 +1040,11 @@ class ChatApp(App):
             pydantic_function_tool(RunCommandArgs),
             pydantic_function_tool(HistoryArgs),
         ]
+        if sandbox.allow_write:
+            # Only offered when the human has granted writes for this workspace, so the model is not
+            # shown a tool that would only ever refuse.
+            tools.append(pydantic_function_tool(WriteFileArgs))
+            tools.append(pydantic_function_tool(PatchFileArgs))
 
         try:
             with self.client.chat.completions.stream(
