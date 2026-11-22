@@ -5,6 +5,9 @@ rem
 rem    start.bat                default_model from gpt-oss.toml (currently gpt-oss-20b)
 rem    start.bat qwen3-4b       serve another alias from [models]; `python task-engine.py models`
 rem                             lists them fastest first
+rem    start.bat pick           pick a model from the list for this run only
+rem    start.bat default        pick a model from the list and make it the default every launch uses
+rem    start.bat default qwen3-4b   same, without the menu
 rem    start.bat advisor        add or replace a cloud advisor token in .env, then exit
 rem    start.bat stop           stop the llama-server this stack leaves running
 rem
@@ -22,18 +25,27 @@ set "WAIT_SECONDS=180"
 
 if /i "%~1"=="stop" goto :stop
 
-set "ADVISOR_ONLY="
-if /i "%~1"=="advisor" set "ADVISOR_ONLY=1"
-
-if defined ADVISOR_ONLY goto :prepare_advisor
+set "MODE="
+if /i "%~1"=="advisor" set "MODE=advisor"
+if /i "%~1"=="pick" set "MODE=pick"
+if /i "%~1"=="default" set "MODE=default"
 
 where python >nul 2>&1 || goto :nopython
 
-rem --- which model: the argument, else the one gpt-oss.toml calls the default -------------------
+if /i "%MODE%"=="advisor" goto :prepare_advisor
+if /i "%MODE%"=="default" goto :set_default
+
+rem --- which model: the argument, else the menu (pick), else gpt-oss.toml's default ---------------
 set "MODEL=%~1"
+if /i "%MODE%"=="pick" goto :pick_model
 if not defined MODEL for /f "usebackq delims=" %%M in (`python -c "import tomllib;print(tomllib.load(open('gpt-oss.toml','rb'))['server']['default_model'])" 2^>nul`) do set "MODEL=%%M"
 if not defined MODEL set "MODEL=gpt-oss-20b"
+goto :check_model
 
+:pick_model
+call :choose_model || goto :cancelled
+
+:check_model
 if not exist "runtime\llama\llama-server.exe" goto :noruntime
 
 python -c "import sys,tomllib;sys.exit(0 if '%MODEL%' in tomllib.load(open('gpt-oss.toml','rb'))['models'] else 1)"
@@ -77,7 +89,7 @@ goto :after_advisor
 echo [start] staying local.
 
 :after_advisor
-if defined ADVISOR_ONLY (
+if /i "%MODE%"=="advisor" (
     echo [start] done - run start.bat to bring the stack up.
     exit /b 0
 )
@@ -109,6 +121,41 @@ if "%OWNED%"=="1" (
     echo [start] chat closed. The server that was already running is left alone.
 )
 pause
+exit /b 0
+
+rem --- choosing a model ---------------------------------------------------------------------------
+rem Prints the same table `models` prints (fastest first) and turns the number into an alias.
+:choose_model
+echo.
+python task-engine.py models
+echo.
+set "MODEL="
+set "PICKNUM="
+set /p "PICKNUM=[start] model number (Enter cancels): "
+if not defined PICKNUM exit /b 1
+for /f "usebackq delims=" %%A in (`python -c "import tomllib;m=tomllib.load(open('gpt-oss.toml','rb'))['models'];k=list(m);i=int('%PICKNUM%')-1 if '%PICKNUM%'.isdigit() else -1;print(k[i] if 0<=i<len(k) else '')" 2^>nul`) do set "MODEL=%%A"
+if not defined MODEL (
+    echo [start] that was not a model number.
+    exit /b 1
+)
+echo [start] selected %MODEL%
+exit /b 0
+
+rem `start.bat default` persists the choice for every future launch; `pick` only serves it once.
+:set_default
+set "MODEL=%~2"
+if not defined MODEL call :choose_model || goto :cancelled
+python task-engine.py default %MODEL%
+if errorlevel 1 goto :default_failed
+exit /b 0
+
+:default_failed
+echo [start] the default was not changed.
+pause
+exit /b 1
+
+:cancelled
+echo [start] nothing selected - leaving things as they are.
 exit /b 0
 
 rem --- subroutines ------------------------------------------------------------------------------

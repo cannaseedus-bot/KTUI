@@ -26,6 +26,10 @@ except ImportError:  # pragma: no cover
     TaskListBus = None
     def render_panel(document):
         return ["(task list unavailable)"]
+try:  # the one place that edits gpt-oss.toml, shared with the terminal and start.bat
+    from model_config import set_default_model as persist_default_model
+except ImportError:  # pragma: no cover
+    persist_default_model = None
 import math
 import subprocess
 import shutil
@@ -375,6 +379,13 @@ class ChatApp(App):
                 partial(self.action_use_model, alias),
                 f"Local, served by runtime/llama: {MODEL_REGISTRY[alias]}",
             )
+        for alias in ordered_models():
+            mark = " (default)" if alias == DEFAULT_MODEL_ALIAS else ""
+            commands[f"default:{alias}"] = (
+                f"Default: {alias} ({tier_for(alias)}){mark}",
+                partial(self.action_set_default, alias),
+                f"Start with {alias} next time — writes gpt-oss.toml",
+            )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["switch_llama"] = ("Local: llama-server (default)", partial(self.action_switch, Provider.LLAMA_SERVER), f"{LLAMA_ENDPOINT}, no keys needed")
         commands["switch_ollama"] = ("Local: Ollama daemon", partial(self.action_switch, Provider.OLLAMA), "localhost:11434, if you run one")
@@ -409,6 +420,9 @@ class ChatApp(App):
             else:
                 self.say_system("Advisors are the cloud second opinions: `/advisor openai` or `/advisor deepseek`. `/local` returns to the local server.")
             return
+        if name == "default":
+            self.action_set_default(argument or None)
+            return
         commands = self.get_commands()
         if name in commands:
             commands[name][1]()
@@ -432,6 +446,24 @@ class ChatApp(App):
             return
         self.current_provider = p
         self.update_client()
+
+    def action_set_default(self, alias: str | None = None) -> None:
+        """Persist an alias as [server] default_model, which is what the next launch serves."""
+        global DEFAULT_MODEL_ALIAS
+        if persist_default_model is None:
+            self.say_system("model_config.py is missing, so gpt-oss.toml cannot be rewritten here.")
+            return
+        target = (alias or self.model_label() or "").strip()
+        try:
+            chosen = persist_default_model(target)
+        except (ValueError, OSError) as error:
+            self.say_system(f"Could not change the default: {error}")
+            return
+        DEFAULT_MODEL_ALIAS = chosen
+        self.say_system(
+            f"Default model is now **{chosen}** ({tier_for(chosen)}).\n\n"
+            "start.bat and the next launch serve it; `/models` marks it with a *default* note."
+        )
 
     def action_use_model(self, alias: str) -> None:
         """Select one alias. llama-server serves what it was launched with, so name the gap."""
@@ -457,7 +489,7 @@ class ChatApp(App):
         yield Header()
         with Horizontal(id="main"):
             with VerticalScroll(id="chat-view"):
-                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one, Ctrl+P opens the palette.")
+                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.")
             with Vertical(id="task-panel"):
                 yield Static("TASKS", id="task-title")
                 yield Static("", id="task-body")

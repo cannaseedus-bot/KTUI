@@ -52,6 +52,11 @@ except ImportError:  # pragma: no cover - the terminal still works without the d
     def log_interaction(**kwargs):  # type: ignore[misc]
         return None
 
+try:  # the one place that edits gpt-oss.toml, shared with start.bat and the chat app
+    from model_config import set_default_model as persist_default_model
+except ImportError:  # pragma: no cover - only if the file is separated from its sibling
+    persist_default_model = None
+
 try:  # Python 3.11+
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover - older interpreters
@@ -1019,8 +1024,31 @@ def command_models(config: dict, args: argparse.Namespace) -> int:
         state = "ok" if row["exists"] else f"MISSING  {row['path']}"
         print(f"{marker}{row['rank']:2}. {row['alias'].ljust(width)}  {row['tier']:<11}  {size}  {state}")
     print("\nfastest → deepest, top to bottom")
-    print("* default; launch with: python task-engine.py launch --model <alias>")
+    print("* default; serve one with: python task-engine.py launch --model <alias>")
+    print("  make one the default with: python task-engine.py default <alias>   (or start.bat default)")
     return 0 if missing == 0 else 1
+
+
+def command_default(config: dict, args: argparse.Namespace) -> int:
+    """Persist [server] default_model, which is what start.bat and the chat app read at startup."""
+    if persist_default_model is None:
+        print("model_config.py is missing; cannot rewrite the default", file=sys.stderr)
+        return 1
+    alias = (args.alias or "").strip()
+    if not alias:
+        print("which alias? run `python task-engine.py models` for the list, fastest first", file=sys.stderr)
+        return 1
+    try:
+        chosen = persist_default_model(alias)
+    except (ValueError, OSError) as error:
+        print(str(error), file=sys.stderr)
+        return 1
+    row = next((item for item in describe_models(config) if item["alias"] == chosen), None)
+    described = f"{chosen} ({row['tier']})" if row else chosen
+    print(f"default: {described}  ->  {CONFIG_PATH}")
+    if row and not row["exists"]:
+        print(f"warning: {row['path']} is not on disk yet", file=sys.stderr)
+    return 0
 
 
 def command_tasks(config: dict, args: argparse.Namespace) -> int:
@@ -1094,6 +1122,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("status", help="Report the runtime, the model and the server")
     sub.add_parser("tools", help="List the sandbox tools and allowlisted programs")
     sub.add_parser("models", help="List models fastest first: tier, size, and whether the file is present")
+    default_cmd = sub.add_parser("default", help="Make an alias the default gpt-oss.toml serves (start.bat reads it)")
+    default_cmd.add_argument("alias", nargs="?", help="Alias from [models]; `models` lists them fastest first")
     tasks = sub.add_parser("tasks", help="Show the shared task list, or run one AIML command against it")
     tasks.add_argument("command_text", nargs=argparse.REMAINDER)
     prepare = sub.add_parser("prepare", help="Copy the staged llama-haswell binaries into runnable names")
@@ -1122,6 +1152,8 @@ def main(argv: list[str] | None = None) -> int:
             return command_tools(config, args)
         if args.command == "models":
             return command_models(config, args)
+        if args.command == "default":
+            return command_default(config, args)
         if args.command == "tasks":
             return command_tasks(config, args)
         if args.command == "prepare":
