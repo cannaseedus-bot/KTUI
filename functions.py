@@ -128,7 +128,8 @@ def _patch_file(ctx: ToolContext, path: str, find: str, replace: str = "") -> st
 
 def _search(ctx: ToolContext, pattern: str, path: str = ".", glob: str = "*.aiml") -> list[dict]:
     """Files whose text contains `pattern`. Paths are workspace-relative, bounded, sorted."""
-    base = _contained(ctx.root, path)
+    root = Path(ctx.root).resolve()
+    base = _contained(root, path)
     hits: list[dict] = []
     for file in sorted(base.rglob(glob)):
         if not file.is_file() or file.stat().st_size > MAX_READ:
@@ -138,7 +139,7 @@ def _search(ctx: ToolContext, pattern: str, path: str = ".", glob: str = "*.aiml
         except OSError:
             continue
         if pattern.lower() in text.lower():
-            hits.append({"path": file.relative_to(ctx.root).as_posix(), "bytes": len(text)})
+            hits.append({"path": file.relative_to(root).as_posix(), "bytes": len(text)})
         if len(hits) >= MAX_RESULTS:
             break
     return hits
@@ -194,10 +195,81 @@ def _fold_lines(ctx: ToolContext, items: list[dict], title: str = "result") -> s
         return f"{title}\n  (nothing matched)"
     lines = [str(title)]
     for entry in items[:12]:
-        lines.append(f"  {entry.get('pattern', '?')}  →  {str(entry.get('template', ''))[:80]}")
+        label = (entry.get("pattern") or entry.get("file") or entry.get("item") or str(entry)[:60])
+        detail = (entry.get("template") or entry.get("state") or entry.get("detail") or "")
+        lines.append(f"  {label}  →  {str(detail)[:80]}")
     if len(items) > 12:
         lines.append(f"  … {len(items) - 12} more")
     return "\n".join(lines)
+
+
+# -- the GML side: whatever the K'UHUL base currently declares -------------------------------------
+def _gml_attr(doc, name: str) -> str:
+    for entry in getattr(doc, "entries", []) or []:
+        if getattr(entry, "name", "") == name:
+            return str(entry.value)
+    return ""
+
+
+def _gml_registry(ctx: ToolContext) -> str:
+    """The tensor extension as declared right now, read from its GML document."""
+    import phases
+    return phases.extension_summary()
+
+
+def _gml_validate(ctx: ToolContext, files: list[dict]) -> list[dict]:
+    """Validate GML documents against the base's own registry; foreign schemas are out of scope."""
+    import phases
+    contract = phases.extension_contract()
+    schema_id = contract.get("schema_id") or "gml-tensor/1"
+    try:
+        gml2 = phases.core_module("gml2")
+        registry = phases.core_module("registry")
+        loaded = registry.load_registry()
+    except Exception as error:
+        return [{"file": "-", "state": "UNAVAILABLE", "detail": str(error)[:120]}]
+    rows = []
+    for row in files or []:
+        path = row.get("path") if isinstance(row, dict) else str(row)
+        try:
+            text = (Path(ctx.root) / path).read_text(encoding="utf-8", errors="replace")
+            doc = gml2.parse(text)
+            declared = _gml_attr(doc, "schema")
+            if declared != schema_id:
+                rows.append({"file": path, "state": "OUT_OF_SCOPE", "detail": f"declares {declared or '(none)'}"})
+                continue
+            registry.validate_document(doc, loaded)
+            rows.append({"file": path, "state": "STRUCTURALLY_VALIDATED", "detail": "registry ok"})
+        except Exception as error:
+            rows.append({"file": path, "state": "REJECTED", "detail": str(error)[:120]})
+    return rows
+
+
+def _gml_assemble(ctx: ToolContext, graph_id: str = "") -> str:
+    """A plan-only assembly over the package's own contracts, skipping other extensions' documents."""
+    import phases
+    try:
+        gml2 = phases.core_module("gml2")
+        assemble = phases.core_module("assemble")
+    except Exception as error:
+        return f"the assembler is unavailable: {error}"
+    schema_id = phases.extension_contract().get("schema_id") or "gml-tensor/1"
+    docs = {}
+    for path in sorted((phases.ROOT / "contracts").glob("*.gml")):
+        try:
+            doc = gml2.parse(path.read_text(encoding="utf-8", errors="replace"))
+        except Exception:
+            continue
+        if _gml_attr(doc, "schema") != schema_id:
+            continue
+        identity = assemble.graph_identity(doc) if hasattr(assemble, "graph_identity") else _gml_attr(doc, "graph_id")
+        docs[identity] = doc
+    target = docs.get(graph_id or "tensor/assembled") or next(iter(docs.values()), None)
+    if target is None:
+        return "no tensor document to assemble"
+    plan, _ = assemble.assemble(target, docs)
+    return (f"{plan.graph_id}: shape={plan.shape} dtype={plan.dtype} "
+            f"coverage={plan.coverage}/{plan.total} (plan only, nothing materialized)")
 
 
 # -- the registry itself ---------------------------------------------------------------------------
@@ -218,6 +290,12 @@ register("rank_by_context", "categories ordered by overlap with a context",
 register("fold_lines", "the ranked rows as a readable block",
          (("items", "any"), ("title", "text")), "text",
          handler=_fold_lines, defaults=("title",))
+register("gml_registry", "what the GML tensor extension declares right now", (), "text",
+         handler=_gml_registry)
+register("gml_validate", "validate GML documents against the tensor registry",
+         (("files", "files"),), "reports", handler=_gml_validate)
+register("gml_assemble", "plan-only tensor assembly over the package's contracts",
+         (("graph_id", "text"),), "text", handler=_gml_assemble, defaults=("graph_id",))
 register("run_command", "an allowlisted program with allowlisted subcommands",
          (("program", "text"), ("args", "any")), "text", handler=_run_command)
 register("git_command", "a read-only git subcommand in the workspace",

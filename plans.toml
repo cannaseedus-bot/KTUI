@@ -27,6 +27,18 @@ steps = [
   { function = "fold_lines", args = { title = "AIML categories that answer git questions" } },
 ]
 
+# The GML side of the base: find the documents, validate them against the extension's own registry,
+# and fold the verdicts. `gml_validate` reports foreign schemas as out of scope rather than failing
+# them, because a directory holds several extensions.
+[plan.gml_audit]
+title = "Validate every GML document this extension owns"
+authority = "execute"
+steps = [
+  { function = "search", args = { pattern = "graph [", path = "kuhul-phase-engine-v0.1.0/contracts", glob = "*.gml" } },
+  { function = "gml_validate" },
+  { function = "fold_lines", args = { title = "GML documents against the tensor registry" } },
+]
+
 # fetch_weather is registered as proposal_only with no handler, so admission stops at step 1: the
 # composition is *proposed* and refused rather than half-run. This is the boundary the whole module
 # exists to draw - a name in a template cannot become a capability the host does not have.

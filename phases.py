@@ -1,4 +1,4 @@
-"""Host adapter for the K'UHUL phase engine package (v0.1.0).
+"""Host adapter for the K'UHUL phase engine package.
 
 That package ships itself as a *declarative contract*, not an engine — its README says so, and its
 own test suite does not pass as delivered. So this adapter treats it as data and does only what the
@@ -7,7 +7,11 @@ package asks of a host:
   - verify a bank's SHA-256 against `manifest.json` before trusting the file,
   - learn the phase banks into the *existing* AIML kernel as candidates (no second compiler),
   - report pattern collisions with our own banks so precedence is explicit, not accidental,
-  - read the phase order from the contract instead of hardcoding it.
+  - read the phase order and the GML extension contract from the package instead of hardcoding them.
+
+The base is edited continuously, so nothing here assumes a Python API shape it cannot re-derive:
+`extension_contract()` reads the registry document, and `core_module()` imports a core module on
+demand, reporting what is missing instead of raising through the caller.
 
 It never executes anything on a phase's behalf, and a phase declaration grants no I/O. Tool calls,
 task-list mutations and file writes still go through the sandbox, the planner and `/allow`.
@@ -16,8 +20,10 @@ task-list mutations and file writes still go through the sandbox, the planner an
 from __future__ import annotations
 
 import hashlib
+import importlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Iterable, Sequence
 
@@ -25,6 +31,9 @@ APP_ROOT = Path(__file__).resolve().parent
 ROOT = APP_ROOT / "kuhul-phase-engine-v0.1.0"
 MANIFEST = ROOT / "manifest.json"
 CONTRACT = ROOT / "registry" / "phase-contract.json"
+CORE = ROOT / "core"
+TENSOR_REGISTRY = ROOT / "schemas" / "tensor-registry.gml"
+CORE_MODULES = ("gml2", "registry", "rules", "extension", "assemble", "validate", "resolvers")
 
 CATEGORY = re.compile(r"<category\b", re.I)
 PATTERN = re.compile(r"<pattern>(.*?)</pattern>", re.S | re.I)
@@ -32,6 +41,103 @@ PATTERN = re.compile(r"<pattern>(.*?)</pattern>", re.S | re.I)
 
 def available() -> bool:
     return MANIFEST.is_file()
+
+
+def core_module(name: str):
+    """Import a module from the package's `core/` directory (its modules import each other there).
+
+    The base is a moving target, so a broken or absent module becomes an ImportError the caller can
+    report, never a crash at import time of this host.
+    """
+    folder = str(CORE)
+    if folder not in sys.path:
+        sys.path.insert(0, folder)
+    return importlib.import_module(name)
+
+
+def missing_modules() -> list[str]:
+    missing = []
+    for name in CORE_MODULES:
+        try:
+            core_module(name)
+        except Exception:
+            missing.append(name)
+    return missing
+
+
+BLOCK_ONE = re.compile(r"\b(schema|schema_id|owner)\s+\"([^\"]*)\"")
+FIELD = re.compile(r"field \[([^\]]*)\]", re.I)
+CONSTRAINT = re.compile(r"constraint \[([^\]]*)\]", re.I)
+OPERATOR = re.compile(r"operator \[([^\]]*)\]", re.I)
+ATTR = re.compile(r"(\w+)\s+(\"[^\"]*\"|[\d.]+)")
+
+
+def _attributes(block: str) -> dict[str, str]:
+    return {name: value.strip('"') for name, value in ATTR.findall(block)}
+
+
+def extension_contract(path: Path = TENSOR_REGISTRY) -> dict:
+    """What the tensor extension declares right now: schema, owner, fields, constraints, operator.
+
+    Read from the GML document rather than from a Python object, because the base's module layout
+    changes as it is worked on and the document is the contract.
+    """
+    try:
+        text = Path(path).read_text(encoding="utf-8", errors="replace")
+    except OSError as error:
+        return {"error": f"cannot read {path.name}: {error}"}
+    schema_ids = BLOCK_ONE.findall(text)
+    fields = [_attributes(block) for block in FIELD.findall(text)]
+    constraints = [_attributes(block) for block in CONSTRAINT.findall(text)]
+    operators = [_attributes(block) for block in OPERATOR.findall(text)]
+    extension = next((value for name, value in schema_ids if name == "schema_id"), "")
+    return {
+        "bootstrap": next((value for name, value in schema_ids if name == "schema"), ""),
+        "schema_id": extension,
+        "owner": next((value for name, value in schema_ids if name == "owner"), ""),
+        "fields": fields,
+        "constraints": constraints,
+        "operator": operators[0].get("name", "") if operators else "",
+        "paths": sorted({field.get("path", "") for field in fields if field.get("path")}),
+    }
+
+
+def extension_summary() -> str:
+    contract = extension_contract()
+    if "error" in contract:
+        return contract["error"]
+    lines = [
+        f"GML extension `{contract['schema_id'] or '?'}`"
+        + (f" owned by {contract['owner']}" if contract["owner"] else "")
+        + f" · registry bootstrap `{contract['bootstrap'] or '?'}`",
+        f"fields: {len(contract['fields'])} over {', '.join(contract['paths']) or '-'}",
+        f"constraints: {len(contract['constraints'])}"
+        + (f" · operator {contract['operator']}" if contract["operator"] else ""),
+    ]
+    for rule in contract["constraints"]:
+        details = " ".join(
+            f"{key}={rule[key]}" for key in ("arity", "scope", "authority") if key in rule
+        )
+        lines.append(f"  {rule.get('name', '?'):<18} {details}")
+    return "\n".join(lines)
+
+
+def base_health() -> str:
+    """One line on the base as it stands: banks, digests, core modules, newest edit."""
+    report = verify()
+    newest = None
+    for folder, pattern in ((CORE, "*.py"), (ROOT / "schemas", "*.gml"), (ROOT / "tests", "*.py")):
+        for file in Path(folder).glob(pattern):
+            newest = max(newest or file.stat().st_mtime, file.stat().st_mtime)
+    when = ""
+    if newest:
+        from datetime import datetime
+        when = f" · newest edit {datetime.fromtimestamp(newest):%H:%M}"
+    return (
+        f"banks {len(report['banks'])} · categories {report['categories']} · "
+        f"bad digests {len(report['bad_digest'])} · missing modules "
+        f"{', '.join(missing_modules()) or 'none'}{when}"
+    )
 
 
 def manifest() -> dict:

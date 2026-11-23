@@ -268,6 +268,10 @@ class PatchFileArgs(BaseModel):
     find: str = Field(..., description="Exact text to replace, long enough to appear once")
     replace: str = Field("", description="Replacement text; empty string deletes the match")
     replace_all: bool = Field(False, description="Replace every occurrence instead of refusing ambiguity")
+class GmlValidateArgs(BaseModel):
+    path: str = Field(..., description="Workspace-relative .gml document to validate against the tensor registry")
+class GmlAssembleArgs(BaseModel):
+    graph_id: str = Field("tensor/assembled", description="Which assembly document to plan, e.g. tensor/assembled")
 
 
 def format_history(rows: list[dict]) -> str:
@@ -279,6 +283,25 @@ def format_history(rows: list[dict]) -> str:
         when = str(row.get("at") or "")[:16].replace("T", " ")
         lines.append(f"[{when}] {str(row.get('session') or '')[:6]} {row.get('role')}: {str(row.get('content') or '')[:400]}")
     return "\n".join(lines)
+
+
+def run_registered_gml(name: str, args: dict) -> str:
+    """Run one registered GML function for the model, through the typed registry."""
+    if functions is None:
+        return "the function registry is unavailable"
+    entry = functions.get(name)
+    if entry is None or entry.handler is None:
+        return f"{name} is not registered in this build"
+    context = functions.ToolContext(Path(sandbox.root), sandbox)
+    try:
+        if name == "gml_validate":
+            rows = entry.handler(context, [{"path": str(args.get("path") or "")}])
+            return "\n".join(f"{row['state']}: {row['file']} — {row['detail']}" for row in rows) or "nothing to validate"
+        if name == "gml_assemble":
+            return str(entry.handler(context, str(args.get("graph_id") or "")))
+        return str(entry.handler(context))
+    except Exception as error:
+        return f"{name} failed: {error}"
 
 
 def execute_tool(name: str, args: dict) -> str:
@@ -301,6 +324,9 @@ def execute_tool(name: str, args: dict) -> str:
             return sandbox.write_file(args["path"], args.get("content", ""))
         elif name == "patch_file":
             return sandbox.patch_file(args["path"], args["find"], args.get("replace", ""), bool(args.get("replace_all")))
+        elif name in {"gml_validate", "gml_assemble", "gml_registry"}:
+            # Whatever the K'UHUL base currently declares, through the same registry the plans use.
+            return run_registered_gml(name, args)
     except SandboxError as e:
         return f"🚫 [Sandbox Refused]: {e}"
     except Exception as e:
@@ -875,6 +901,26 @@ class ChatApp(App):
         note = getattr(self, "phase_note", "")
         self.say_system((f"loader: {note}\n\n" if note else "") + report)
 
+    def action_gml(self) -> None:
+        """What the base's GML extension declares right now, and whether its documents hold up."""
+        if phases is None or functions is None:
+            self.say_system("The phase adapter or the function registry is unavailable.")
+            return
+        entry = functions.get("gml_validate")
+        verdicts = "validation unavailable"
+        if entry is not None and entry.handler is not None:
+            contracts = phases.ROOT / "contracts"
+            files = [{"path": path.relative_to(APP_ROOT).as_posix()} for path in sorted(contracts.glob("*.gml"))]
+            try:
+                rows = entry.handler(functions.ToolContext(APP_ROOT, sandbox), files)
+                states: dict[str, int] = {}
+                for row in rows:
+                    states[row["state"]] = states.get(row["state"], 0) + 1
+                verdicts = " · ".join(f"{state} {count}" for state, count in sorted(states.items())) or "no documents"
+            except Exception as error:
+                verdicts = f"validation failed: {error}"
+        self.say_system(f"{phases.base_health()}\n\n{phases.extension_summary()}\n\ncontracts: {verdicts}")
+
     def action_plans(self) -> None:
         """List every declared plan and whether the registry admits it."""
         if planner is None:
@@ -982,6 +1028,7 @@ class ChatApp(App):
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
+        commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
         commands["mode"] = ("Mode: list the daemon response modes", self.action_modes, "Bias vectors as a style prior")
         commands["daemon"] = ("Daemon: trace the last turn's six phases", self.action_daemon, "What each phase saw and decided")
         commands["workspace"] = ("Workspace: pick the folder the model may edit", self.action_pick_workspace, f"Currently {sandbox.root}")
@@ -1127,6 +1174,9 @@ class ChatApp(App):
             return
         if name in {"phase", "phases"}:
             self.action_phases()
+            return
+        if name in {"gml", "tensor"}:
+            self.action_gml()
             return
         if name in {"mode", "modes"}:
             if argument:
@@ -1379,6 +1429,8 @@ class ChatApp(App):
         ]
         if sandbox.allow_write:
             tools.append("write_file(path, content) and patch_file(path, find, replace) to change files")
+        if functions is not None and functions.get("gml_validate") is not None:
+            tools.append("gml_validate(path) and gml_assemble(graph_id) to check the GML tensor extension")
         permission = (
             "read-write: writes and patches are allowed here"
             if sandbox.allow_write
@@ -1595,6 +1647,10 @@ class ChatApp(App):
             # shown a tool that would only ever refuse.
             tools.append(pydantic_function_tool(WriteFileArgs))
             tools.append(pydantic_function_tool(PatchFileArgs))
+        if functions is not None and functions.get("gml_validate") is not None:
+            # The K'UHUL base's own extension contract: read-only validation and a plan-only assembly.
+            tools.append(pydantic_function_tool(GmlValidateArgs))
+            tools.append(pydantic_function_tool(GmlAssembleArgs))
 
         try:
             with self.client.chat.completions.stream(
