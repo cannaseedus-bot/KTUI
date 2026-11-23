@@ -203,6 +203,32 @@ def _fold_lines(ctx: ToolContext, items: list[dict], title: str = "result") -> s
     return "\n".join(lines)
 
 
+def _aiml_bundle_validate(ctx: ToolContext) -> str:
+    """The six-contract AIML bundle as the package validates it. Read-only."""
+    import aiml_host
+    return aiml_host.summary()
+
+
+def _aiml_propose(ctx: ToolContext, ref: str) -> str:
+    """Resolve one AIML node into a proposal and show why it grants nothing."""
+    import aiml_host
+    try:
+        proposal = aiml_host.propose(str(ref))
+    except aiml_host.BundleRefused as error:
+        return f"refused: {error}"
+    verdict = aiml_host.admit(proposal, allowlist=())
+    lines = [f"proposal {proposal['schema']} for {proposal['ref']}",
+             f"  pattern  : {(proposal.get('pattern') or {}).get('expression')}",
+             f"  template : {len((proposal.get('template') or {}).get('segments') or [])} segment(s)",
+             f"  srai     : {len(proposal.get('srai') or [])} redirect(s)",
+             f"  capability declared: {proposal.get('capabilities') or 'none'}",
+             f"  authorized: {proposal.get('authorized')} · persistence: {proposal.get('persistence')}"]
+    lines += [f"  {reason['code']}: {reason['detail']}" for reason in verdict["reasons"]]
+    lines.append(f"  verdict: admitted={verdict['admitted']} executes={verdict['executes']} "
+                 f"persistence={verdict['persistence']}")
+    return "\n".join(lines)
+
+
 # -- the GML side: whatever the K'UHUL base currently declares -------------------------------------
 def _gml_attr(doc, name: str) -> str:
     for entry in getattr(doc, "entries", []) or []:
@@ -290,6 +316,10 @@ register("rank_by_context", "categories ordered by overlap with a context",
 register("fold_lines", "the ranked rows as a readable block",
          (("items", "any"), ("title", "text")), "text",
          handler=_fold_lines, defaults=("title",))
+register("aiml_bundle_validate", "the AIML/GML six-contract bundle state", (), "text",
+         handler=_aiml_bundle_validate)
+register("aiml_propose", "resolve an AIML node into a read-only proposal", (("ref", "text"),), "text",
+         handler=_aiml_propose)
 register("gml_registry", "what the GML tensor extension declares right now", (), "text",
          handler=_gml_registry)
 register("gml_validate", "validate GML documents against the tensor registry",

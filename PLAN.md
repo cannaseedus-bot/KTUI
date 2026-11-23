@@ -49,6 +49,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M10 | Optional audit ledger: append-only, hash-chained, Ed25519-signed records | **guard** | `ledger_plugin.py`, `ledger.gml`, `tests_host/test_ledger.py::M10…` |
 | M11 | Independent, restorable backups whose restore is verified | **guard** | `backup.py`, `tests_host/test_backup.py::M11…` |
 | M12 | User memory: AIML proposes, host admits, JSONL records, GML projects | **guard** | `user_memory.py`, `memory.gml`, `memory.aiml`, `tests_host/test_memory.py::M12…` |
+| M13 | AIML bundle consumed as declarations: resolved proposals, zero authority | **guard** | `aiml_host.py`, `functions.py` (`aiml_bundle_validate`, `aiml_propose`), `tests_host/test_aiml_bundle_host.py::M13…` |
 
 ---
 
@@ -140,6 +141,43 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## AIML bundle → host (M13)
+
+The review called this M12; in this checkout M12 is user memory, so the bundle guard is **M13**. It is
+a narrow integration, not a second compiler: the host consumes the package's six-contract bundle and
+its resolvers, and turns a node reference into a proposal.
+
+```
+aiml_host.validate()                 -> BINDINGS_VALIDATED over 6 contracts
+aiml_host.propose("aiml://category/main#3")
+    pattern WHO IS * · template 2 segments · srai 0 · capabilities none
+    authorized False · persistence None
+aiml_host.admit(proposal)            -> admitted True · executes False · persistence None
+```
+
+The four invariants, each with a guard:
+
+1. **No independent compiler.** Resolution goes through `aiml_bundle.Bundle` and `resolvers.resolve`;
+   the module never matches text. Matching stays in the python-aiml kernel where it belongs.
+2. **No authority from declarations.** A proposal carries `authorized: False` and `persistence: None`
+   whatever the document says, and `admit()` reports `executes: False`. A forged proposal claiming
+   authority is refused (`forged_authority`), as is one from a bundle that is not validated
+   (`stale_bundle`).
+3. **No direct database writes.** Proposing and admitting are pure reads: the guard hashes
+   `logs/memory/user.events.jsonl` and `task-list.json` either side and requires them unchanged.
+4. **No bypass around the graph.** A foreign scheme (`gml://`), a foreign schema document, and an
+   unresolved node id are all refusals (`BundleRefused`), never silent passes.
+
+Capabilities declared in GML (`requires [ capability … ]`) are checked against a caller allowlist and
+are otherwise refused (`capability_not_allowed`) - declaring a capability authorizes nothing. The two
+functions are exposed through the typed registry as read-only, so the daemon and the model can consult
+the bundle without gaining anything from it.
+
+Deferred deliberately: no AIML bundle execution, no template rendering, no SRAI evaluation, no graph
+mutation. The bundle is declarations; the host resolves and refuses.
 
 ---
 
@@ -243,7 +281,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 35 tests, OK (M3-M12: guards, ledger 11, backup 5, memory 9)
+host guards    : 45 tests, OK (M3-M13: guards, ledger 11, backup 5, memory 9, bundle 10)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 
