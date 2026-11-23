@@ -59,6 +59,10 @@ try:  # the six-phase daemon bot engine: one cycle per turn, plus the mode bias 
     import daemon
 except ImportError:  # pragma: no cover
     daemon = None
+try:  # append-only user memory: JSONL history, GML projection, writes behind a grant
+    import user_memory
+except ImportError:  # pragma: no cover
+    user_memory = None
 import math
 import tempfile
 import shlex
@@ -617,6 +621,9 @@ class ChatApp(App):
         # and its closure is what `/daemon` shows. It proposes, the gates below admit.
         self.mode = ""
         self.last_turn = None
+        # Memory is scoped to one identity, and writes are a grant like /allow.
+        self.user_id = user_memory.DEFAULT_USER if user_memory else "local-user"
+        self.memory_write = False
         self.daemon = self.make_daemon()
 
     def make_daemon(self):
@@ -629,7 +636,8 @@ class ChatApp(App):
         banks += [APP_ROOT / "codex.aiml", APP_ROOT / "_override.aiml",
                   APP_ROOT / "aiml-en-us-foundation-alice" / "knumatic_learned.aiml"]
         return daemon.Daemon(kernel=self.kernel_reply, banks=[path for path in banks if path.is_file()],
-                             admit=self.admit_verb, admit_plan=self.admit_plan, mode_of=lambda: self.mode)
+                             admit=self.admit_verb, admit_plan=self.admit_plan,
+                             admit_memory=self.admit_memory, mode_of=lambda: self.mode)
 
     def kernel_reply(self, text: str) -> str:
         try:
@@ -752,6 +760,9 @@ class ChatApp(App):
             codex = APP_ROOT / "codex.aiml"
         if codex.is_file():
             kernel.learn(str(codex))
+        memory_bank = APP_ROOT / "memory.aiml"
+        if memory_bank.is_file():
+            kernel.learn(str(memory_bank))
         override = APP_ROOT / "_override.aiml"
         if override.is_file():
             kernel.learn(str(override))
@@ -892,6 +903,75 @@ class ChatApp(App):
         blocks.extend(["```", output, "```"])
         return "\n".join(blocks)
 
+    # -- user memory: proposals in, admitted writes out ---------------------------------------------
+    def admit_memory(self, kind: str, argument: str) -> tuple[bool, str]:
+        """memquery is read-only; a memory write needs the grant, exactly like /allow."""
+        if user_memory is None:
+            return False, "the memory module is unavailable"
+        if kind == "memquery":
+            return True, "read-only graph projection query"
+        granted = self.memory_write or user_memory.writable()
+        if not granted:
+            return False, "memory writes need `/allow memory` (or KNUMATIC_MEMORY_WRITE=1)"
+        return True, "memory write granted"
+
+    def execute_memory(self, kind: str, argument: str) -> str:
+        """Run an admitted memory operation and say what happened, with the event id."""
+        if user_memory is None:
+            return "the memory module is unavailable"
+        argument = (argument or "").strip()
+        if kind == "memquery":
+            subject, _, predicate = argument.partition(".")
+            if not subject or not predicate:
+                return "a memory query needs `<subject>.<predicate>`"
+            return user_memory.answer(self.user_id, subject, predicate)
+        verb, _, rest = argument.partition(" ")
+        verb, rest = verb.strip().lower(), rest.strip()
+        if verb == "erase":
+            outcome = user_memory.erase(self.user_id)
+            return (f"Erased {outcome['removed']} event(s) for **{outcome['user']}** and left a "
+                    f"tombstone (`{outcome['tombstone']}`). History is append-only, so erasure compacts.")
+        target, _, value = rest.partition(" ")
+        subject, _, predicate = target.partition(".")
+        if not subject or not predicate:
+            return "a memory operation needs `<subject>.<predicate>`"
+        if verb == "forget":
+            record = user_memory.forget(user=self.user_id, subject=subject, predicate=predicate)
+            return f"Retracted `{subject}.{predicate}` for **{self.user_id}** (`{record['event_id']}`)."
+        if verb == "remember":
+            record = user_memory.remember(user=self.user_id, subject=subject, predicate=predicate, value=value)
+            return f"Recorded `{subject}.{predicate}` = **{value}** for **{self.user_id}** (`{record['event_id']}`)."
+        return f"unknown memory operation `{verb}`"
+
+    def memory_summary(self) -> str:
+        if user_memory is None:
+            return "The memory module is unavailable."
+        facts = user_memory.projection(self.user_id)
+        document = user_memory.graph(self.user_id)
+        check = user_memory.validate(document)
+        lines = [f"user: **{self.user_id}** · writes: {'granted' if (self.memory_write or user_memory.writable()) else 'read-only'}"]
+        if not facts:
+            lines.append("nothing remembered yet — say \"my dog's name is Max\"")
+        for subject in sorted(facts):
+            for predicate in sorted(facts[subject]):
+                lines.append(f"  {subject}.{predicate} = {facts[subject][predicate]}")
+        lines.append("")
+        lines.append(f"graph projection: {check['nodes']} node(s), {check['edges']} edge(s), "
+                     f"schema {'valid' if check['ok'] else 'INVALID'} ({', '.join(check['fields'][:4])}…)")
+        for problem in check["problems"][:4]:
+            lines.append(f"  {problem['code']}: {problem['detail']}")
+        lines.append("")
+        lines.append("`/user <id>` switches identity · `/allow memory` grants writes · `/allow memory off` revokes")
+        return "\n".join(lines)
+
+    def action_memory(self) -> None:
+        self.say_system(self.memory_summary())
+
+    def action_memory_grant(self, argument: str = "") -> None:
+        word = (argument or "").strip().lower()
+        self.memory_write = word not in {"off", "no", "read", "readonly", "read-only", "false"}
+        self.say_system(f"Memory writes: {'granted' if self.memory_write else 'revoked'} for **{self.user_id}**.")
+
     def action_phases(self) -> None:
         """Verify the K'UHUL package as data: digests, cycle order, and what precedence will do."""
         if phases is None:
@@ -966,6 +1046,8 @@ class ChatApp(App):
                 return "error", str(error)
         if turn.kind == "plan":
             return "plan", self.plan_answer(turn.answer)
+        if turn.kind in {"memory", "memquery"}:
+            return turn.kind, self.execute_memory(turn.kind, turn.answer)
         return "aiml", turn.answer
 
     def _local_answer_direct(self, text: str) -> tuple[str, str] | None:
@@ -1028,6 +1110,8 @@ class ChatApp(App):
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
+        commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
+        commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
         commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
         commands["mode"] = ("Mode: list the daemon response modes", self.action_modes, "Bias vectors as a style prior")
         commands["daemon"] = ("Daemon: trace the last turn's six phases", self.action_daemon, "What each phase saw and decided")
@@ -1178,6 +1262,16 @@ class ChatApp(App):
         if name in {"gml", "tensor"}:
             self.action_gml()
             return
+        if name in {"memory", "remembered"}:
+            self.action_memory()
+            return
+        if name == "user":
+            if argument:
+                self.user_id = argument.strip()
+                self.action_memory()
+            else:
+                self.say_system(f"Current memory identity: **{self.user_id}**. `/user <id>` switches.")
+            return
         if name in {"mode", "modes"}:
             if argument:
                 mode = self.action_set_mode(argument)
@@ -1199,7 +1293,10 @@ class ChatApp(App):
                 self.action_pick_workspace()
             return
         if name in {"allow", "writes", "edit"}:
-            self.action_allow(argument or "on")
+            if (argument or "").strip().lower().startswith("memory"):
+                self.action_memory_grant((argument or "").replace("memory", "", 1) or "on")
+            else:
+                self.action_allow(argument or "on")
             return
         if name in {"readonly", "read-only"}:
             self.action_allow("off")

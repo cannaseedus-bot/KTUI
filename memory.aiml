@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Memory routing for the AIML/SRAI layer.
+
+  A pattern here never writes anything. It produces a directive that the host resolves through its
+  admission boundary:
+
+    MEMORY remember pet.name <value>   propose a fact (needs the memory-write grant)
+    MEMORY forget pet.name             propose a retraction
+    MEMORY erase                       propose erasure of this user's memory (destructive, tombstoned)
+    MEMQUERY pet.name                  read-only projection query
+
+  The same rule as every other bank applies: matching is recognition, not authority.
+-->
+<aiml version="2.0">
+
+  <!-- extraction: the user states a fact about their pet -->
+  <category><pattern>MY DOGS NAME IS *</pattern><template>MEMORY remember pet.name <star/></template></category>
+  <category><pattern>MY DOG S NAME IS *</pattern><template>MEMORY remember pet.name <star/></template></category>
+  <category><pattern>MY PETS NAME IS *</pattern><template>MEMORY remember pet.name <star/></template></category>
+  <category><pattern>MY PET S NAME IS *</pattern><template>MEMORY remember pet.name <star/></template></category>
+  <category><pattern>MY DOG IS CALLED *</pattern><template>MEMORY remember pet.name <star/></template></category>
+
+  <category><pattern>MY DOGS PERSONALITY IS *</pattern><template>MEMORY remember pet.personality <star/></template></category>
+  <category><pattern>MY DOG S PERSONALITY IS *</pattern><template>MEMORY remember pet.personality <star/></template></category>
+  <category><pattern>MY DOGS SIZE IS *</pattern><template>MEMORY remember pet.size <star/></template></category>
+  <category><pattern>MY DOGS COLOUR IS *</pattern><template>MEMORY remember pet.colour <star/></template></category>
+  <category><pattern>MY DOGS COLOR IS *</pattern><template>MEMORY remember pet.colour <star/></template></category>
+
+  <!-- retrieval: the projection answers, or says it has nothing -->
+  <category><pattern>WHAT IS MY DOGS NAME</pattern><template>MEMQUERY pet.name</template></category>
+  <category><pattern>WHATS MY DOGS NAME</pattern><template><srai>WHAT IS MY DOGS NAME</srai></template></category>
+  <category><pattern>WHAT IS MY DOG S NAME</pattern><template><srai>WHAT IS MY DOGS NAME</srai></template></category>
+  <category><pattern>WHAT IS MY PETS NAME</pattern><template><srai>WHAT IS MY DOGS NAME</srai></template></category>
+
+  <category><pattern>WHAT IS MY DOGS PERSONALITY</pattern><template>MEMQUERY pet.personality</template></category>
+  <category><pattern>WHATS MY DOGS PERSONALITY</pattern><template><srai>WHAT IS MY DOGS PERSONALITY</srai></template></category>
+  <category><pattern>WHAT IS MY DOG S PERSONALITY</pattern><template><srai>WHAT IS MY DOGS PERSONALITY</srai></template></category>
+  <category><pattern>WHAT IS MY DOGS SIZE</pattern><template>MEMQUERY pet.size</template></category>
+  <category><pattern>WHAT IS MY DOGS COLOUR</pattern><template>MEMQUERY pet.colour</template></category>
+  <category><pattern>WHAT IS MY DOGS COLOR</pattern><template><srai>WHAT IS MY DOGS COLOUR</srai></template></category>
+
+  <!-- retraction and erasure are proposals too -->
+  <category><pattern>FORGET MY DOGS NAME</pattern><template>MEMORY forget pet.name</template></category>
+  <category><pattern>FORGET MY DOGS PERSONALITY</pattern><template>MEMORY forget pet.personality</template></category>
+  <category><pattern>ERASE MY MEMORY</pattern><template>MEMORY erase</template></category>
+  <category><pattern>DELETE MY MEMORY</pattern><template><srai>ERASE MY MEMORY</srai></template></category>
+
+</aiml>

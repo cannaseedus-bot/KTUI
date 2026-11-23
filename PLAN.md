@@ -48,6 +48,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M9 | Gate evidence names the commit it tested and comes from a clean tree | **guard** | `tests_host/test_host_guards.py::M9…`; artifacts are committed **after** the code they test, so `tested_commit` is the artifact commit's parent |
 | M10 | Optional audit ledger: append-only, hash-chained, Ed25519-signed records | **guard** | `ledger_plugin.py`, `ledger.gml`, `tests_host/test_ledger.py::M10…` |
 | M11 | Independent, restorable backups whose restore is verified | **guard** | `backup.py`, `tests_host/test_backup.py::M11…` |
+| M12 | User memory: AIML proposes, host admits, JSONL records, GML projects | **guard** | `user_memory.py`, `memory.gml`, `memory.aiml`, `tests_host/test_memory.py::M12…` |
 
 ---
 
@@ -142,6 +143,40 @@ gate cycle starts there.
 
 ---
 
+## User memory (M12)
+
+AIML stops being a pattern-to-string engine here: a pattern *proposes* a memory operation, the host
+admits it, the JSONL event log records it, and the GML projection relates it.
+
+```
+MY DOGS NAME IS MAX        ->  MEMORY remember pet.name MAX     (proposal)
+                                  Ch'en: memory writes need /allow memory   (refused -> deferred)
+                                  after the grant: evt-000000 appended, chained
+WHAT IS MY DOGS NAME       ->  MEMQUERY pet.name   (read-only, always admitted)
+                                  "pet: name is MAX."          (from the projection)
+```
+
+Rules the tests hold it to:
+
+- **Recognition is not authority.** `memory.aiml` alone writes nothing; the daemon routes the
+  directive through `admit_memory`, and a refusal defers to the model like every other refusal.
+- **History is append-only.** A correction appends (`Max` then `Rex`); the projection resolves the
+  newest event; provenance survives. The log is hash-chained through `ledger_plugin`, so editing an
+  event is detected exactly like a tampered ledger record.
+- **Identity isolation.** Every read and write is scoped to one user id (`/user <id>` switches); the
+  graph for one user never names another's facts.
+- **Erasure beats history.** `MEMORY erase` compacts the log — the only destructive operation — and
+  appends a tombstone recording that it happened; other users are untouched.
+- **The projection is a view.** `graph()` builds a GML document and `validate()` checks it against
+  `memory.gml` (ids unique, edges resolve, schema right). It is derived state, never a second
+  authority; the JSONL log and PLAN.md remain canonical for history and ledger respectively.
+
+What this is **not**: no ARPA grams, no embeddings or vector recall, no consent UI, no encryption at
+rest, no cross-device sync, and `admit_memory` is a host check rather than a full XCFE engine. Those
+remain separate milestones; the boundary between proposing and authorizing is the part that is real.
+
+---
+
 ## Layer boundary
 
 Three layers, kept distinct so that one is never mistaken for proof of another:
@@ -208,7 +243,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 26 tests, OK (M3-M11: guards, ledger 11, backup 5)
+host guards    : 35 tests, OK (M3-M12: guards, ledger 11, backup 5, memory 9)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 

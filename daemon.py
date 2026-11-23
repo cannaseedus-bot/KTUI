@@ -191,10 +191,14 @@ class Daemon:
     def __init__(self, *, kernel: Callable[[str], str], banks: Sequence[Path],
                  admit: Callable[[str, str], tuple[bool, str]],
                  admit_plan: Callable[[str], tuple[bool, str]],
+                 admit_memory: Callable[[str, str], tuple[bool, str]] | None = None,
                  mode_of: Callable[[], str] = lambda: "") -> None:
         self.kernel = kernel
         self.admit = admit
         self.admit_plan = admit_plan
+        # Memory operations are proposals like everything else: memquery is read-only, a write needs
+        # an explicit grant. Without a host callback nothing is admitted.
+        self.admit_memory = admit_memory or (lambda kind, argument: (False, "memory is unavailable"))
         self.mode_of = mode_of
         self.map = VectorMap(banks)
         self.phases = phases.phase_order() or ("Pop", "Wo", "Yax", "Sek", "Ch'en", "Xul")
@@ -271,6 +275,10 @@ class Daemon:
         elif selected.upper().startswith("TOOL "):
             verb, _, argument = selected[5:].partition(" ")
             proposal = ("tool", verb.strip().lower(), argument.strip())
+        elif selected.upper().startswith("MEMORY "):
+            proposal = ("memory", selected[len("MEMORY "):].strip(), "")
+        elif selected.upper().startswith("MEMQUERY "):
+            proposal = ("memquery", selected[len("MEMQUERY "):].strip(), "")
         elif selected.upper().startswith("CODEX_PLAN "):
             payload = selected[len("CODEX_PLAN "):].strip()
             # The bank writes `CODEX_PLAN proposal <name> <term>`; the verb is the bank's, not a name.
@@ -298,6 +306,8 @@ class Daemon:
             admitted, why = self.admit(payload, argument)
         elif kind == "plan":
             admitted, why = self.admit_plan(payload)
+        elif kind in {"memory", "memquery"}:
+            admitted, why = self.admit_memory(kind, payload)
         else:
             admitted, why = True, "plain AIML answer"
         record("Ch'en", ("admitted: " if admitted else "refused: ") + why)
