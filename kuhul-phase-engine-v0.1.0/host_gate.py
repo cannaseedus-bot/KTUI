@@ -317,6 +317,8 @@ def assess(before, after, diff, signatures):
         comparability=comp,
         verdict=dict(ledgers=ledgers,
                      evidence_satisfied=all(v['state'] == 'closed' for v in ledgers.values()),
+                     tested_commit=(after.get('git') or {}).get('sha'),
+                     captured_clean=(after.get('git') or {}).get('dirty') is False,
                      merge_authorized=False, authority='human',
                      note='evidence_satisfied describes the recorded evidence; it grants no permission'))
 

@@ -45,6 +45,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M6 | The `-text` rule survives, so manifest digests stay valid | **guard** | `tests_host/test_host_guards.py::M6…` (`git check-attr text` = unset, `bad_digest` empty) |
 | M7 | The ledger is mirrored into `task-list.json` and agrees with it | **guard** | `mirror_ledger.py`, `tests_host/test_host_guards.py::M7…` (ids, status, note, idempotence, human tasks preserved) |
 | M8 | Harness self-tests: v2.1 rules covered by 14 named tests | **guard** | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
+| M9 | Gate evidence names the commit it tested and comes from a clean tree | **guard** | `tests_host/test_host_guards.py::M9…`; artifacts are committed **after** the code they test, so `tested_commit` is the artifact commit's parent |
 
 ---
 
@@ -125,6 +126,12 @@ report as evidence:
 
 v1's false positive (signature matching hit *passing* test names such as `test_duplicate_graph_id`)
 is gone in v2: signatures are classified only from failure blocks.
+
+**Evidence names its commit.** The gate records `git.sha` per capture and the report carries
+`tested_commit` + `captured_clean`. Artifacts are committed in a commit whose parent **is** the
+tested commit, so a reviewer can always resolve `tested_commit` to the tree that produced the
+numbers. Capturing before committing the guards you just wrote is what makes a report name the
+previous commit — correct, but worth stating rather than discovering.
 
 **Capture before you patch.** The one thing that cannot be recovered afterwards is the baseline: a
 report can only attribute by name if the pre-patch state was captured. Run
