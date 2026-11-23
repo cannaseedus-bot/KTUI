@@ -16,31 +16,36 @@
       "id": "F14-schema-mismatch",
       "ledger": "F14",
       "error_pattern": "schema mismatch",
-      "traceback_pattern": "extension.py|registry.py|assemble.py"
+      "traceback_pattern": "extension.py|registry.py|assemble.py",
+      "guard_test_pattern": "test_.*(foreign|schema|ownership|boundary)"
     },
     {
       "id": "F14-wrong-contract",
       "ledger": "F14",
-      "error_pattern": "wrong (?:schema|contract)|reference schema mismatch",
-      "traceback_pattern": "resolver|bundle|extension"
+      "error_pattern": "wrong (?:schema|contract)|reference schema mismatch|document has no schema",
+      "traceback_pattern": "resolver|bundle|extension",
+      "guard_test_pattern": "test_.*(cross_schema|reference|no_schema|malformed)"
     },
     {
       "id": "M2-unknown-field",
       "ledger": "M2",
       "error_pattern": "unknown field|unregistered field",
-      "traceback_pattern": "registry.py|extension.py"
+      "traceback_pattern": "registry.py|extension.py",
+      "guard_test_pattern": "test_.*(typo|unknown_field|unregistered|scope)"
+    },
+    {
+      "id": "M2-repeatability",
+      "ledger": "M2",
+      "error_pattern": "duplicate|required once",
+      "traceback_pattern": "registry.py",
+      "guard_test_pattern": "test_.*(repeat|duplicate|value)"
     }
   ],
   "provenance": {
-    "source": "captured -v output from this checkout earlier in the session (pre-patch state)",
-    "kind": "reconstructed names, no fresh run",
-    "distinct_names": 31,
-    "outcomes": "30 errors across 30 names + 4 subTest failures collapsed to test_contracts.Contracts.test_structural",
-    "note": "tracebacks were not retained; only the unittest FAIL/ERROR headers were captured, so attribution is by name only",
-    "key_format": "module.Class.method.method (the harness appends the short name to the qualified id)",
-    "converted_to": "host-gate v2 capture shape",
-    "completeness": "partial: the failing test names were retained, the passing 17 of 48 were not",
-    "tracebacks": "reconstructed from the captured header lines (registry.py line 52, validate_document); full tracebacks were not retained"
+    "kind": "historical-partial",
+    "source": "captured -v headers from this checkout before the patch",
+    "note": "31 failing names retained; the 17 passing names of that 48-test run were not. Never padded: the missing cases stay unnamed.",
+    "signature_table": "adopted from the after capture; the added declarations carry no baseline evidence"
   },
   "suite": {
     "run": {
@@ -397,5 +402,25 @@
     "stdout": "",
     "stderr": "not captured at baseline",
     "timed_out": false
+  },
+  "schema": "kuhul.host-gate.capture/2.1",
+  "git": {
+    "sha": "357169b54036f88843fcc9bd63ceb397a81ff1be",
+    "branch": "main",
+    "dirty": null,
+    "status_head": null
+  },
+  "invocation": {
+    "command_line": [
+      "C:\\Users\\canna\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-v"
+    ],
+    "interpreter": "3.12 (historical)",
+    "cwd": "C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0"
   }
 }

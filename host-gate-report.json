@@ -1,4 +1,5 @@
 {
+  "schema": "kuhul.host-gate.report/2.1",
   "evidence_a": {
     "recovered": [
       {
@@ -313,7 +314,8 @@
         "test_rules_v3_2.TestRuleDispatch.test_unknown_predicate_fails.test_unknown_predicate_fails"
       ],
       "F14-wrong-contract": [],
-      "M2-unknown-field": []
+      "M2-unknown-field": [],
+      "M2-repeatability": []
     },
     "recovered_unmatched": [
       "test_contracts.Contracts.test_structural.test_structural"
@@ -688,7 +690,8 @@
       "exit_code": 0,
       "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 14:41\n",
       "stderr": "",
-      "timed_out": false
+      "timed_out": false,
+      "duration_seconds": 0.188
     },
     "extension_summary_before": {
       "command_line": [
@@ -710,58 +713,170 @@
       "exit_code": 0,
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
-      "timed_out": false
+      "timed_out": false,
+      "duration_seconds": 0.109
+    },
+    "captured_at": "2026-11-23T22:18:12.981778+00:00",
+    "health_correlation": {
+      "suite_sha": "9d585c7b3ab763520fe1927a751a40abee916855",
+      "health_sha": "9d585c7b3ab763520fe1927a751a40abee916855",
+      "same_run": true,
+      "note": "health commands ran in this same invocation, after the suite"
+    }
+  },
+  "comparability": {
+    "informational": [
+      {
+        "code": "sha_changed",
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 9d585c7b3ab763520fe1927a751a40abee916855"
+      },
+      {
+        "code": "working_tree_dirty",
+        "detail": "captured with uncommitted changes; recorded, not rejected"
+      },
+      {
+        "code": "baseline_partial",
+        "detail": "baseline kind historical-partial, 31/48 cases named"
+      }
+    ],
+    "blockers": [],
+    "baseline": {
+      "kind": "historical-partial",
+      "complete": false,
+      "named_cases": 31,
+      "ran": 48
     }
   },
   "verdict": {
-    "f14_closed": {
-      "status": "inconclusive",
-      "reasons": [
-        "incomplete per-test capture",
-        "base_health and extension_summary semantic health not independently verified"
-      ],
-      "matched_recovered": [
-        "test_assembly.TestAssembly.test_bad_shape.test_bad_shape",
-        "test_assembly.TestAssembly.test_bounds.test_bounds",
-        "test_assembly.TestAssembly.test_dtype_mismatch.test_dtype_mismatch",
-        "test_assembly.TestAssembly.test_duplicate_graph_id.test_duplicate_graph_id",
-        "test_assembly.TestAssembly.test_gap.test_gap",
-        "test_assembly.TestAssembly.test_materialize_unbound_source.test_materialize_unbound_source",
-        "test_assembly.TestAssembly.test_matrix.test_matrix",
-        "test_assembly.TestAssembly.test_missing.test_missing",
-        "test_assembly.TestAssembly.test_overlap.test_overlap",
-        "test_assembly.TestAssembly.test_plan_only.test_plan_only",
-        "test_assembly.TestAssembly.test_rank.test_rank",
-        "test_assembly.TestAssembly.test_registry_field_removed_fails_closed.test_registry_field_removed_fails_closed",
-        "test_assembly.TestAssembly.test_roundtrip.test_roundtrip",
-        "test_assembly.TestAssembly.test_sparse.test_sparse",
-        "test_assembly.TestAssembly.test_unsupported_dtype.test_unsupported_dtype",
-        "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source",
-        "test_registry_v3.TestRegistryV3.test_registry_validates_all_sources.test_registry_validates_all_sources",
-        "test_registry_v3_3.TestV33.test_all_six_callsite_require.test_all_six_callsite_require",
-        "test_registry_v3_3.TestV33.test_bad_context_arity_rejected.test_bad_context_arity_rejected",
-        "test_registry_v3_3.TestV33.test_missing_arity_registry_rejected.test_missing_arity_registry_rejected",
-        "test_registry_v3_3.TestV33.test_missing_required_rule_callsite.test_missing_required_rule_callsite",
-        "test_registry_v3_3.TestV33.test_require_dispatch.test_require_dispatch",
-        "test_registry_v3_3.TestV33.test_unknown_predicate_registry_rejected.test_unknown_predicate_registry_rejected",
-        "test_registry_v3_3.TestV33.test_wrong_arity_registry_rejected.test_wrong_arity_registry_rejected",
-        "test_rules_v3_2.TestRuleDispatch.test_constraint_deletion_fails_closed.test_constraint_deletion_fails_closed",
-        "test_rules_v3_2.TestRuleDispatch.test_dtype_mismatch_public_path.test_dtype_mismatch_public_path",
-        "test_rules_v3_2.TestRuleDispatch.test_float64_materializes_when_matched.test_float64_materializes_when_matched",
-        "test_rules_v3_2.TestRuleDispatch.test_registry_declares_all_six_rules.test_registry_declares_all_six_rules",
-        "test_rules_v3_2.TestRuleDispatch.test_rule_dispatch_overlap.test_rule_dispatch_overlap",
-        "test_rules_v3_2.TestRuleDispatch.test_unknown_predicate_fails.test_unknown_predicate_fails"
-      ]
+    "ledgers": {
+      "F14": {
+        "ledger": "F14",
+        "state": "closed",
+        "reasons": [
+          {
+            "code": "original_failures_recovered",
+            "detail": "30/30 named F14 failures now pass"
+          },
+          {
+            "code": "baseline_partial",
+            "detail": "baseline kind historical-partial with 31/48 cases named; unrecorded failures cannot be attributed"
+          },
+          {
+            "code": "health_semantics_unverified",
+            "detail": "base_health/extension_summary exited 0, but their semantics are host-owned"
+          }
+        ],
+        "original_failures": [
+          "test_assembly.TestAssembly.test_bad_shape.test_bad_shape",
+          "test_assembly.TestAssembly.test_bounds.test_bounds",
+          "test_assembly.TestAssembly.test_dtype_mismatch.test_dtype_mismatch",
+          "test_assembly.TestAssembly.test_duplicate_graph_id.test_duplicate_graph_id",
+          "test_assembly.TestAssembly.test_gap.test_gap",
+          "test_assembly.TestAssembly.test_materialize_unbound_source.test_materialize_unbound_source",
+          "test_assembly.TestAssembly.test_matrix.test_matrix",
+          "test_assembly.TestAssembly.test_missing.test_missing",
+          "test_assembly.TestAssembly.test_overlap.test_overlap",
+          "test_assembly.TestAssembly.test_plan_only.test_plan_only",
+          "test_assembly.TestAssembly.test_rank.test_rank",
+          "test_assembly.TestAssembly.test_registry_field_removed_fails_closed.test_registry_field_removed_fails_closed",
+          "test_assembly.TestAssembly.test_roundtrip.test_roundtrip",
+          "test_assembly.TestAssembly.test_sparse.test_sparse",
+          "test_assembly.TestAssembly.test_unsupported_dtype.test_unsupported_dtype",
+          "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source",
+          "test_registry_v3_3.TestV33.test_all_six_callsite_require.test_all_six_callsite_require",
+          "test_registry_v3_3.TestV33.test_bad_context_arity_rejected.test_bad_context_arity_rejected",
+          "test_registry_v3_3.TestV33.test_missing_arity_registry_rejected.test_missing_arity_registry_rejected",
+          "test_registry_v3_3.TestV33.test_missing_required_rule_callsite.test_missing_required_rule_callsite",
+          "test_registry_v3_3.TestV33.test_require_dispatch.test_require_dispatch",
+          "test_registry_v3_3.TestV33.test_unknown_predicate_registry_rejected.test_unknown_predicate_registry_rejected",
+          "test_registry_v3_3.TestV33.test_wrong_arity_registry_rejected.test_wrong_arity_registry_rejected",
+          "test_rules_v3_2.TestRuleDispatch.test_constraint_deletion_fails_closed.test_constraint_deletion_fails_closed",
+          "test_rules_v3_2.TestRuleDispatch.test_dtype_mismatch_public_path.test_dtype_mismatch_public_path",
+          "test_rules_v3_2.TestRuleDispatch.test_float64_materializes_when_matched.test_float64_materializes_when_matched",
+          "test_rules_v3_2.TestRuleDispatch.test_registry_declares_all_six_rules.test_registry_declares_all_six_rules",
+          "test_rules_v3_2.TestRuleDispatch.test_rule_dispatch_overlap.test_rule_dispatch_overlap",
+          "test_rules_v3_2.TestRuleDispatch.test_unknown_predicate_fails.test_unknown_predicate_fails",
+          "test_registry_v3.TestRegistryV3.test_registry_validates_all_sources.test_registry_validates_all_sources"
+        ],
+        "recovered_tests": [
+          "test_assembly.TestAssembly.test_bad_shape.test_bad_shape",
+          "test_assembly.TestAssembly.test_bounds.test_bounds",
+          "test_assembly.TestAssembly.test_dtype_mismatch.test_dtype_mismatch",
+          "test_assembly.TestAssembly.test_duplicate_graph_id.test_duplicate_graph_id",
+          "test_assembly.TestAssembly.test_gap.test_gap",
+          "test_assembly.TestAssembly.test_materialize_unbound_source.test_materialize_unbound_source",
+          "test_assembly.TestAssembly.test_matrix.test_matrix",
+          "test_assembly.TestAssembly.test_missing.test_missing",
+          "test_assembly.TestAssembly.test_overlap.test_overlap",
+          "test_assembly.TestAssembly.test_plan_only.test_plan_only",
+          "test_assembly.TestAssembly.test_rank.test_rank",
+          "test_assembly.TestAssembly.test_registry_field_removed_fails_closed.test_registry_field_removed_fails_closed",
+          "test_assembly.TestAssembly.test_roundtrip.test_roundtrip",
+          "test_assembly.TestAssembly.test_sparse.test_sparse",
+          "test_assembly.TestAssembly.test_unsupported_dtype.test_unsupported_dtype",
+          "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source",
+          "test_registry_v3.TestRegistryV3.test_registry_validates_all_sources.test_registry_validates_all_sources",
+          "test_registry_v3_3.TestV33.test_all_six_callsite_require.test_all_six_callsite_require",
+          "test_registry_v3_3.TestV33.test_bad_context_arity_rejected.test_bad_context_arity_rejected",
+          "test_registry_v3_3.TestV33.test_missing_arity_registry_rejected.test_missing_arity_registry_rejected",
+          "test_registry_v3_3.TestV33.test_missing_required_rule_callsite.test_missing_required_rule_callsite",
+          "test_registry_v3_3.TestV33.test_require_dispatch.test_require_dispatch",
+          "test_registry_v3_3.TestV33.test_unknown_predicate_registry_rejected.test_unknown_predicate_registry_rejected",
+          "test_registry_v3_3.TestV33.test_wrong_arity_registry_rejected.test_wrong_arity_registry_rejected",
+          "test_rules_v3_2.TestRuleDispatch.test_constraint_deletion_fails_closed.test_constraint_deletion_fails_closed",
+          "test_rules_v3_2.TestRuleDispatch.test_dtype_mismatch_public_path.test_dtype_mismatch_public_path",
+          "test_rules_v3_2.TestRuleDispatch.test_float64_materializes_when_matched.test_float64_materializes_when_matched",
+          "test_rules_v3_2.TestRuleDispatch.test_registry_declares_all_six_rules.test_registry_declares_all_six_rules",
+          "test_rules_v3_2.TestRuleDispatch.test_rule_dispatch_overlap.test_rule_dispatch_overlap",
+          "test_rules_v3_2.TestRuleDispatch.test_unknown_predicate_fails.test_unknown_predicate_fails"
+        ],
+        "still_failing_tests": [],
+        "guard_tests": [
+          "test_aiml_port.TestAIMLPort.test_bad_node_reference.test_bad_node_reference",
+          "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source",
+          "test_merge_guards.TestF141M21.test_cross_schema_reference_rejected.test_cross_schema_reference_rejected",
+          "test_merge_guards.TestF141M21.test_missing_schema_not_skipped.test_missing_schema_not_skipped",
+          "test_merge_guards.TestF141M21.test_same_schema_reference_accepted.test_same_schema_reference_accepted",
+          "test_merge_guards.TestMergeGuards.test_f14_other_schema_not_validated_by_tensor.test_f14_other_schema_not_validated_by_tensor"
+        ]
+      },
+      "M2": {
+        "ledger": "M2",
+        "state": "closed",
+        "reasons": [
+          {
+            "code": "positive_guard_evidence",
+            "detail": "10 named M2 guard test(s) pass; no original failure was separately observable"
+          },
+          {
+            "code": "baseline_partial",
+            "detail": "baseline kind historical-partial with 31/48 cases named; unrecorded failures cannot be attributed"
+          },
+          {
+            "code": "health_semantics_unverified",
+            "detail": "base_health/extension_summary exited 0, but their semantics are host-owned"
+          }
+        ],
+        "original_failures": [],
+        "recovered_tests": [],
+        "still_failing_tests": [],
+        "guard_tests": [
+          "test_assembly.TestAssembly.test_duplicate_graph_id.test_duplicate_graph_id",
+          "test_declaration_guards.DeclarationGuards.test_data_value_declaration_removed_fails_closed.test_data_value_declaration_removed_fails_closed",
+          "test_declaration_guards.DeclarationGuards.test_repeated_data_values_stay_legal.test_repeated_data_values_stay_legal",
+          "test_extension_v3_4.TestExtensionV34.test_reject_unregistered_predicate.test_reject_unregistered_predicate",
+          "test_merge_guards.TestF141M21.test_duplicate_graph_id_rejected.test_duplicate_graph_id_rejected",
+          "test_merge_guards.TestF141M21.test_repeat_values_accepted.test_repeat_values_accepted",
+          "test_merge_guards.TestF141M21.test_repeatable_is_registry_declared.test_repeatable_is_registry_declared",
+          "test_merge_guards.TestMergeGuards.test_m2_data_typo_rejected.test_m2_data_typo_rejected",
+          "test_merge_guards.TestMergeGuards.test_m2_graph_typo_rejected.test_m2_graph_typo_rejected",
+          "test_registry_v3.TestRegistryV3.test_rank_declared_value_enforced.test_rank_declared_value_enforced"
+        ]
+      }
     },
-    "m2_closed": {
-      "status": "inconclusive",
-      "reasons": [
-        "incomplete per-test capture",
-        "base_health and extension_summary semantic health not independently verified",
-        "no original named M2 signature failures"
-      ],
-      "matched_recovered": []
-    },
-    "merge_authorized": false
+    "evidence_satisfied": true,
+    "merge_authorized": false,
+    "authority": "human",
+    "note": "evidence_satisfied describes the recorded evidence; it grants no permission"
   }
 }

@@ -44,7 +44,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M5 | Full base suite green before merging to `main` | **done** | `kuhul-phase-engine-v0.1.0/tests` — 74 tests, OK |
 | M6 | Keep `-text` for the package in `.gitattributes` (digest integrity) | guard | `.gitattributes` |
 | M7 | Mirror this task list into `task-list.json` through the bus, if wanted | open | `task_list.py` |
-| M8 | The gate's own unit test file still targets harness v1 and no longer imports | open | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
+| M8 | Harness self-tests: v2.1 rules covered by 14 named tests | **guard** | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
 
 ---
 
@@ -71,19 +71,34 @@ banks 9 · categories 238 · bad digests 0 · missing modules none
 GML extension `gml-tensor/1` owned by gml.tensor · registry bootstrap `gml-registry/1`
 ```
 
-**The verdict stays `inconclusive`, and that is structural, not a code problem:**
+**v2.1 verdicts — three states, evidence separated from authority:**
 
-1. `assess()` appends *"base_health and extension_summary semantic health not independently
-   verified"* unconditionally, so no ledger can ever reach `evidence_satisfied`. By construction the
-   tool reports evidence; a human decides.
-2. The baseline is partial — 31 failing names were retained, the 17 passing names of that 48-test run
-   were not, so `complete` is false and "incomplete per-test capture" is reported. A fully
-   attributable report needs a v2 capture taken *before* a patch; that cannot be recreated after the
-   fact.
-3. M2 reports *"no original named M2 signature failures"*, correctly: M2's failures were folded into
-   the same `schema mismatch` errors, and its evidence is the **new** guard tests passing rather than
-   recoveries. If M2 is to be closable, the gate needs a "new named guard tests present and green"
-   criterion; recovery alone will never cover it.
+```
+F14 : closed      reasons original_failures_recovered, baseline_partial, health_semantics_unverified
+                  30 recovered · 6 guard tests · 0 still failing
+M2  : closed      reasons positive_guard_evidence, baseline_partial, health_semantics_unverified
+                  10 named guard tests pass · no original M2 failure was separately observable
+evidence_satisfied: true      merge_authorized: false      authority: human
+comparability: no blockers · informational: sha_changed, working_tree_dirty, baseline_partial
+```
+
+That is the dead end removed: `evidence_satisfied` now describes the recorded evidence and is
+reachable, while `merge_authorized` stays false unconditionally. The three reasons above are
+deliberate caveats, not failures:
+
+1. `baseline_partial` — 31 failing names were retained, the 17 passing names of that 48-test run were
+   not, so the baseline is labelled `historical-partial (31/48)` and never padded with invented
+   cases. A fully attributable cycle needs a v2.1 capture taken *before* the patch.
+2. `health_semantics_unverified` — `base_health` and `extension_summary` exit 0 and their text is
+   captured verbatim, but their semantics are host-owned; the tool says so instead of pretending.
+3. `sha_changed` / `working_tree_dirty` are recorded as informational: applying a patch moves the
+   commit, and a capture of a dirty tree is still evidence.
+
+**v2.1 capture hygiene** (the contract that made the above possible): every capture records the exact
+invocation and interpreter, git SHA + branch + working-tree status, timestamps and suite duration,
+and whether the health commands ran in the same invocation as the suite
+(`health_correlation.same_run`). Comparability compares invocation, host and signature table; SHA
+moves are informational, never rejections.
 
 **Does the harness deliver the seven properties it claims?** Audited against the code, with the
 report as evidence:
