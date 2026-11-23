@@ -26,3 +26,6 @@ aiml-en-us-foundation-alice/.hg/
 
 # Audit ledger signing key (generated locally, never committed)
 .ledger-key.pem
+
+# Independent backups: a backup that lives inside the history it protects is not a backup
+backups/

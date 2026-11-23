@@ -47,6 +47,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M8 | Harness self-tests: v2.1 rules covered by 14 named tests | **guard** | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
 | M9 | Gate evidence names the commit it tested and comes from a clean tree | **guard** | `tests_host/test_host_guards.py::M9…`; artifacts are committed **after** the code they test, so `tested_commit` is the artifact commit's parent |
 | M10 | Optional audit ledger: append-only, hash-chained, Ed25519-signed records | **guard** | `ledger_plugin.py`, `ledger.gml`, `tests_host/test_ledger.py::M10…` |
+| M11 | Independent, restorable backups whose restore is verified | **guard** | `backup.py`, `tests_host/test_backup.py::M11…` |
 
 ---
 
@@ -138,6 +139,22 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Layer boundary
+
+Three layers, kept distinct so that one is never mistaken for proof of another:
+
+1. **GML documents and registries** - declarations, graph relationships, schemas (`ledger.gml`,
+   `schemas/tensor-registry.gml`, the phase banks). Data; grants nothing.
+2. **Trusted validation and admission** - the Python bootstrap, bindings, constraints and authority
+   checks (`functions.py`, `planner.py`, `phases.py`, the sandbox). This is where authority lives.
+3. **Host runtime and evidence ledger** - authorized operations, test evidence, audit records
+   (`host_gate.py`, `tests_host/`, `ledger_plugin.py`, `backup.py`).
+
+Self-hosting, AIML bundle integration and cryptographic-ledger construction are separate milestones:
+none of them is implied by the guards above.
 
 ---
 
@@ -367,5 +384,11 @@ Expected failure signatures and what they mean:
   dispatch-declared rules. The ledger entries above are how that stays honest until it is.
 - The AIML side of the package (v3.5 `core/aiml_bundle.py`, `tests/test_aiml_port.py`) is newer than
   the host's use of it: the host reads the phase banks and the extension contract, not the bundle.
-- `M7` is optional: the task list lives here, and `task-list.json` is rendered runtime state.
-- No off-machine backup beyond GitHub; `main` was force-pushed once, so old clones must re-fetch.
+- **M7 boundary:** `PLAN.md` is the canonical ledger; `task-list.json` is derived, regenerable state
+  and never a second authority. The mirror can be deleted and rebuilt from PLAN.md alone, which is
+  what the M7 test does.
+- **Backups (M11):** an independent bundle now exists under `backups/` (gitignored), and its restore is
+  verified by cloning it and running both suites from the clone. That closes "a force-push loses
+  history": the bundle holds every ref, and its SHA-256 is in `manifest.json` and in the audit ledger.
+  What it does **not** close is off-machine retention - the bundle lives on this disk until someone
+  copies `backups/` elsewhere. Verified restore is not the same thing as an independent copy.
