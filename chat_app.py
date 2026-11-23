@@ -55,6 +55,10 @@ try:  # the K'UHUL phase package, read as data (digests verified before a bank i
     import phases
 except ImportError:  # pragma: no cover
     phases = None
+try:  # the six-phase daemon bot engine: one cycle per turn, plus the mode bias vectors
+    import daemon
+except ImportError:  # pragma: no cover
+    daemon = None
 import math
 import tempfile
 import shlex
@@ -583,6 +587,54 @@ class ChatApp(App):
         self.router = self.get_semantic_router()
         self.completion = Micronaut({"sandbox": self.completion_registry()}) if Micronaut else None
         self.current_completion = ""
+        # Every turn goes through the six-phase cycle; the engine records what each phase decided
+        # and its closure is what `/daemon` shows. It proposes, the gates below admit.
+        self.mode = ""
+        self.last_turn = None
+        self.daemon = self.make_daemon()
+
+    def make_daemon(self):
+        """Wire the engine to the banks it reasons over and to the two gates that already exist."""
+        if daemon is None:
+            return None
+        banks: list[Path] = []
+        if phases is not None and phases.available():
+            banks += [path for _, path in phases.load_order()]
+        banks += [APP_ROOT / "codex.aiml", APP_ROOT / "_override.aiml",
+                  APP_ROOT / "aiml-en-us-foundation-alice" / "knumatic_learned.aiml"]
+        return daemon.Daemon(kernel=self.kernel_reply, banks=[path for path in banks if path.is_file()],
+                             admit=self.admit_verb, admit_plan=self.admit_plan, mode_of=lambda: self.mode)
+
+    def kernel_reply(self, text: str) -> str:
+        try:
+            return str(self.router.respond(text) or "")
+        except Exception:
+            return ""
+
+    def admit_verb(self, verb: str, argument: str) -> tuple[bool, str]:
+        """The daemon may only select read-only verbs; the sandbox re-checks when it runs."""
+        if verb not in {"git", "time", "files", "convert"}:
+            return False, f"{verb} is not a read-only verb"
+        if verb == "git":
+            first = (shlex.split(argument) or ["status"])[0]
+            allowed = ALLOWED_PROGRAMS.get("git", set())
+            if first not in allowed:
+                return False, f"git {first} is not on the allowlist"
+        return True, f"read-only {verb}"
+
+    def admit_plan(self, name: str) -> tuple[bool, str]:
+        if planner is None:
+            return False, "the planner is unavailable"
+        # The payload is `<name> [<term>]`; only the first token names a plan.
+        head = str(name).strip().lower().split()
+        if not head:
+            return False, "no plan name given"
+        plan = planner.resolve(head[0])
+        if not plan.admitted:
+            return False, plan.problems[0] if plan.problems else "not admitted"
+        if plan.authority != "execute":
+            return False, f"admitted as {plan.authority}, so nothing may run"
+        return True, f"plan {plan.name} admitted"
 
     def update_client(self, model: str | None = None):
         config = PROVIDER_CONFIGS[self.current_provider]
@@ -843,7 +895,35 @@ class ChatApp(App):
         self.say_system("\n".join(lines))
 
     def local_answer(self, text: str) -> tuple[str, str] | None:
-        """AIML first. Returns (kind, text), or None when the turn belongs to the model."""
+        """The daemon runs one cycle per turn; its closure decides, or defers to the model.
+
+        Pop/Wo/Yax/Sek/Ch'en/Xul are recorded on `self.last_turn` (see `/daemon`). The engine can
+        only ever *propose* a read-only verb or an admitted plan; the execution below is the same
+        code path the model's tools use.
+        """
+        if self.daemon is None:
+            return self._local_answer_direct(text)
+        turn = self.daemon.run(text)
+        self.last_turn = turn
+        if turn.kind == "deferred":
+            return None
+        if turn.kind == "mode":
+            self.action_set_mode(turn.mode)
+            info = daemon.modes().get(turn.mode) if daemon is not None else None
+            detail = f"\n\n{info.vector()}" if info else ""
+            return "mode", f"Response mode is now **{turn.mode}**{detail}"
+        if turn.kind == "tool":
+            verb, _, argument = turn.answer.partition(" ")
+            try:
+                return "tool", self.run_tool_verb(verb, argument)
+            except Exception as error:
+                return "error", str(error)
+        if turn.kind == "plan":
+            return "plan", self.plan_answer(turn.answer)
+        return "aiml", turn.answer
+
+    def _local_answer_direct(self, text: str) -> tuple[str, str] | None:
+        """The pre-daemon path, kept for the case where daemon.py is absent."""
         try:
             reply = (self.router.respond(text.upper()) or "").strip()
         except Exception:
@@ -851,7 +931,6 @@ class ChatApp(App):
         if not reply or "__LLM_FALLBACK__" in reply:
             return None
         if reply.upper().startswith("CODEX_PLAN "):
-            # A proposal the host resolves, never an invocation the template performs.
             return "plan", self.plan_answer(reply[len("CODEX_PLAN "):].strip())
         if reply.startswith(("CODEX_SUGGEST ", "CODEX_LOOKUP ")):
             return None
@@ -862,6 +941,27 @@ class ChatApp(App):
             except Exception as error:
                 return "error", str(error)
         return "aiml", reply
+
+    # -- daemon modes and the cycle trace ----------------------------------------------------------
+    def action_set_mode(self, name: str) -> str:
+        """Switch the response-mode bias vector. The mode is style, never permission."""
+        self.mode = (name or "").strip().lower()
+        self.refresh_system_prompt()
+        return self.mode
+
+    def action_modes(self) -> None:
+        if daemon is None:
+            self.say_system("The daemon engine (daemon.py) is unavailable.")
+            return
+        current = f"current: **{self.mode}**\n\n" if self.mode else ""
+        self.say_system(current + daemon.describe_modes())
+
+    def action_daemon(self) -> None:
+        """Show the last turn's six phases: what each one saw and decided."""
+        if self.last_turn is None:
+            self.say_system("No turn has run through the daemon engine yet. Ask something first.")
+            return
+        self.say_system("```\n" + self.last_turn.trace() + "\n```")
 
     def get_commands(self) -> dict[str, tuple[str, Callable[[], object], str]]:
         """Ctrl+P and `/commands`: local models first (fastest to deepest), then advisors."""
@@ -882,6 +982,8 @@ class ChatApp(App):
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
+        commands["mode"] = ("Mode: list the daemon response modes", self.action_modes, "Bias vectors as a style prior")
+        commands["daemon"] = ("Daemon: trace the last turn's six phases", self.action_daemon, "What each phase saw and decided")
         commands["workspace"] = ("Workspace: pick the folder the model may edit", self.action_pick_workspace, f"Currently {sandbox.root}")
         commands["allow"] = ("Workspace: grant write and patch", partial(self.action_allow, "on"), "The model may change files here")
         commands["readonly"] = ("Workspace: back to read-only", partial(self.action_allow, "off"), "Reads and searches only")
@@ -1025,6 +1127,20 @@ class ChatApp(App):
             return
         if name in {"phase", "phases"}:
             self.action_phases()
+            return
+        if name in {"mode", "modes"}:
+            if argument:
+                mode = self.action_set_mode(argument)
+                info = daemon.modes().get(mode) if daemon is not None else None
+                if info is None:
+                    self.say_system(f"No mode `{mode}` is declared. `/mode` lists them.")
+                    return
+                self.say_system(f"Response mode: **{info.name}**\n\n{info.vector()}\n\nStyle only — permissions do not change.")
+            else:
+                self.action_modes()
+            return
+        if name in {"daemon", "trace"}:
+            self.action_daemon()
             return
         if name in {"workspace", "cwd"}:
             if argument:
@@ -1277,7 +1393,15 @@ class ChatApp(App):
             "git here is read-only (status, diff, log, show, branch, ls-files, grep, describe); there is "
             "no shell and no network. Paths are workspace-relative. If a tool refuses, report the "
             "refusal and why - never claim work you did not do."
+            + self.mode_line()
         )
+
+    def mode_line(self) -> str:
+        """The daemon mode as a sentence the model can obey, not five bare numbers."""
+        if daemon is None or not getattr(self, "mode", ""):
+            return ""
+        info = daemon.modes().get(self.mode)
+        return f"\n{info.prompt()}" if info else ""
 
     def refresh_system_prompt(self) -> None:
         """Keep the brief in step with the workspace and the grant, for the running conversation."""
