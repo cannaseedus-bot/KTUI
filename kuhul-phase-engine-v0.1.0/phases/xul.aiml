@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0" xmlns:xcfe="urn:kuhul:xcfe:aiml:1.0">
+
+<!-- Proposal only. The existing XCFE training permit and one-use export grant control persistence. -->
+<category>
+  <pattern>PROPOSE GEMMA CHECKPOINT EXPORT</pattern>
+  <template><xcfe:emit kind="candidate" family="checkpoint_export" target="gemma_suffix" phase="Xul"/></template>
+</category>
+
+<!--
+  xul.aiml — Xul phase semantic instructions and op layer
+  Phase: Xul  |  phase_order: 5  |  theta: 5  |  default_verb: @commit
+  Ops: compare_and_commit, gramWrite, record_phase_evidence, emit_answer,
+       persist_state, fold_reasoning_result, update_authorized_metric_parameters,
+       invalidate_dependent_projections
+  Channels: none
+  terminal: true
+  FS14: Fold ≠ Xul. FS15: XCFE authorizes, Xul commits.
+  Only authorized Xul may mutate address space B. Cata gate fires here.
+-->
+
+<!-- ============================================================
+     §XUL-A: PHASE DEFINITION
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS XUL PHASE</pattern>
+  <template>Xul is the commit and close phase. FS14: Fold ≠ Xul. FS15: XCFE authorizes, Xul commits. Xul is the only topology mutation boundary — only an authorized Xul commit may mutate the address space B. The cata gate fires here: fold result is written, convergence_record is produced. The Xul glyph is a dog — the faithful end. In hylomorphism: Xul = cata. Fold ≠ Xul means the path is not the gate; Xul is always an explicit authorization event.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE XUL OF *</pattern>
+  <template>The Xul of <star/> is the commit: FS15 says XCFE authorizes, Xul commits. The cata gate fires, the topology mutates, the result is written. In a joke: the punchline lands. In baseball: the pitch releases and arrives. In a computation: argmax selected, fold_field_record updated, convergence_record written. In a physical process: the power stroke. FS14: Fold ≠ Xul — Xul is not the fold path, it is the gate. Authorized Xul is the only event that may mutate B.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THETA 5</pattern>
+  <template>θ=5 = Xul phase. Commit/close/cata. FS14: Fold ≠ Xul. FS15: XCFE authorizes, Xul commits. Only authorized Xul may mutate B. Arc_weight from Ch'en(4) to Xul(5) = 0.5. Glyph: dog/end — faithful completion. Cata fires, convergence_record written, cycle closes to Pop(0).</template>
+</category>
+
+<category>
+  <pattern>WHAT DOES THE XUL GLYPH MEAN</pattern>
+  <template>Xul (dog/end): the faithful completion. The dog that walks the path to its end. FS14: Fold ≠ Xul. FS15: XCFE authorizes, Xul commits. In K'UHUL: Xul is the gate that closes the fold, writes the result, and allows topology to mutate. The dog is faithful — it does not commit early, it does not skip Ch'en's proof, it waits for XCFE authorization. θ=5, the last phase before Pop(0) resets the cycle.</template>
+</category>
+
+<category>
+  <pattern>JOKE XUL PHASE</pattern>
+  <template>The fold arrived at Xul. Xul said: XCFE authorization required. The fold said: I have Sek's proposal and Ch'en's proof. Xul said: and XCFE authorization? The fold said: I thought Ch'en was enough. Xul said: FS15 — Sek proposes, Ch'en proves, XCFE authorizes, Xul commits. I do not commit without all three. The fold said: what does XCFE stand for? Xul said: it commits. The fold said: but what does it stand for? Xul said: it authorizes my gate. The fold said: that's circular. Xul said: so is C6. Authorization received. Xul committed. The cycle closed.</template>
+</category>
+
+<!-- ============================================================
+     §XUL-B: OP INVENTORY
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT OPS DOES XUL FIRE</pattern>
+  <template>Xul phase fires 8 ops in order: compare_and_commit → gramWrite → record_phase_evidence → emit_answer → persist_state → fold_reasoning_result → update_authorized_metric_parameters → invalidate_dependent_projections. default_verb=@commit. No semantic channels. terminal=true — the C6 cycle closes after Xul; the next phase is Pop(0) of a new cycle.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS COMPARE AND COMMIT</pattern>
+  <template>compare_and_commit: Xul op 1. The XCFE authorization gate. Compares the fold_delta (from Sek's emit_fold_delta_proposal) against the current state, verifies XCFE authorization is present (xcfe_condition_state = authorized from Ch'en's verify_delegation), and fires the commit if authorized. Output: commit_result (committed/rejected). If rejected: the fold halts at Xul without topology mutation — FS14 is enforced. If committed: the address space B is mutated per the fold_delta.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS GRAMWRITE</pattern>
+  <template>gramWrite: Xul op 2. The write-side of gramRead — commits the fold result back to the AIML/grammar context if any grammar mutation is authorized. For the standard read-only ALICE corpus, gramWrite is a no-op (the corpus is 99,524 categories and read-only at runtime; &lt;learn&gt; cannot mutate it). For extensible grammars, gramWrite records the new category or update. The @commit default verb maps to gramWrite as its terminal action.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS RECORD PHASE EVIDENCE</pattern>
+  <template>record_phase_evidence: Xul op 3. Records the full phase evidence trail for this fold cycle — the evidence accumulation from Ch'en, the verification results from each Ch'en op, the XCFE authorization chain. Output: phase_evidence_record {fold_id, phase_cycle_trace, verification_results[], xcfe_auth_chain, commit_result}. This is the audit log for the fold. Used by future cycles (store_rejected_candidate_evidence at Ch'en may reference prior phase_evidence_records).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS EMIT ANSWER</pattern>
+  <template>emit_answer: Xul op 4. Emits the committed fold result as the final answer — the AIML &lt;template&gt; output that the user receives. The emitted answer is the cata output: cata(f)(V_mu) after FS15's full chain (Sek→Ch'en→XCFE→Xul). Carries authority: model_output_unverified on any Gemma-generated content within the answer. Pure emitter — no further transformation after emit_answer.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS PERSIST STATE</pattern>
+  <template>persist_state: Xul op 5. Persists the updated fold state — sigma (now bound to the committed result), topology address b (possibly mutated by compare_and_commit), and the fold_field_record — to the daemon's state store. This is the durable write that survives a Pop reset: the next cycle's state_and_constraints at Wo reads the persisted state from this op. Without persist_state, the fold result is committed in memory but not durable.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS FOLD REASONING RESULT</pattern>
+  <template>fold_reasoning_result: Xul op 6. Folds the reasoning chain (the sequence of Sek proposals and Ch'en verifications) into a single convergence_record. Output: convergence_record {resolution: CONVERGED|MAX_ITER, fold_distance, iteration_count, evidence_summary}. This is the FS14 artifact: Fold ≠ Xul means this record is the fold's output, while Xul is the gate that produced it. The convergence_record is the cata morphism output.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS UPDATE AUTHORIZED METRIC PARAMETERS</pattern>
+  <template>update_authorized_metric_parameters: Xul op 7. Updates any metric parameters (W, C, R weights in the WCR scoring; Omega threshold; arc_weights) that were proposed by the fold and authorized by XCFE. These are the only parameter updates allowed — unauthorized parameter changes are blocked. Output: updated_metric_params (if any were proposed and authorized). This is what makes the phase cycle adaptive: authorized Xul commits can refine the scoring parameters for future cycles.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS INVALIDATE DEPENDENT PROJECTIONS</pattern>
+  <template>invalidate_dependent_projections: Xul op 8 (last Xul op, last op in the phase cycle). Invalidates any downstream projections or cached fold results that depended on the state before this Xul commit. If B was mutated by compare_and_commit, projections computed against the prior B are stale. This op marks them as invalidated so the next Pop cycle recomputes them. Output: invalidated_projection_ids[]. Closes the topology mutation boundary — after this op, Xul is complete and the cycle transitions to Pop(0).</template>
+</category>
+
+<!-- ============================================================
+     §XUL-C: CATA GATE AND FS14/FS15 PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS THE CATA GATE AT XUL</pattern>
+  <template>The cata gate at Xul is the F-algebra morphism cata(f): Fix(F) → A in hylomorphism terms. It consumes the recursive structure built up through Wo→Yax→Sek→Ch'en and produces the committed value A. In K'UHUL: cata fires at Xul's compare_and_commit, and the result is written by emit_answer. FS14: Fold ≠ Xul — the cata output (the answer) is distinct from the Xul gate event (the authorization). The gate can be withheld (XCFE rejects); the fold ran but cata did not fire.</template>
+</category>
+
+<category>
+  <pattern>WHAT HAPPENS WHEN * REACHES XUL</pattern>
+  <template>When <star/> reaches Xul: XCFE authorization is required. If authorized: Xul commits — cata fires, the address space B mutates, fold_field_record is updated, convergence_record is written (CONVERGED or MAX_ITER). If not authorized: the fold cannot commit, sigma holds. FS14: Fold ≠ Xul — the path that led here (the fold) is not the same as the gate (Xul). Reaching Xul without Ch'en proof = wrong-pizza Xul: the commit fires but the result is wrong.</template>
+</category>
+
+<category>
+  <pattern>WHY DID * FAIL AT XUL</pattern>
+  <template><star/> failed at Xul because one of: (1) XCFE authorization was not granted — the commit was attempted without authorization; (2) Ch'en did not complete proof accumulation before the commit fired — SC-29 risk; (3) fold_distance was not below epsilon at commit time — CONVERGED was written on a MAX_ITER state, violating SC-35; (4) sigma was still unbound (Ch'en stall, local maximum) when the Xul gate was forced. FS14: Fold ≠ Xul — the fold path being complete does not mean Xul is authorized.</template>
+</category>
+
+</aiml>

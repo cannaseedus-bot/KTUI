@@ -1,0 +1,26 @@
+(* Micronaut text DSL v1. Grammar specifies declarations, not execution. *)
+micronaut = "micronaut", identifier, "{", role, graph, [data], {pattern}, {capability}, {binding}, {route}, gate, {phase}, "}" ;
+role = "role", ":", string, ";" ;
+graph = "graph", string, ";" ;
+data = "data", string, ";" ;
+pattern = "pattern", string, "=>", ("srai" | "intent"), identifier, ";" ;
+capability = "capability", identifier, ":", capability_kind, ";" ;
+capability_kind = "read" | "write" | "ask" | "respond" | "compute" ;
+binding = "bind", identifier, ":", value_type, "->", identifier, ";" ;
+value_type = "string" | "vector" | "tensor" | "field" | "signal" | "graph" | "number" | "boolean" ;
+route = "route", identifier, "->", identifier, ";" ;
+gate = "gate", "XCFE", "{", "admission", ":", boolean, ";", "verification", ":", boolean, ";", "closure", ":", boolean, ";", "}" ;
+phase = "phase", phase_name, "{", {step}, "}" ;
+phase_name = "Pop" | "Wo" | "Yax" | "Sek" | "Chen" | "Xul" ;
+step = "op", opcode, ["in", identifier], ["out", identifier], ["when", identifier, comparator, literal], ";" ;
+opcode = "READ" | "BIND" | "MAP" | "FILTER" | "PI" | "MATCH" | "RESOLVE" | "SRAI" | "RANK" | "XCFE" | "ACCUMULATE" | "FOLD" | "REDUCE" | "ASK" | "RESPOND" | "PATCH" | "CLOSE" ;
+comparator = "eq" | "ne" | "contains" | "exists" | "gt" | "ge" | "lt" | "le" ;
+boolean = "true" | "false" ;
+literal = string | number | boolean ;
+identifier = letter, {letter | digit | "_" | "." | "-"} ;
+string = '"', {character_except_quote_or_backslash | escape}, '"' ;
+escape = "\\", ('"' | "\\" | "n" | "t") ;
+number = ["-"], digit, {digit}, [".", digit, {digit}] ;
+letter = "A" | ... | "Z" | "a" | ... | "z" | "_" ;
+digit = "0" | ... | "9" ;
+(* Lexical terminals character_except_quote_or_backslash and whitespace are scanner-defined. *)

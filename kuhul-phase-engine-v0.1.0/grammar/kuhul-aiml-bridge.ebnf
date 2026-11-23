@@ -1,0 +1,16 @@
+(* Abstract grammar for the custom XML-like phase/AIML bridge.
+   This is NOT the standard AIML XML grammar. XML well-formedness and escaping
+   are validated by an XML parser before interpreting these elements. *)
+bridge_document = pop_element ;
+pop_element     = "<pop>", wo_element, sek_element, "</pop>" ;
+wo_element      = "<wo key=", quoted_glyph, ">", { vector_element }, "</wo>" ;
+vector_element  = "<vector relation=", quoted_text, " pattern=", quoted_text, "/>" ;
+sek_element     = "<sek>", srai_element, "</sek>" ;
+srai_element    = "<srai target=", quoted_glyph, " resolve=", quoted_text,
+                  " bind=", quoted_text, "/>" ;
+quoted_glyph    = '"', "⟁", identifier, { "-", identifier }, '"' ;
+quoted_text     = '"', { xml_attribute_character }, '"' ;
+xml_attribute_character = ? XML-valid attribute character excluding raw double quote and less-than ? ;
+(* Attribute order and whitespace are flexible in XML; the productions above
+   document the canonical example, not a complete XML parser. *)
+(* Optional conditional AST: if(predicate, then_branch, else_branch?). *)

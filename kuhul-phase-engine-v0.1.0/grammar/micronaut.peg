@@ -1,0 +1,24 @@
+// PEG grammar, compatible with Peggy-style rules (not a compiled parser).
+Start = _ m:Micronaut _ !. { return m; }
+Micronaut = 'micronaut' __ id:Identifier _ '{' _ role:Role _ graph:Graph _ data:Data? _ decls:Declaration* gate:Gate _ phases:Phase* '}' { return {id,role,graph,data,decls,gate,phases}; }
+Role = 'role' _ ':' _ v:String _ ';' { return v; }
+Graph = 'graph' _ v:String _ ';' { return v; }
+Data = 'data' _ v:String _ ';' _ { return v; }
+Declaration = (Pattern / Capability / Binding / Route) _
+Pattern = 'pattern' __ p:String _ '=>' _ a:('srai' / 'intent') __ t:Identifier _ ';' { return {kind:'pattern',match:p,action:a,target:t}; }
+Capability = 'capability' __ n:Identifier _ ':' _ k:('read'/'write'/'ask'/'respond'/'compute') _ ';' { return {kind:'capability',name:n,capability_kind:k}; }
+Binding = 'bind' __ n:Identifier _ ':' _ t:Type _ '->' _ s:Identifier _ ';' { return {kind:'binding',name:n,type:t,source:s}; }
+Route = 'route' __ f:Identifier _ '->' _ t:Identifier _ ';' { return {kind:'route',from:f,to:t}; }
+Gate = 'gate' __ 'XCFE' _ '{' _ 'admission' _ ':' _ a:Boolean _ ';' _ 'verification' _ ':' _ v:Boolean _ ';' _ 'closure' _ ':' _ c:Boolean _ ';' _ '}' { return {admission:a,verification:v,closure:c}; }
+Phase = 'phase' __ n:('Pop'/'Wo'/'Yax'/'Sek'/'Chen'/'Xul') _ '{' _ s:Step* '}' _ { return {name:n,steps:s}; }
+Step = 'op' __ o:Opcode i:(_ 'in' __ Identifier)? out:(_ 'out' __ Identifier)? when:(_ 'when' __ Identifier __ Comparator __ Literal)? _ ';' _ { return {op:o,in:i,out,when}; }
+Opcode = 'ACCUMULATE'/'RESOLVE'/'RESPOND'/'FILTER'/'REDUCE'/'CLOSE'/'PATCH'/'MATCH'/'READ'/'BIND'/'RANK'/'XCFE'/'SRAI'/'FOLD'/'MAP'/'ASK'/'PI'
+Type = 'boolean'/'string'/'vector'/'tensor'/'signal'/'number'/'field'/'graph'
+Comparator = 'contains'/'exists'/'eq'/'ne'/'gt'/'ge'/'lt'/'le'
+Literal = String / Number / Boolean
+Boolean = 'true' { return true; } / 'false' { return false; }
+Number = $('-'? [0-9]+ ('.' [0-9]+)?)
+Identifier = $([a-zA-Z_] [a-zA-Z0-9_.-]*)
+String = '"' c:('\"' / '\\' / '\n' / '\t' / !'"' .)* '"' { return c.join(''); }
+_ = [ \t\r\n]*
+__ = [ \t\r\n]+

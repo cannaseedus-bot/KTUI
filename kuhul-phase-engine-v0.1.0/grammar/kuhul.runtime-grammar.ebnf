@@ -1,0 +1,11 @@
+(* K'UHUL runtime routing surface v0.2. A parsed route is DATA_ONLY until authorized. *)
+runtime_program = { route_statement } ;
+route_statement = phase_route | typed_route | srai_route | conditional_route ;
+phase_route     = "phase", phase, "->", reference ;
+typed_route     = "route", reference, ":", type, "->", reference ;
+srai_route      = "srai", "(", reference, ",", identifier, ",", value, ")" ;
+conditional_route = "if", "(", predicate, ")", "{", { route_statement }, "}",
+                    [ "else", "{", { route_statement }, "}" ] ;
+predicate       = reference, "==", value ;
+(* Imported from kuhul-grammar.ebnf: phase, reference, identifier, type, value. *)
+(* Runtime resolution, XCFE admission, and dispatch are separate stages. *)

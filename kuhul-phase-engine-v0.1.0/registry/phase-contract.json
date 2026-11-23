@@ -1,0 +1,23 @@
+{
+  "format": "kuhul.phases/1",
+  "order": [
+    "Pop",
+    "Wo",
+    "Yax",
+    "Sek",
+    "Ch'en",
+    "Xul"
+  ],
+  "dsl_spelling": {
+    "Chen": "Ch'en"
+  },
+  "semantics": {
+    "Pop": "context ingress",
+    "Wo": "field binding",
+    "Yax": "candidate traversal and conditional reasoning",
+    "Sek": "transformation and bounded I/O",
+    "Ch'en": "fold and accumulation",
+    "Xul": "result closure"
+  },
+  "rule": "A phase declaration is not permission to perform I/O."
+}

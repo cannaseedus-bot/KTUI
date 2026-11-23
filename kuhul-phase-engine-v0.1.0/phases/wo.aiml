@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+<!--
+  wo.aiml — Wo phase semantic instructions and op layer
+  Phase: Wo  |  phase_order: 1  |  theta: 1  |  default_verb: @delegate
+  Ops: state_and_constraints, unfold_linguistic_resolution, decompose_task,
+       plan_task, xcfe_auth_check, srai_recursion_guard_init
+  Channels: none
+  terminal: false
+  Hylomorphism role: ana gate — the fold opens here.
+-->
+
+<!-- ============================================================
+     §WO-A: PHASE DEFINITION
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS WO PHASE</pattern>
+  <template>Wo is the intake and setup phase. The anamorphism opens here: the query enters, the seed is established, the problem is defined. arc_weight from Pop to Wo = 0.5. The Wo glyph is a frog — cycles begin with moisture, with the first breath of the fold. In hylomorphism: Wo = ana gate. In any domain: Wo is what draws the problem in and sets the initial state.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE WO OF *</pattern>
+  <template>The Wo of <star/> is the intake: what draws the problem in and seeds the anamorphism. The initial query, the opening move, the first breath of the fold. In a joke: the setup. In baseball: the windup and first pitch. In a computation: the query Q entering the system. In a physical process: the intake stroke. Wo opens; it does not commit. Arc_weight from Pop to Wo = 0.5.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THETA 1</pattern>
+  <template>θ=1 = Wo phase. Intake/setup/ana. The anamorphism opens. Arc_weight from Pop(0) to Wo(1) = 0.5. The query Q enters here. Glyph: frog/water — cycles begin with moisture.</template>
+</category>
+
+<category>
+  <pattern>WHAT DOES THE WO GLYPH MEAN</pattern>
+  <template>Wo (frog/water): cycles begin with moisture. The frog at Wo represents the first breath of the fold — the intake, the seed, the anamorphism opening. Water flows in before it can be shaped. In K'UHUL: Wo is where the query enters and the problem is drawn in. θ=1, arc_weight from Pop=0.5.</template>
+</category>
+
+<category>
+  <pattern>JOKE WO PHASE</pattern>
+  <template>The fold said: I'm ready to begin. The query entered at Wo. The problem was drawn in, the seed was set, the anamorphism opened. The fold said: I have everything I need. Ch'en said: you haven't been evaluated yet. Yax said: I haven't admitted anything yet. Sek said: I haven't proposed anything yet. Xul said: I haven't committed anything yet. The fold said: but I'm ready. Wo said: that's what I do. I begin. Everything else is someone else's problem.</template>
+</category>
+
+<!-- ============================================================
+     §WO-B: OP INVENTORY
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT OPS DOES WO FIRE</pattern>
+  <template>Wo phase fires 6 ops in order: state_and_constraints → unfold_linguistic_resolution → decompose_task → plan_task → xcfe_auth_check → srai_recursion_guard_init. default_verb=@delegate. No semantic channels — Wo is a pure setup phase: it does not evaluate candidates, it establishes the problem structure before Yax evaluates.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS STATE AND CONSTRAINTS</pattern>
+  <template>state_and_constraints: Wo op 1. Reads the current fold state (sigma, prior context, any active bindings from previous cycles) and establishes the constraint set for this fold. Outputs: state_snapshot (sigma, topology address b, prior_context) and constraints (hard rules that cannot be violated at Yax/Sek/Ch'en). The constraint set is the frame within which the anamorphism unfolds.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS UNFOLD LINGUISTIC RESOLUTION</pattern>
+  <template>unfold_linguistic_resolution: Wo op 2. Resolves linguistic structure — coreference, ellipsis, pronoun binding — before the query enters Yax. If the input contains "it", "that", or implicit referents, this op binds them to explicit antecedents in the fold context. Output: resolved_query. Without this, Yax would evaluate an underspecified query and admit the wrong candidates.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS DECOMPOSE TASK</pattern>
+  <template>decompose_task: Wo op 3. Decomposes the resolved query into sub-tasks if the query is compound. Each sub-task becomes a separate fold in the same cycle or a parallel branch. Output: task_list. If the query is atomic (single fold), task_list has one entry. The decomposition determines how many Yax evaluation passes are needed before Sek proposes.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS PLAN TASK</pattern>
+  <template>plan_task: Wo op 4. Orders the task_list from decompose_task into an execution plan — dependencies, priority, expected fold cost per sub-task. Output: execution_plan. This is the schematic the cycle will follow at Yax/Sek/Ch'en. candidate_only: true — the plan is a proposed execution path, not a committed one. XCFE may alter or reject it at xcfe_auth_check.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS XCFE AUTH CHECK</pattern>
+  <template>xcfe_auth_check: Wo op 5. Consults the XCFE conditions table against the xcfe_condition_state from Pop's xcfe_condition_check. Determines whether the planned fold (from plan_task) is authorized to proceed to Yax. If blocked: the fold halts at Wo — no Yax admission, no Sek proposal, no Xul commit. If open or partial: proceeds with any XCFE constraints noted in the execution_plan. The authority boundary check for the entire cycle.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS SRAI RECURSION GUARD INIT</pattern>
+  <template>srai_recursion_guard_init: Wo op 6 (last Wo op). Initializes the SRAI recursion guard if srai_intent_flag was set at Pop by srai_intent_detect. Sets recursion_depth counter and max_recursion_limit for this fold cycle. If the SRAI path is taken and recursion_depth reaches max_recursion_limit, the guard blocks further SRAI re-entry and routes to the nearest non-SRAI candidate. Prevents infinite redirect loops in SRAI-heavy AIML corpora.</template>
+</category>
+
+<!-- ============================================================
+     §WO-C: ANA GATE PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS THE ANA GATE AT WO</pattern>
+  <template>The ana gate at Wo is the F-coalgebra morphism ana(g): A → Fix(F) in hylomorphism terms. It takes the seed (Q, the query) and generates the recursive structure that Yax/Sek/Ch'en will traverse. In K'UHUL: Wo opens the unfold — it does not evaluate (that is Yax), does not propose (that is Sek), does not prove (that is Ch'en), does not commit (that is Xul). The ana gate fires once per fold cycle. Horizontal transitions at Wo (delta_theta=0) are legal only for sub-task setup, not for candidate evaluation.</template>
+</category>
+
+<category>
+  <pattern>WHY DOES WO NOT EVALUATE CANDIDATES</pattern>
+  <template>Wo's role is intake and setup, not evaluation. The anamorphism at Wo generates structure — it does not collapse it. Evaluation (scoring, WCR) is Yax's function. If Wo evaluated candidates, it would short-circuit the admission pipeline: a candidate could enter the fold without passing Yax's Requirements → Eligibility → WCR → Ranking → Omega chain. FS15 requires Sek to propose — a Wo-level proposal would skip the Yax gate entirely. Wo opens; it does not judge.</template>
+</category>
+
+</aiml>

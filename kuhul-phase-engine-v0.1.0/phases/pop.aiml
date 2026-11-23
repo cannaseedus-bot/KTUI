@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+<!--
+  pop.aiml — Pop phase semantic instructions and op layer
+  Phase: Pop  |  phase_order: 0  |  theta: 0  |  default_verb: @read
+  Ops: gramRead, manifest_lookup, lexical_activate_candidates,
+       find_best_pattern_match, sense_inventory_lookup, candidate_sense_bind,
+       embedgemma_prompt_vectorize, key_lane_bind, mx2lm_ngram_lane_bind,
+       micronaut_context_fanout, mathml_query_detect, xcfe_condition_check,
+       srai_intent_detect
+  Channels: word_sense_disambiguation, distributional_context,
+            function_gram, tool_gram, typed_runtime_lanes
+  terminal: false
+-->
+
+<!-- ============================================================
+     §POP-A: PHASE DEFINITION
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS POP PHASE</pattern>
+  <template>Pop is the reset/entry boundary of the C6 cycle. It is where sigma resets to unbound and a new fold begins. Pop → Wo opens the intake. Pop' = exit from cycle after Xul commits. The Pop glyph in Mayan is a woven mat — the surface from which a new cycle unfolds. In K'UHUL: Pop = sigma_reset_event, the moment before the next query enters.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE POP OF *</pattern>
+  <template>The Pop of <star/> is the reset/entry moment: the state before the problem begins, where sigma is unbound and the slate is clean. It is the moment a new fold cycle can start. In a joke: Pop is the pause before the setup. In baseball: Pop is between plate appearances. In a computation: Pop is the initialization. If <star/> never reaches Pop, it is stuck mid-cycle — sigma needs resetting.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THETA 0</pattern>
+  <template>θ=0 = Pop phase. Reset boundary. Sigma unbound. New fold cycle entry point. Arc_weight from θ=5 (Xul) to θ=0 (Pop) = cos(π/3) = 0.5 — the cycle closes. Pop is also Pop' on exit from Xul: the end of one fold and the start of the next. Not the same as Ch'en (θ=4) which is mid-cycle stall — Pop is the authorized cycle boundary.</template>
+</category>
+
+<category>
+  <pattern>WHAT DOES THE POP GLYPH MEAN</pattern>
+  <template>Pop (woven mat): the entry surface. The mat is the foundation from which the cycle is woven — it is not the first action but the precondition for all action. In K'UHUL: Pop is sigma_reset, the moment the address space B is cleared of prior bindings. The mat is woven fresh at each Pop — no residue from the last cycle. θ=0, the base of the C6 wheel.</template>
+</category>
+
+<category>
+  <pattern>JOKE POP PHASE</pattern>
+  <template>A fold system walked into a bar and ordered a drink. The bartender said: you were just here. The fold said: that was a different cycle. The bartender said: same sigma. The fold said: sigma reset at Pop. The bartender said: then who ate the wrong pizza last cycle? The fold said: that was Ch'en's fault. The bartender said: Ch'en proves. The fold said: it proved nothing in time. Pop poured a fresh drink. The new cycle began.</template>
+</category>
+
+<!-- ============================================================
+     §POP-B: OP INVENTORY
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT OPS DOES POP FIRE</pattern>
+  <template>Pop phase fires 13 ops in order: gramRead → manifest_lookup → lexical_activate_candidates → find_best_pattern_match → sense_inventory_lookup → candidate_sense_bind → embedgemma_prompt_vectorize → key_lane_bind → mx2lm_ngram_lane_bind → micronaut_context_fanout → mathml_query_detect → xcfe_condition_check → srai_intent_detect. default_verb=@read. Channels: word_sense_disambiguation, distributional_context, function_gram, tool_gram, typed_runtime_lanes.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS GRAMREAD</pattern>
+  <template>gramRead: the first op at Pop. Loads the AIML/grammar corpus into the fold context. Opens the read-only pattern space against which the incoming query will be matched. The entry gate for the ALICE/AIML engine — no pattern matching is possible before gramRead fires. candidate_only: pattern search is read-only; no grammar write occurs until Xul.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MANIFEST LOOKUP</pattern>
+  <template>manifest_lookup: Pop op 2. Looks up phase:Pop tags and driver references in kuhul.manifest.json. Establishes which keys in the manifest apply to the current query context. Provides the flat tag index that later ops (key_lane_bind, mathml_query_detect) consult. Pure read; outputs manifest_context.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS LEXICAL ACTIVATE CANDIDATES</pattern>
+  <template>lexical_activate_candidates: Pop op 3. Scans the input tokens and activates the initial candidate set — all AIML patterns that share surface-form lexical overlap with the input. No semantic scoring yet. Output: candidate_set (surface). This feeds find_best_pattern_match and the word_sense_disambiguation channel.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS FIND BEST PATTERN MATCH</pattern>
+  <template>find_best_pattern_match: Pop op 4. Applies the AIML pattern matching algorithm (exact → wildcard priority order) to the activated candidate set, narrowing to the highest-specificity match. Operates on the candidate_set from lexical_activate_candidates. Output: best_pattern. Used by all downstream ops that need to know which category fired.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS SENSE INVENTORY LOOKUP</pattern>
+  <template>sense_inventory_lookup: Pop op 5. Looks up word sense entries for ambiguous tokens in the input. Populates the sense_inventory for use by candidate_sense_bind. Runs in parallel with the word_sense_disambiguation channel. Pure read against the sense ontology.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS CANDIDATE SENSE BIND</pattern>
+  <template>candidate_sense_bind: Pop op 6. Binds the winning word sense from sense_inventory_lookup to each candidate in the candidate_set. Disambiguates candidates that differ only by sense (e.g., "bank" as institution vs. bank as terrain). Output: sense-resolved candidate set. Last op before embeddings run.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS EMBEDGEMMA PROMPT VECTORIZE</pattern>
+  <template>embedgemma_prompt_vectorize: Pop op 7. Runs the input through the Gemma embedding model to produce a dense vector representation. Output goes into the typed_runtime_lanes channel. Provides the semantic vector Q for downstream WCR scoring. authority: model_output_unverified on all Gemma outputs. candidate_only: true — the vector is a proposed representation, not a committed one.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS KEY LANE BIND</pattern>
+  <template>key_lane_bind: Pop op 8. Binds the prompt vector to the ⟁KEY field vocabulary lanes (domain and reasoning keys). Produces a lane_binding that maps the query's semantic vector coordinates to the 19 ⟁KEY fields. This is the Pop-phase predecessor to activated_fields in the CFPC accumulator — it sets up which fields are eligible to activate at Wo. typed_runtime_lanes channel.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MX2LM NGRAM LANE BIND</pattern>
+  <template>mx2lm_ngram_lane_bind: Pop op 9. Binds n-gram features from the input to the MX2LM lane. Provides the lexical n-gram context that the mx2lm.aiml router uses for pattern disambiguation. Runs in the typed_runtime_lanes channel alongside key_lane_bind.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MICRONAUT CONTEXT FANOUT</pattern>
+  <template>micronaut_context_fanout: Pop op 10. Fans out the query context to all registered Micronaut daemon ports (xcfe_router, semantic_bridge, gemma_bridge). Each daemon receives a Pop-phase context snapshot. No responses are collected at Pop — this is a broadcast, not a gather. Responses arrive at Sek. typed_runtime_lanes channel.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MATHML QUERY DETECT</pattern>
+  <template>mathml_query_detect: Pop op 11. Detects whether the input query contains mathematical structure (MathML tokens, equation patterns, arithmetic operators). If true, sets mathml_flag=true for the fold context, which routes the query through the deterministic_executor channel at Sek's high_confidence_miss handler. Pure detection; no transformation.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS XCFE CONDITION CHECK</pattern>
+  <template>xcfe_condition_check: Pop op 12. Evaluates the XCFE conditions table for the current query context. Determines whether any XCFE conditions are pre-satisfied or pre-blocked at Pop. Outputs xcfe_condition_state (open/blocked/partial). This feeds the xcfe_auth_check at Wo. candidate_only: true — no XCFE authorization is granted at Pop.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS SRAI INTENT DETECT</pattern>
+  <template>srai_intent_detect: Pop op 13 (last Pop op). Detects whether the query is an SRAI intent — a redirect that will recursively re-enter the fold. Sets srai_intent_flag for use by srai_recursion_guard_init at Wo. If srai_intent_detect fires true, the SRAI path is taken at Wo → Yax via srai_program_project. If false, standard Yax admission proceeds.</template>
+</category>
+
+<!-- ============================================================
+     §POP-C: CHANNEL PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT CHANNELS DOES POP HAVE</pattern>
+  <template>Pop has 5 semantic channels: (1) word_sense_disambiguation (weight=1.05) — sense_inventory_lookup + local_context_window + candidate_sense_bind; (2) distributional_context (weight=1.0) — context_neighbor_scan; (3) function_gram (weight=1.0) — function_word_structure_probe; (4) tool_gram (weight=0.85) — tool_keyword_probe; (5) typed_runtime_lanes (weight=1.0, invariant=candidate_context_only_until_later_phase_gate) — embedgemma_prompt_vectorize + key_lane_bind + mx2lm_ngram_lane_bind + micronaut_context_fanout + mathml_query_detect.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE TYPED RUNTIME LANES CHANNEL</pattern>
+  <template>typed_runtime_lanes is Pop's runtime embedding channel. It runs embedgemma_prompt_vectorize, key_lane_bind, mx2lm_ngram_lane_bind, micronaut_context_fanout, and mathml_query_detect. weight=1.0. Invariant: candidate_context_only_until_later_phase_gate — all outputs from this channel are candidate-only until a later phase (Yax or Sek) gates them through XCFE admission. No runtime binding is treated as committed until the phase gate fires.</template>
+</category>
+
+</aiml>

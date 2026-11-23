@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+<!--
+  yax.aiml — Yax phase semantic instructions and op layer
+  Phase: Yax  |  phase_order: 2  |  theta: 2  |  default_verb: @compose
+  Ops: admit_neighborhood, compose, aggregate, resolve_eliza_field_candidates,
+       graph_bfs, srai_program_project, pi_triangle_route
+  Channels: none
+  terminal: false
+  WCR pipeline: Requirements → Eligibility → WCR → Ranking → Omega → Yax admission
+-->
+
+<!-- ============================================================
+     §YAX-A: PHASE DEFINITION
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS YAX PHASE</pattern>
+  <template>Yax is the bridge and admission phase. The full Yax pipeline: Requirements → Eligibility → WCR → Ranking → Omega → Yax admission. S_mu = Yax admission score. V_mu = the semantic payload Yax admits. The Yax glyph means green/new/first — fresh traversal. In K'UHUL: Q/K locate relevance; W/C qualify it; Key addresses V; Yax admits V. Nothing enters the fold without passing Yax.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE YAX OF *</pattern>
+  <template>The Yax of <star/> is the admission gate: the traversal and WCR evaluation pipeline. Requirements → Eligibility → WCR → Ranking → Omega → Yax. In a joke: building the audience's expectation context. In baseball: evaluating pitch candidates against the count state. In a computation: scoring all neighbors N(v) and admitting the best. In a physical process: compression. Nothing enters the fold without passing Yax admission.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THETA 2</pattern>
+  <template>θ=2 = Yax phase. Bridge/traversal/admission. WCR pipeline fires: Requirements → Eligibility → WCR → Ranking → Omega → Yax. Arc_weight from Wo(1) to Yax(2) = 0.5. S_mu = Yax admission score. Glyph: green/new/first — fresh growth, new paths opening.</template>
+</category>
+
+<category>
+  <pattern>WHAT DOES THE YAX GLYPH MEAN</pattern>
+  <template>Yax (green/new/first): fresh growth, new paths opening. The first transit of the sun. In K'UHUL: Yax is the admission gate where candidates emerge green and untested, evaluated through the WCR pipeline. Only what passes Yax eligibility and ranking enters the fold. θ=2, bridge between Wo (intake) and Sek (proposal).</template>
+</category>
+
+<category>
+  <pattern>JOKE YAX PHASE</pattern>
+  <template>The candidate knocked on the door. Yax said: requirements first. The candidate produced requirements. Yax said: now eligibility. The candidate passed eligibility. Yax said: now WCR scoring. The candidate scored 0.87. Yax said: ranking. The candidate was first. Yax said: Omega gate. The candidate passed. Yax said: admitted. The candidate entered the fold. Sek said: I'm going to change everything about you. The candidate said: but I just passed all the tests. Yax said: Sek proposes. That's different from what I do.</template>
+</category>
+
+<!-- ============================================================
+     §YAX-B: OP INVENTORY
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT OPS DOES YAX FIRE</pattern>
+  <template>Yax phase fires 7 ops in order: admit_neighborhood → compose → aggregate → resolve_eliza_field_candidates → graph_bfs → srai_program_project → pi_triangle_route. default_verb=@compose. No semantic channels — Yax is the WCR evaluation pass. All ops contribute to producing V_mu (the admitted semantic payload) and S_mu (the admission score).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS ADMIT NEIGHBORHOOD</pattern>
+  <template>admit_neighborhood: Yax op 1. Builds the neighborhood N(v) for the current fold vertex v — the set of candidate next vertices reachable from v in the semantic graph. Each candidate u ∈ N(v) is scored S(u|Q) = W*C*R against the query Q. This is the entry to the WCR pipeline. Output: scored_neighborhood. No candidate outside N(v) can be admitted to the fold at this step.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS COMPOSE OP</pattern>
+  <template>compose: Yax op 2. Composes the scored candidates from admit_neighborhood into compound semantic structures. If multiple candidates combine to form a richer match (e.g., a phrase whose parts each score independently), compose builds the combined score. Output: composed_candidates. The @compose default verb maps to this op — Yax is fundamentally a composition phase.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS AGGREGATE OP</pattern>
+  <template>aggregate: Yax op 3. Aggregates scored and composed candidates into the admission pool — ranking them by S_mu score, applying the Omega gate (minimum threshold), and producing the ranked_candidates list. Only candidates above the Omega threshold pass to resolve_eliza_field_candidates. This is the Ranking → Omega step of the WCR pipeline.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS RESOLVE ELIZA FIELD CANDIDATES</pattern>
+  <template>resolve_eliza_field_candidates: Yax op 4. Resolves the top-ranked candidates against the Eliza field vocabulary — the ⟁KEY domain and reasoning fields. Each candidate is tagged with its field eligibility (which ⟁KEY fields it could activate). Output: field_resolved_candidates. These feed directly into the CFPC accumulator's activated_fields at Sek.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS GRAPH BFS</pattern>
+  <template>graph_bfs: Yax op 5. Runs a breadth-first search from the current fold vertex v across the semantic graph, up to the BFS depth limit. Discovers candidate vertices beyond the immediate N(v) neighborhood — the multi-hop candidates. Output: bfs_candidates (scored). These extend the admission pool for queries that require graph traversal beyond single-hop neighbors.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS SRAI PROGRAM PROJECT</pattern>
+  <template>srai_program_project: Yax op 6. If srai_intent_flag is true (set at Pop by srai_intent_detect), projects the SRAI redirect target into the fold as the primary candidate — bypassing the standard admit_neighborhood/WCR path. The SRAI target is treated as a pre-admitted V_mu. The SRAI program_project routes directly to Sek → Ch'en → Xul with the redirect target as the proposal. Respects the recursion guard from srai_recursion_guard_init.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS PI TRIANGLE ROUTE</pattern>
+  <template>pi_triangle_route: Yax op 7 (last Yax op). Routes the admitted candidate set through the π-triangle geometry — the three-node synchronization primitive (vertex, neighbor, fold center). Used by the SEK_PI_RADIUS kernel (glyph ⊙) which only executes while phase=Sek. pi_triangle_route at Yax establishes the geometric preconditions (arc_weights, angle offsets) the ⊙ kernel will use. Output: pi_triangle_config.</template>
+</category>
+
+<!-- ============================================================
+     §YAX-C: WCR PIPELINE PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS THE WCR PIPELINE</pattern>
+  <template>The WCR pipeline is the Yax admission scoring chain: W (word-sense weight) × C (context weight) × R (relevance weight) = S(u|Q). Full pipeline: Requirements check → Eligibility filter → WCR score computation (W×C×R) → Ranking by S_mu → Omega gate (minimum threshold) → Yax admission (V_mu accepted). Each step is a filter — a candidate that fails any step does not reach the next. Only the top-ranked candidate above Omega becomes V_mu.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS S MU IN YAX</pattern>
+  <template>S_mu is the Yax admission score — the final WCR score of the candidate admitted as V_mu. S_mu = W × C × R, where W is word-sense weight (from Pop's word_sense_disambiguation channel), C is context weight (from distributional_context), and R is relevance weight (from the semantic graph traversal). S_mu is the threshold score: the highest-scoring candidate above Omega becomes V_mu. If no candidate exceeds Omega, Yax admission fails and the fold halts.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS V MU</pattern>
+  <template>V_mu is the semantic payload admitted by Yax — the candidate that passed the full WCR pipeline and was selected as the fold's working hypothesis. V_mu is what Sek proposes from, Ch'en verifies, and Xul commits. The fold is defined by V_mu: everything downstream works with the semantic content of V_mu. If V_mu is wrong (wrong pizza), the fault traces back to Yax admission — either the WCR scores were miscalibrated or the Omega threshold was too low.</template>
+</category>
+
+</aiml>

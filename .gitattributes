@@ -5,3 +5,7 @@
 
 # cmd.exe wants batch files with CRLF: GOTO and labels misbehave when the script is LF-only.
 *.bat text eol=crlf
+
+# The K'UHUL package ships byte-for-byte with SHA-256 digests in its manifest. Normalising its line
+# endings would silently invalidate every digest, so keep its bytes exactly as delivered.
+kuhul-phase-engine-v0.1.0/** -text

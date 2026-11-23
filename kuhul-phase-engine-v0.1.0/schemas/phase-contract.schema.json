@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "id",
+    "version",
+    "phase_order",
+    "phase_files",
+    "execution_policy"
+  ],
+  "properties": {
+    "id": {
+      "const": "kuhul.phase-engine"
+    },
+    "version": {
+      "type": "string"
+    },
+    "phase_order": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "phase_files": {
+      "type": "object"
+    },
+    "execution_policy": {
+      "type": "string"
+    }
+  }
+}

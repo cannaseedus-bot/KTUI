@@ -1,0 +1,17 @@
+(* GML/2: strict portable subset; extension attributes require registered schemas. *)
+Document = "graph", "[", { GraphEntry }, "]" ;
+GraphEntry = GraphAttribute | Node | Edge ;
+GraphAttribute = Attribute ;
+Node = "node", "[", { Attribute }, "]" ;
+Edge = "edge", "[", { Attribute }, "]" ;
+Attribute = Identifier, Value ;
+Value = String | Number | "[", { Attribute }, "]" ;
+Identifier = ( Letter | "_" ), { Letter | Digit | "_" } ;
+Number = [ "-" | "+" ], Digit, { Digit }, [ ".", Digit, { Digit } ], [ ("e"|"E"), ["-"|"+"], Digit, {Digit} ] ;
+String = '"', { Character | Escape }, '"' ;
+Escape = "\", ( '"' | "\" | "n" | "t" ) ;
+Letter = "a" | ... | "z" | "A" | ... | "Z" ;
+Digit = "0" | ... | "9" ;
+(* The lexical layer skips whitespace and balanced (* ... *) comments.
+   Semantic validation enforces ids, endpoints, schemas, typed fields,
+   edge roles, operator signatures, and external capability resolution. *)

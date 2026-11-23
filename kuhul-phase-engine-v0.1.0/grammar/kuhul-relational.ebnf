@@ -1,0 +1,8 @@
+(* Relational extension v0.2: graph declarations and relation selectors. *)
+relational_program = { relational_statement } ;
+relational_statement = relation_field | relation_pattern | relation_binding ;
+relation_field   = "field", reference, "{", { relation_pattern | relation_binding }, "}" ;
+relation_pattern = "relation", identifier, "=", string ;
+relation_binding = "bind", identifier, "->", reference ;
+(* Imported: reference, identifier, string from kuhul-grammar.ebnf. *)
+(* A relation pattern selects a candidate; it does not assert a fact. *)

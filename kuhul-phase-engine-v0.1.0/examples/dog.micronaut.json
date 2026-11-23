@@ -1,0 +1,117 @@
+{
+  "format": "kuhul.micronaut/1",
+  "id": "dog_relations",
+  "role": "Resolve dog description from a bounded semantic field",
+  "graph": "relational-graph.gml",
+  "data": "keys.jsonl",
+  "patterns": [
+    {
+      "match": "DOG",
+      "action": "intent",
+      "target": "describe_dog"
+    }
+  ],
+  "capabilities": [
+    {
+      "name": "field_read",
+      "kind": "read"
+    },
+    {
+      "name": "reply",
+      "kind": "respond"
+    }
+  ],
+  "bindings": [
+    {
+      "name": "field",
+      "type": "field",
+      "source": "dog_field"
+    }
+  ],
+  "routes": [
+    {
+      "from": "describe_dog",
+      "to": "dog_field"
+    }
+  ],
+  "gate": {
+    "admission": false,
+    "verification": false,
+    "closure": true
+  },
+  "phases": [
+    {
+      "name": "Pop",
+      "steps": [
+        {
+          "op": "READ",
+          "out": "field"
+        }
+      ]
+    },
+    {
+      "name": "Wo",
+      "steps": [
+        {
+          "op": "BIND",
+          "in": "field",
+          "out": "graph"
+        }
+      ]
+    },
+    {
+      "name": "Yax",
+      "steps": [
+        {
+          "op": "MAP",
+          "in": "graph",
+          "out": "candidates"
+        },
+        {
+          "op": "MATCH",
+          "in": "candidates",
+          "out": "matched"
+        },
+        {
+          "op": "PI",
+          "in": "matched",
+          "out": "ranked"
+        }
+      ]
+    },
+    {
+      "name": "Sek",
+      "steps": [
+        {
+          "op": "SRAI",
+          "in": "ranked",
+          "out": "resolved"
+        },
+        {
+          "op": "ACCUMULATE",
+          "in": "resolved",
+          "out": "accumulator"
+        }
+      ]
+    },
+    {
+      "name": "Ch'en",
+      "steps": [
+        {
+          "op": "FOLD",
+          "in": "accumulator",
+          "out": "result"
+        }
+      ]
+    },
+    {
+      "name": "Xul",
+      "steps": [
+        {
+          "op": "CLOSE",
+          "in": "result"
+        }
+      ]
+    }
+  ]
+}

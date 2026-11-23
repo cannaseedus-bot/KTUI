@@ -1,0 +1,19 @@
+{
+  "format": "gml-subset/v0.3",
+  "directed": true,
+  "node_required": [
+    "id",
+    "label"
+  ],
+  "edge_required": [
+    "source",
+    "target"
+  ],
+  "edge_optional": [
+    "relation",
+    "weight",
+    "confidence",
+    "retention"
+  ],
+  "note": "GML is not JSON. This is a field contract, not a JSON Schema for GML syntax. v0.3 loader uses a restricted GML subset; see README."
+}

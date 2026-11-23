@@ -51,6 +51,10 @@ try:  # typed contracts for the tools, and the plan composer that admits composi
 except ImportError:  # pragma: no cover
     functions = None
     planner = None
+try:  # the K'UHUL phase package, read as data (digests verified before a bank is learned)
+    import phases
+except ImportError:  # pragma: no cover
+    phases = None
 import math
 import tempfile
 import shlex
@@ -647,6 +651,19 @@ class ChatApp(App):
         startup = alice_dir / "startup.xml"
         if alice_dir.is_dir() and startup.is_file():
             kernel.learn(str(startup))
+        # K'UHUL phase banks first: lowest precedence, and only when their manifest digest matches.
+        # They are data — the package grants no permission and this adds no second compiler.
+        self.phase_note = ""
+        if phases is not None and phases.available():
+            loaded = 0
+            for label, path in phases.load_order():
+                if path.is_file():
+                    try:
+                        kernel.learn(str(path))
+                        loaded += 1
+                    except Exception as error:  # a bank that will not parse must not stop the app
+                        self.phase_note += f"{label}: {error}; "
+            self.phase_note = self.phase_note or f"{loaded} phase banks learned"
         learned = alice_dir / "knumatic_learned.aiml"
         if learned.is_file():
             kernel.learn(str(learned))
@@ -797,6 +814,15 @@ class ChatApp(App):
         blocks.extend(["```", output, "```"])
         return "\n".join(blocks)
 
+    def action_phases(self) -> None:
+        """Verify the K'UHUL package as data: digests, cycle order, and what precedence will do."""
+        if phases is None:
+            self.say_system("The K'UHUL phase adapter (phases.py) is unavailable.")
+            return
+        report = phases.summary([APP_ROOT / "codex.aiml", APP_ROOT / "_override.aiml"])
+        note = getattr(self, "phase_note", "")
+        self.say_system((f"loader: {note}\n\n" if note else "") + report)
+
     def action_plans(self) -> None:
         """List every declared plan and whether the registry admits it."""
         if planner is None:
@@ -855,6 +881,7 @@ class ChatApp(App):
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
+        commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
         commands["workspace"] = ("Workspace: pick the folder the model may edit", self.action_pick_workspace, f"Currently {sandbox.root}")
         commands["allow"] = ("Workspace: grant write and patch", partial(self.action_allow, "on"), "The model may change files here")
         commands["readonly"] = ("Workspace: back to read-only", partial(self.action_allow, "off"), "Reads and searches only")
@@ -995,6 +1022,9 @@ class ChatApp(App):
                 self.say_system(self.plan_answer(argument))
             else:
                 self.action_plans()
+            return
+        if name in {"phase", "phases"}:
+            self.action_phases()
             return
         if name in {"workspace", "cwd"}:
             if argument:

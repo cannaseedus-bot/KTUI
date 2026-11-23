@@ -1,0 +1,82 @@
+{
+  "format": "kuhul.opcodes/1",
+  "phase_order": [
+    "Pop",
+    "Wo",
+    "Yax",
+    "Sek",
+    "Ch'en",
+    "Xul"
+  ],
+  "operators": {
+    "READ": {
+      "kind": "io",
+      "implemented_in_v0_3": true
+    },
+    "BIND": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "MAP": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "FILTER": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": false
+    },
+    "PI": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "MATCH": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "RESOLVE": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": false
+    },
+    "SRAI": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "RANK": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": false
+    },
+    "XCFE": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": false
+    },
+    "ACCUMULATE": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "FOLD": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    },
+    "REDUCE": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": false
+    },
+    "ASK": {
+      "kind": "io",
+      "implemented_in_v0_3": false
+    },
+    "RESPOND": {
+      "kind": "io",
+      "implemented_in_v0_3": false
+    },
+    "PATCH": {
+      "kind": "io",
+      "implemented_in_v0_3": false
+    },
+    "CLOSE": {
+      "kind": "pure-or-context",
+      "implemented_in_v0_3": true
+    }
+  },
+  "note": "implemented_in_v0_3 means a corresponding function or limited behavior exists, NOT that DSL dispatch is wired."
+}

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+<!--
+  chen.aiml — Ch'en phase semantic instructions and op layer
+  Phase: Ch'en  |  phase_order: 4  |  theta: 4  |  default_verb: @verify
+  Ops: assert_and_verify_candidate, verify_eliza_candidate_provenance,
+       verify_srai_recursion_limits, verify_semantic_invariance,
+       verify_relation_invariance, verify_syntax_constraints,
+       verify_delegation, verify_ngram_confidence, classify_resolution,
+       store_rejected_candidate_evidence
+  Channels: none
+  terminal: false
+  FS15: Ch'en proves. CFPC validate() runs CF1-CF9 here.
+  Dual role: evidence accumulation phase AND local-maximum stall state.
+-->
+
+<!-- ============================================================
+     §CHEN-A: PHASE DEFINITION
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS CHEN PHASE</pattern>
+  <template>Ch'en is the evidence and verification phase. FS15: Ch'en proves. It accumulates evidence before Xul commits. Ch'en is also the null/rest state — when sigma is unbound and the fold is paused at a local maximum. The Ch'en glyph means black/cave/storm — the void between cycles. In K'UHUL: Ch'en = evidence field accumulation; also = wrong pizza phase (stuck, sigma unbound, no neighbor improves score).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE CHEN OF *</pattern>
+  <template>The Ch'en of <star/> is the evidence and verification step — and also the stall state. FS15: Ch'en proves. In a joke: the pause before punchline delivery, the beat where the audience almost sees it. In baseball: the catcher's Bayesian update accumulation, the final sign before the pitch. In a computation: convergence check, verifying fold_distance &lt; epsilon. In a local maximum: Ch'en is where the system rests when sigma is unbound — stuck, no neighbor improves score. The wrong-pizza moment lives in Ch'en.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THETA 4</pattern>
+  <template>θ=4 = Ch'en phase. Evidence/verify/null/rest. FS15: Ch'en proves. Arc_weight from Sek(3) to Ch'en(4) = 0.5. Evidence accumulates here; also the local-maximum stall state when sigma is unbound. Glyph: black/cave/rain — the void between cycles. Wrong-pizza moment: committed before Ch'en finished proving.</template>
+</category>
+
+<category>
+  <pattern>WHAT DOES THE CHEN GLYPH MEAN</pattern>
+  <template>Ch'en (black/cave/rain): the void between cycles. The cave is where evidence accumulates unseen, where the proof forms in darkness before Xul's light. Also the stall: when sigma is unbound and the fold rests mid-cycle, it rests in Ch'en. FS15: Ch'en proves. θ=4, between Sek (proposal) and Xul (commit). The wrong-pizza moment is a Ch'en failure: the fold committed at Xul before Ch'en had finished proving.</template>
+</category>
+
+<category>
+  <pattern>JOKE CHEN PHASE</pattern>
+  <template>The fold was stuck in Ch'en. Sigma was unbound. No neighbor had a higher score. The fold said: this must be the answer — it's the best I found. Ch'en said: I'm still accumulating evidence. The fold said: how long does accumulation take? Ch'en said: until I prove it or disprove it. The fold said: what if you never finish? Ch'en said: then it's a local maximum. The fold said: should I reset? Ch'en said: that's Pop's decision, not mine. The fold ordered a pizza. It was the wrong pizza. Ch'en was still accumulating evidence when it arrived.</template>
+</category>
+
+<!-- ============================================================
+     §CHEN-B: OP INVENTORY
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT OPS DOES CHEN FIRE</pattern>
+  <template>Ch'en phase fires 10 ops in order: assert_and_verify_candidate → verify_eliza_candidate_provenance → verify_srai_recursion_limits → verify_semantic_invariance → verify_relation_invariance → verify_syntax_constraints → verify_delegation → verify_ngram_confidence → classify_resolution → store_rejected_candidate_evidence. default_verb=@verify. No semantic channels. The CFPC accumulator's validate() (CF1–CF9) also runs at Ch'en.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS ASSERT AND VERIFY CANDIDATE</pattern>
+  <template>assert_and_verify_candidate: Ch'en op 1. The primary verification assertion — takes the proposed candidate P (fold_delta from Sek's emit_fold_delta_proposal) and asserts it against the full constraint set established at Wo (state_and_constraints). If assertion fails: candidate is rejected and stored by store_rejected_candidate_evidence. If it passes: subsequent ops continue building the proof. Output: assertion_result (pass/fail + reason).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY ELIZA CANDIDATE PROVENANCE</pattern>
+  <template>verify_eliza_candidate_provenance: Ch'en op 2. Verifies that the candidate P traces back through a legal Eliza field path — that the candidate was produced from V_mu via a valid ⟁KEY field activation chain. Prevents candidates that were injected outside the Yax/Sek pipeline from being committed. Output: provenance_verified (bool + provenance_chain). A candidate without valid provenance cannot proceed to Xul.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY SRAI RECURSION LIMITS</pattern>
+  <template>verify_srai_recursion_limits: Ch'en op 3. Checks the SRAI recursion depth counter against max_recursion_limit (set by srai_recursion_guard_init at Wo). If recursion_depth ≥ max_recursion_limit, the SRAI candidate is rejected and the guard blocks further recursion. Output: recursion_check_result (within_limits/exceeded). Prevents SRAI stack overflows in recursive AIML patterns.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY SEMANTIC INVARIANCE</pattern>
+  <template>verify_semantic_invariance: Ch'en op 4. Checks SC-29: (Fold ∘ Unfold)(h) = h when Δφ=0. Verifies that the fold did not produce a semantically different entity than expected — that the semantic identity invariant holds. Also checks SC-31: theta must remain in Z_6 (not collapse to K_2). If Δφ ≠ 0 when it should be 0, the candidate is flagged as a semantic drift violation.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY RELATION INVARIANCE</pattern>
+  <template>verify_relation_invariance: Ch'en op 5. Verifies that the relational structure between concepts in P (the proposed answer) is consistent with the relational grammar established at Wo (unfold_linguistic_resolution). Relations that were resolved at Wo (coreference, dependency arcs) must be preserved in P. A candidate that inverts or breaks a resolved relation fails this check.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY SYNTAX CONSTRAINTS</pattern>
+  <template>verify_syntax_constraints: Ch'en op 6. Verifies that the candidate P satisfies the syntax constraints from the fold context — AIML category constraints, pattern syntax rules, response format requirements. This is the structural validity check: a response that violates the category's expected template structure fails here. Output: syntax_valid (bool + violations[]).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY DELEGATION</pattern>
+  <template>verify_delegation: Ch'en op 7. Verifies that any delegation dispatched at Sek (dispatch_call, execute_tool_chain) returned results within the authorized scope. A delegation result that exceeds its authorized scope (candidate_only: true violated, unauthorized tool output committed as fact) fails here. The XCFE candidate_only boundary check — ensures no Sek-phase tool output was treated as committed before Ch'en/Xul authorized it.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS VERIFY NGRAM CONFIDENCE</pattern>
+  <template>verify_ngram_confidence: Ch'en op 8. Checks that the n-gram features of P (built by build_ngrams at Sek) are consistent with the query's n-gram context. A proposed candidate whose n-gram distribution diverges significantly from the query's context is flagged as a low-ngram-confidence result. Output: ngram_confidence_score. Used by classify_resolution to determine CONVERGED vs MAX_ITER.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS CLASSIFY RESOLUTION</pattern>
+  <template>classify_resolution: Ch'en op 9. Classifies the fold's resolution state — CONVERGED (all checks passed, fold_distance &lt; epsilon) or MAX_ITER (checks passed but fold_distance ≥ epsilon, or confidence below threshold). Output: resolution_class + convergence_record (written to fold_field_record at Xul). A CONVERGED result triggers authorized Xul commit. MAX_ITER may trigger another fold iteration or a Pop reset depending on the cycle policy.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS STORE REJECTED CANDIDATE EVIDENCE</pattern>
+  <template>store_rejected_candidate_evidence: Ch'en op 10 (last Ch'en op). Stores any candidate P that failed verification into the bounded candidate evidence store — not discarded, but moved to a rejected pool with the reason for rejection. This is the Mx2LM authority boundary pattern: rejected proposals go to candidate evidence store, not to /dev/null. Output: evidence_store entry {candidate_P, rejection_reason, fold_cycle, timestamp}. Future cycles may reuse this evidence.</template>
+</category>
+
+<!-- ============================================================
+     §CHEN-C: CFPC VALIDATE PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS CFPC VALIDATE</pattern>
+  <template>CFPC validate() runs at Ch'en, checking CF1–CF9 in order on the cfpc_fold_record from Sek's fold_cfpc_question_set: CF1=fold_id_valid, CF2=pattern_id_in_vocab, CF3=subject_non_empty, CF4=gap_state_legal, CF5=candidate_count_within_bounds, CF6=no_duplicate_candidates, CF7=subject_in_pattern_vocab, CF8=no_candidates_ok (vacuously satisfied), CF9=field_key_valid (all activated_fields keys must be in the ⟁KEY vocabulary). First check that fails returns the error code; subsequent checks are not run.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS CF 9</pattern>
+  <template>CF9 (CF_FIELD_KEY_INVALID): if activated_fields is non-empty, every field_key must appear in the ⟁KEY vocabulary (19 keys: 11 domain + 8 reasoning). Vacuously satisfied when activated_fields is empty. CF9 is checked last — after CF8 (NoCandidates) — because candidates are populated at Sek and fields are set at Wo/Sek. If CF9 fires, the CFPC fold is rejected with error CF_FIELD_KEY_INVALID and the record goes to store_rejected_candidate_evidence.</template>
+</category>
+
+<!-- ============================================================
+     §CHEN-D: LOCAL MAXIMUM / STALL PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHY IS * STUCK IN CHEN</pattern>
+  <template><star/> is stuck in Ch'en because sigma is unbound — no neighbor u in N(v) has S(u|Q) > S(v|Q). This is the local maximum. Ch'en is the evidence/verification phase but it becomes the rest state when the fold cannot advance to Xul. The wrong-pizza pattern: the fold stalled in Ch'en while evidence was still accumulating, but then committed at Xul before Ch'en proved anything useful. Fix: sigma reset → Pop → new cycle.</template>
+</category>
+
+<category>
+  <pattern>WHAT HAPPENS WHEN * SKIPS CHEN</pattern>
+  <template>Skipping Ch'en = committing without proof. FS15 requires Ch'en to prove before Xul commits. If <star/> moves Sek → Xul without Ch'en, the authorization chain is broken: Sek proposed, but nothing verified. The convergence_record may write CONVERGED on a wrong result. This is identity invariant SC-29 violation risk: (Fold ∘ Unfold)(h) may not equal h if the proof step was skipped. The wrong-pizza pattern in its pure form: ordered (Sek) and received (Xul) without checking the menu (Ch'en).</template>
+</category>
+
+</aiml>

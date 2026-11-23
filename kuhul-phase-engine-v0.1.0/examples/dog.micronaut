@@ -1,0 +1,17 @@
+micronaut dog_relations {
+  role: "Resolve dog description from a bounded semantic field";
+  graph "relational-graph.gml";
+  data "keys.jsonl";
+  pattern "DOG" => intent describe_dog;
+  capability field_read: read;
+  capability reply: respond;
+  bind field: field -> dog_field;
+  route describe_dog -> dog_field;
+  gate XCFE { admission: false; verification: false; closure: true; }
+  phase Pop { op READ out field; }
+  phase Wo { op BIND in field out graph; }
+  phase Yax { op MAP in graph out candidates; op MATCH in candidates out matched; op PI in matched out ranked; }
+  phase Sek { op SRAI in ranked out resolved; op ACCUMULATE in resolved out accumulator; }
+  phase Chen { op FOLD in accumulator out result; }
+  phase Xul { op CLOSE in result; }
+}

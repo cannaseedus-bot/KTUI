@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0">
+
+<!--
+  sek.aiml — Sek phase semantic instructions and op layer
+  Phase: Sek  |  phase_order: 3  |  theta: 3  |  default_verb: @call
+  Ops: compute_over_admitted_structure, resolve_xaiml_candidate,
+       select_eliza_field_candidate, execute_tool_chain, srai_xcfe_propose,
+       dispatch_call, build_ngrams, emit_fold_delta_proposal,
+       map_paragraph_claim, fold_paragraph_accumulator,
+       map_cfpc_question_candidate, filter_cfpc_question_candidates,
+       rank_cfpc_question_candidates, fold_cfpc_question_set
+  Channels: high_confidence_miss
+  terminal: false
+  FS15: Sek proposes. SEK_PI_RADIUS kernel (⊙) active while phase=Sek.
+-->
+
+<!-- ============================================================
+     §SEK-A: PHASE DEFINITION
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS SEK PHASE</pattern>
+  <template>Sek is the transform and proposal phase. FS15: Sek proposes. The candidate hypothesis is generated here — Sek is where the fold twists, flips, or reframes the input. The Sek glyph (Sotz') is a bat — hanging inverted, the unexpected angle. In hylomorphism: Sek is where the punchline starts forming, where the semantic flip fires, where the pitch trajectory diverges. Sek proposes; it does not commit.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THE SEK OF *</pattern>
+  <template>The Sek of <star/> is the proposal and twist: FS15 says Sek proposes. It is the hypothesis, the candidate, the semantic flip. In a joke: the moment the punchline begins forming — the expectation diverges from the setup. In baseball: pitch tunneling divergence point, or the backwards-pitching flip. In a computation: the proposed next vertex v_next. In a physical process: the ignition approach — the fold twists toward commitment. Sek proposes; it does not yet commit.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS THETA 3</pattern>
+  <template>θ=3 = Sek phase. Transform/proposal/twist. FS15: Sek proposes. Arc_weight from Yax(2) to Sek(3) = 0.5. The hypothesis forms here. Glyph: Sotz'/bat — hanging inverted, the unexpected angle. Sek proposes; Ch'en proves.</template>
+</category>
+
+<category>
+  <pattern>WHAT DOES THE SEK GLYPH MEAN</pattern>
+  <template>Sek / Sotz' (bat): the creature that hangs inverted and sees the world from an unexpected angle. FS15: Sek proposes. In K'UHUL: Sek is where the fold twists — the hypothesis forms, the punchline begins, the pitch trajectory diverges. The bat's inverted perspective is the semantic flip. θ=3, between Yax (admission) and Ch'en (verification). Sek proposes; it does not commit.</template>
+</category>
+
+<category>
+  <pattern>JOKE SEK PHASE</pattern>
+  <template>Sek proposed a candidate. Ch'en said: I'll need to verify that. Sek said: it's clearly correct. Ch'en said: FS15 says I prove. Sek said: fine, verify it. Ch'en checked the evidence. Ch'en said: it's actually wrong. Sek said: but I proposed it very confidently. Ch'en said: confidence is C field, not proof. Sek said: can we skip to Xul? Ch'en said: Xul is next. Sek said: great. Ch'en said: after I finish proving. Sek waited. Xul did not fire. This is the wrong-pizza moment in its natural habitat.</template>
+</category>
+
+<!-- ============================================================
+     §SEK-B: OP INVENTORY
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT OPS DOES SEK FIRE</pattern>
+  <template>Sek phase fires 14 ops in order: compute_over_admitted_structure → resolve_xaiml_candidate → select_eliza_field_candidate → execute_tool_chain → srai_xcfe_propose → dispatch_call → build_ngrams → emit_fold_delta_proposal → map_paragraph_claim → fold_paragraph_accumulator → map_cfpc_question_candidate → filter_cfpc_question_candidates → rank_cfpc_question_candidates → fold_cfpc_question_set. default_verb=@call. Channel: high_confidence_miss. SEK_PI_RADIUS kernel (⊙) active while phase=Sek.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS COMPUTE OVER ADMITTED STRUCTURE</pattern>
+  <template>compute_over_admitted_structure: Sek op 1. Applies the fold's transform function f to V_mu — the semantic payload admitted by Yax. This is the core Sek computation: takes the admitted structure and produces the proposed candidate P (the hypothesis). Output: proposed_candidate P. FS15: this is the Sek proposal. Ch'en will verify P; Xul will commit it if authorized. The SEK_PI_RADIUS kernel (⊙) may augment this computation with π-geometry weighting.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS RESOLVE XAIML CANDIDATE</pattern>
+  <template>resolve_xaiml_candidate: Sek op 2. Resolves the proposed candidate P against the XAIML (extended AIML) pattern space — checking for XAIML-specific category matches that standard AIML pattern matching (gramRead) could not reach. XAIML categories have xaiml: namespaced tags and extended conditions. Output: xaiml_resolved_candidate (may be P unchanged, or a richer XAIML version of P).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS SELECT ELIZA FIELD CANDIDATE</pattern>
+  <template>select_eliza_field_candidate: Sek op 3. Selects the best ⟁KEY field candidate from the field_resolved_candidates (produced at Yax by resolve_eliza_field_candidates). This op sets the activated_fields for the CFPC accumulator — the ⟁KEY domain/reasoning fields that this fold activates. Output: selected_field_candidate (field_key + weight). CF9 in Ch'en will verify that the field_key is in the ⟁KEY vocabulary.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS EXECUTE TOOL CHAIN</pattern>
+  <template>execute_tool_chain: Sek op 4. Fires any tool calls required by the proposed candidate P. Tools are XCFE-gated — candidate_only: true, no execution authority without Ch'en admission and Xul commit. Output: tool_outputs (candidate results, not committed). Used by the high_confidence_miss channel when the candidate requires external data (web_search_dispatch, source_acquisition, etc.).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS SRAI XCFE PROPOSE</pattern>
+  <template>srai_xcfe_propose: Sek op 5. If the SRAI path was taken at Yax (srai_program_project fired), this op wraps the SRAI redirect as an XCFE proposal — a formal candidate submission to the XCFE conditions table. The SRAI target becomes P_srai, proposed as the fold's answer. XCFE evaluates it; if authorized, Ch'en verifies and Xul commits. This keeps SRAI redirects inside the FS15 chain rather than bypassing it.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS DISPATCH CALL</pattern>
+  <template>dispatch_call: Sek op 6. Dispatches the proposed candidate P to the xcfe_router for routing to the appropriate handler (xcfe_router.cpp, scxq2_runtime.cpp, gemma_bridge_route.cpp, semantic_bridge.cpp). This is the Sek-level dispatch — not a commit, a routing proposal. The xcfe_router returns a dispatch_result that Ch'en will verify. In the high_confidence_miss channel: dispatch_call routes miss-kind results to the appropriate handler (unfold_book, web_search_dispatch, etc.).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS BUILD NGRAMS</pattern>
+  <template>build_ngrams: Sek op 7. Builds n-gram features from the proposed candidate P — bigrams, trigrams, skip-grams. Output: ngram_features. Used by Ch'en's verify_ngram_confidence op to check that the proposed candidate's n-gram profile matches the query's n-gram context. Also consumed by the MX2LM lane in the next Pop cycle (via mx2lm_ngram_lane_bind).</template>
+</category>
+
+<category>
+  <pattern>WHAT IS EMIT FOLD DELTA PROPOSAL</pattern>
+  <template>emit_fold_delta_proposal: Sek op 8. Emits the fold delta — the difference between the current fold state and the proposed next state P. Output: fold_delta (sigma_before, sigma_after_if_P_commits, field_activations, topology_change). This is the formal proposal record that Ch'en verifies and Xul's compare_and_commit acts on. FS15: this is what "Sek proposes" produces as a data structure.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MAP PARAGRAPH CLAIM</pattern>
+  <template>map_paragraph_claim: Sek op 9. Maps the proposed candidate P's text content into paragraph claim structures. Each paragraph unit in the response is tagged as a claim — {claim_text, claim_type, source_candidate, confidence}. Output: paragraph_claims[]. Feeds fold_paragraph_accumulator. Used when the fold produces a multi-paragraph response where each paragraph is an independently verifiable claim.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS FOLD PARAGRAPH ACCUMULATOR</pattern>
+  <template>fold_paragraph_accumulator: Sek op 10. Accumulates paragraph claims from map_paragraph_claim into the paragraph fold — a structured record of the response's claim set. Output: paragraph_fold_record {claims[], coherence_score, fold_id}. The paragraph accumulator is the multi-paragraph analog of the CFPC question fold accumulator — both are Sek-phase accumulators that Ch'en verifies before Xul commits.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MAP CFPC QUESTION CANDIDATE</pattern>
+  <template>map_cfpc_question_candidate: Sek op 11. Maps the proposed candidate P to a CFPCQuestionFoldAccumulator candidate entry — {pattern_id, subject, raw_text, confidence, source}. Part of the CFPC question fold pipeline. Output: cfpc_candidate. The CFPC accumulator is the khanary::kuhul namespace fold record for question-fold tracking: fold_id, pattern_id, subject, gap_state, candidates, activated_fields, wildcard_bindings.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS FILTER CFPC QUESTION CANDIDATES</pattern>
+  <template>filter_cfpc_question_candidates: Sek op 12. Applies CF1–CF8 pre-filters to the cfpc_candidate from map_cfpc_question_candidate (fold_id valid, pattern_id in vocabulary, subject non-empty, gap_state legal, candidate count within bounds, duplicate check, subject in pattern vocab, non-empty candidates). CF9 (field_key valid) runs at Ch'en after field keys are set. Output: filtered_cfpc_candidates.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS RANK CFPC QUESTION CANDIDATES</pattern>
+  <template>rank_cfpc_question_candidates: Sek op 13. Ranks the filtered_cfpc_candidates by confidence score, applying the CFPC ranking criteria. Output: ranked_cfpc_candidates (ordered by confidence, top-K selected). These are the candidates that fold_cfpc_question_set will accumulate into the question fold record.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS FOLD CFPC QUESTION SET</pattern>
+  <template>fold_cfpc_question_set: Sek op 14 (last Sek op). Folds the ranked_cfpc_candidates into the CFPCQuestionFoldAccumulator — populating the candidates[] list, setting gap_state, recording wildcard_bindings. Output: cfpc_fold_record (not yet validated). Ch'en runs CF9 and the full validate() chain (CF1–CF9) before Xul commits the fold record. semantic_authority=false and dispatch=false remain set until XCFE authorizes at Ch'en/Xul.</template>
+</category>
+
+<!-- ============================================================
+     §SEK-C: CHANNEL PATTERNS
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS THE HIGH CONFIDENCE MISS CHANNEL</pattern>
+  <template>high_confidence_miss is Sek's semantic channel for queries where the fold has high confidence that the standard AIML answer is wrong (miss). weight=1.15 — it carries more weight than the standard Sek ops when active. Ops: miss_kind_classify → dispatch_call → execute_tool_chain. miss_kind_routing: semantic→unfold_book, factual→web_search_dispatch, capability→delegate_micronaut, memory→jrom_replay, mathematical→deterministic_executor, evidence→source_acquisition. The channel fires when the best AIML match score falls below the miss threshold.</template>
+</category>
+
+<category>
+  <pattern>WHAT IS MISS KIND CLASSIFY</pattern>
+  <template>miss_kind_classify: first op in the high_confidence_miss channel. Classifies the miss type — semantic, factual, capability, memory, mathematical, or evidence — based on the query's features (embedgemma vector, mathml_flag, key_lane bindings). Output: miss_kind. The miss_kind determines which miss_kind_routing target dispatch_call uses: a mathematical miss routes to deterministic_executor; a factual miss to web_search_dispatch; etc.</template>
+</category>
+
+<!-- ============================================================
+     §SEK-D: SEK PI RADIUS KERNEL
+     ============================================================ -->
+
+<category>
+  <pattern>WHAT IS THE SEK PI RADIUS KERNEL</pattern>
+  <template>The SEK_PI_RADIUS kernel (glyph ⊙, pi_radius.cpp) is a special K'UHUL kernel that ONLY executes while kuhul::phase::Name is Sek (θ=3). It computes π-geometric weights over the pi_triangle_config established at Yax (pi_triangle_route). These weights modulate compute_over_admitted_structure — augmenting the semantic transform with arc_weight geometry. When phase is not Sek, ⊙ is a no-op. It is the only phase-locked kernel in the K'UHUL engine.</template>
+</category>
+
+</aiml>

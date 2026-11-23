@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<aiml version="2.0" xmlns:xcfe="urn:kuhul:xcfe:aiml:1.0">
+  <!-- This category proposes a host-controlled training admission. It grants nothing. -->
+  <category>
+    <pattern>PROPOSE GEMMA TRAINING ADMISSION</pattern>
+    <template><xcfe:emit kind="candidate" family="trainer_admission" target="gemma_webgl2" phase="Yax"/></template>
+  </category>
+</aiml>

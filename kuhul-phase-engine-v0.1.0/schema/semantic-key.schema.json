@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "key",
+    "pattern",
+    "template",
+    "category"
+  ],
+  "properties": {
+    "key": {
+      "type": "string"
+    },
+    "pattern": {
+      "type": "string"
+    },
+    "template": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+(* Phase route declaration, not an independent authority mechanism *)
+heuristic_route = "route", identifier, "{", "pop", ":", identifier, ";", "wo", ":", identifier, ";", "yax", ":", identifier, ";", "sek", ":", identifier, ";", "chen", ":", identifier, ";", "xul", ":", identifier, ";", "}" ;
+(* runtime constraints: Yax ranks/proposes; Sek executes only after XCFE admission; Ch'en verifies; Xul closes only authorized verified fold. *)
+identifier = letter, { letter | digit | "_" } ;
+letter = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;

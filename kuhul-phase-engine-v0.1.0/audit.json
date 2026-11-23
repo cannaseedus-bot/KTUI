@@ -1,0 +1,116 @@
+[
+  {
+    "file": "cfpc-wildcards.gml",
+    "nodes": 17,
+    "edges": 16,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "cfpc-questions.gml",
+    "nodes": 25,
+    "edges": 14,
+    "named_provider_refs": [],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "unfold-graph(1).gml",
+    "nodes": 48,
+    "edges": 120,
+    "named_provider_refs": [],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "wildcard(2).gml",
+    "nodes": 4,
+    "edges": 3,
+    "named_provider_refs": [],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "sample.gml",
+    "nodes": 3,
+    "edges": 3,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "code-wildcard.gml",
+    "nodes": 79,
+    "edges": 110,
+    "named_provider_refs": [
+      "micronaut:CODEX"
+    ],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "autocomplete.wildcard.gml",
+    "nodes": 14,
+    "edges": 12,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "hypercube_Q4.gml",
+    "nodes": 16,
+    "edges": 32,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "ccc_n4.gml",
+    "nodes": 64,
+    "edges": 96,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "bias(1).gml",
+    "nodes": 9,
+    "edges": 8,
+    "named_provider_refs": [],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "metric_graph(1).gml",
+    "nodes": 18,
+    "edges": 22,
+    "named_provider_refs": [],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "ccc_n3.gml",
+    "nodes": 24,
+    "edges": 36,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "intent-graph(3).gml",
+    "nodes": 65,
+    "edges": 102,
+    "named_provider_refs": [],
+    "domain_coupling": true,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  },
+  {
+    "file": "hypercube_Q3.gml",
+    "nodes": 8,
+    "edges": 16,
+    "named_provider_refs": [],
+    "domain_coupling": false,
+    "action": "retain as domain overlay or legacy; do not silently rewrite"
+  }
+]

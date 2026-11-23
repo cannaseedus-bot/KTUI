@@ -1,0 +1,40 @@
+{
+  "id": "kuhul.phase-engine",
+  "version": "0.1.0",
+  "status": "declarative-contract",
+  "phase_order": [
+    "Pop",
+    "Wo",
+    "Yax",
+    "Sek",
+    "Ch'en",
+    "Xul"
+  ],
+  "phase_files": {
+    "pop": "phases/pop.aiml",
+    "wo": "phases/wo.aiml",
+    "yax": "phases/yax.aiml",
+    "sek": "phases/sek.aiml",
+    "chen": "phases/chen.aiml",
+    "xul": "phases/xul.aiml"
+  },
+  "routing": [
+    "routing/kuhul-phases.aiml",
+    "routing/xcfe.aiml"
+  ],
+  "integrations": [
+    "integrations/daemon-modes.aiml"
+  ],
+  "execution_policy": "data-only; host XCFE admission required; no implicit execution",
+  "source_sha256": {
+    "integrations/daemon-modes.aiml": "4b0ad58a5c2bfcd13f98c862fb30bb3ce06229adcab2b9155dfec53bb855491a",
+    "phases/chen.aiml": "e6ca3456a939188812d888e9fb75674e30f2a57622420242a53d085cd489b897",
+    "phases/pop.aiml": "3d5a90392cf201ee5769e5991de3d90f1e8e9cbd981d20abd2db333fdef9d5c1",
+    "phases/sek.aiml": "76c71e8b10242e4870cc25111f7699c7da00c11124b22201b1c8d9b68f8bbeeb",
+    "phases/wo.aiml": "9e593e5482e22a03160289548299069d3338bf295f22685f0fbe10a0a93b1718",
+    "phases/xul.aiml": "0eb6e5d7c31ee5166420d3d96ee5545273975f50c9638fc590d46b72b1b53e83",
+    "phases/yax.aiml": "406540243362bdd54f6b16e1caf36fefdeabcd63771903bf2fd699a15b2ed65d",
+    "routing/kuhul-phases.aiml": "641909e895f4445502b8de620dc5b123cf78a2daeafcc205282e01573a09802a",
+    "routing/xcfe.aiml": "eaea42e9b372af49fffa145b94f760e83d9bf2042b100090267b6d383e96e494"
+  }
+}

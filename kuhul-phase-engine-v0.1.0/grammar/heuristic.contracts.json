@@ -1,0 +1,30 @@
+{
+  "schema": "kuhul.heuristic.contracts/1",
+  "status": "proposal_not_admitted",
+  "modes": ["direct", "seed", "guide"],
+  "admission_states": ["DATA_ONLY", "EXECUTABLE_CANDIDATE", "ADMITTED", "REJECTED"],
+  "authority": {
+    "parsing_grants_execution": false,
+    "ranking_grants_execution": false,
+    "seed_grants_execution": false,
+    "optimization_grants_execution": false,
+    "xcfe_admission_required": true,
+    "chen_verification_required": true,
+    "xul_closure_requires_verified_authorized_fold": true
+  },
+  "validation": {
+    "score_must_be_finite": true,
+    "candidate_types_must_match": true,
+    "seed_must_match_optimizer_input": true,
+    "budget_must_be_positive": true,
+    "guide_requires_bounded_search": true,
+    "deterministic_tie_break_required": true,
+    "provenance_required": true,
+    "feedback_updates_require_separate_authorization": true
+  },
+  "operator_semantics": {
+    "direct": "return ranked proposal without optimizer",
+    "seed": "supply typed initial candidate to authorized optimizer",
+    "guide": "supply ranking signals to bounded authorized optimizer"
+  }
+}

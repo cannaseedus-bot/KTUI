@@ -1,0 +1,19 @@
+(* K-UHUL heuristic grammar extension v1.0; declarative only *)
+heuristic_decl = "heuristic", identifier, "{", input_decl, output_decl, objective_decl, mode_decl, { feature_decl }, score_decl, [ select_decl ], "}" ;
+input_decl = "input", ":", type_ref, ";" ;
+output_decl = "output", ":", type_ref, ";" ;
+objective_decl = "objective", ":", ("maximize" | "minimize"), identifier, ";" ;
+mode_decl = "mode", ":", ("direct" | "seed" | "guide"), ";" ;
+feature_decl = "feature", identifier, ":", type_ref, ";" ;
+score_decl = "score", ":", expression, ";" ;
+select_decl = "select", ":", ("best" | "top_k"), [ "(", positive_integer, ")" ], ";" ;
+expression = term, { ("+" | "-"), term } ;
+term = factor, { ("*" | "/"), factor } ;
+factor = number | identifier | "(", expression, ")" ;
+type_ref = identifier, { ".", identifier }, [ "<", type_ref, { ",", type_ref }, ">" ] ;
+identifier = letter, { letter | digit | "_" } ;
+positive_integer = nonzero_digit, { digit } ;
+number = [ "-" ], digit, { digit }, [ ".", digit, { digit } ] ;
+letter = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" | "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" ;
+digit = "0" | nonzero_digit ;
+nonzero_digit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
