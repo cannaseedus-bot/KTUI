@@ -56,3 +56,33 @@ Six mandatory GML-declared constraints dispatch to fixed, pure Python predicates
 - Missing rules and unknown predicates fail closed; GML never executes code.
 - Arity counts keyword context parameters (not tensor rank or number of slices).
 - This is not a sandbox, self-hosting GML evaluator, or XCFE admission.
+
+
+## v3.4 shared extension interface
+
+`core/extension.py` loads GML-declared constraints and resolver kinds into an immutable Extension. Each declaration must match a trusted, import-time-frozen predicate and its keyword-only arity. Unknown authority, predicate, scope, or resolver kind fails closed. The tensor registry now declares `resolver [ scheme "gml" kind "whole_graph" ]`. `assemble()` preflights all six required rule names before assembly. Existing tensor field validation remains in `registry.py` for backward compatibility; the extension interface is a reusable validation layer, **not** an AIML implementation or a self-hosted evaluator. The trusted Python predicate implementations are not a sandbox.
+
+## v3.5 AIML/GML port
+
+Adds `schemas/aiml-registry.gml`, six minimal contract fixture graphs,
+`core/aiml_bundle.py`, and trusted AIML predicates in the immutable startup
+allowlist. Both extensions load in either order: the predicate mapping was
+already immutable at import in v3.4, so a mutable `finalize()` phase is
+**not necessary**. No AIML rendering or SRAI execution is implemented.
+
+Run `python -m unittest discover -s tests -v` from the package root.
+
+## Merge ledger patch: F14 + M2 (2026-11-23)
+
+- F14: `extension.owns_document` provides schema ownership; tensor `load_directory` skips validation of other schemas while preserving their documents for domain-specific validators.
+- M2: `tensor-registry.gml` declares graph-level fields and `data.value`; validator rejects unknown graph/data keys, including `vaule`, and validates enum values. Repeated `data.value` entries remain legal.
+- Four regression tests added. Standalone package: `python -m unittest discover -s tests -q` -> 57 tests, OK.
+- This is **not** a patch to `kuhul-phase-engine-v0.1.0` (checkout unavailable). F1-F13, M3-M7, host `base_health`, `extension_summary`, `gml_*`, `-text`, and 67-test host suite were not verified here.
+
+## F14.1 / M2.1 follow-up (standalone)
+- `owns_document` rejects missing schema instead of treating it as foreign.
+- `resolve(..., expected_schema=...)` checks the resolved graph's schema; tensor source references and AIML node/category references supply their respective expected schemas.
+- Registry field `repeatable 1` explicitly permits repeated `data.value`; other fields default to nonrepeatable.
+- Unknown graph-level and data-block fields report their scope.
+- Six additional tests cover missing schema, repeated values, duplicate graph id, cross-schema rejection, same-schema resolution and repeatable declaration.
+- Host checkout not included; no host tests or git changes performed. F14/M2 host merge remains unverified.

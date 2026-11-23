@@ -1,0 +1,1 @@
+graph [ schema "aiml-gml/1" graph_id "template/main" contract "template" node [ id 2 kind "template" segment [ ordinal 0 kind "text" value "Person: " ] segment [ ordinal 1 kind "capture" index 1 ] ] ]

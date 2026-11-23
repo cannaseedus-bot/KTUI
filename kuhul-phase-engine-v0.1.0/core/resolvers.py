@@ -28,7 +28,7 @@ SCHEMES = {
     'aiml': ('node_addressable', node_in_graph_resolver),
 }
 
-def resolve(ref, docs, expected=None):
+def resolve(ref, docs, expected=None, expected_schema=None):
     if not isinstance(ref,str) or '://' not in ref:
         raise ResolutionError(f'invalid reference: {ref!r}')
     scheme=ref.split('://',1)[0]
@@ -36,4 +36,12 @@ def resolve(ref, docs, expected=None):
     mode, handler=SCHEMES[scheme]
     if expected is not None and expected != mode:
         raise ResolutionError(f'reference mode mismatch: expected {expected}, got {mode}')
-    return handler(ref,docs)
+    result = handler(ref,docs)
+    if expected_schema is not None:
+        u=urlsplit(ref)
+        gid=u.netloc+u.path
+        document=docs[gid]
+        schemas=[a.value for a in document.entries if a.name=='schema']
+        if len(schemas)!=1 or schemas[0]!=expected_schema:
+            raise ResolutionError(f'reference schema mismatch: expected {expected_schema!r}, got {schemas!r} for {ref!r}')
+    return result

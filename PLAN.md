@@ -34,31 +34,58 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | F11 | Daemon engine: six-phase cycle per turn + 69 mode vectors | done | `daemon.py`, `chat_app.py` |
 | F12 | Phase package adapter: digest-gated banks, contract order, collisions | guard | `phases.py`, `.gitattributes` |
 | F13 | GML functions, `gml_audit` plan, `/gml` | done | `functions.py`, `plans.toml`, `chat_app.py` |
-| F14 | Registry owns exactly one schema (base fix) | **erased ×2** | `core/registry.py`, `core/assemble.py` |
-| M1 | Re-apply F14 after the v3.4/v3.5 merge | open | `core/extension.py` or `load_directory` |
-| M2 | Graph-level field declarations (`directed`, `data`, `overlap_policy`, `coverage_policy`) | open | `schemas/tensor-registry.gml`, `core/registry.py` |
+| F14 | Registry owns exactly one schema; foreign documents are not ours to validate | **guard** | `core/extension.py` (`owns_document`), `tests/test_merge_guards.py`, `tests/test_registry_v3.py` |
+| M1 | Re-apply F14 after the v3.4/v3.5 merge | **done** | `core/extension.py`, `core/assemble.py` |
+| M2 | Graph-level and `data.value` declarations; unknown fields fail closed | **guard** | `schemas/tensor-registry.gml`, `core/registry.py`, `tests/test_merge_guards.py`, `tests/test_declaration_guards.py` |
 | M3 | Keep `extension_contract()` reading the GML document, not a Python class | guard | `phases.py` |
-| M4 | Confirm `gml_*` functions still run after the merge | open | `functions.py` |
-| M5 | Full base suite green before merging to `main` | open | `kuhul-phase-engine-v0.1.0/tests` |
+| M4 | Confirm `gml_*` functions still run after the merge | **done** | `functions.py` (verified after v3.5) |
+| M5 | Full base suite green before merging to `main` | **done** | `kuhul-phase-engine-v0.1.0/tests` — 74 tests, OK |
 | M6 | Keep `-text` for the package in `.gitattributes` (digest integrity) | guard | `.gitattributes` |
 | M7 | Mirror this task list into `task-list.json` through the bus, if wanted | open | `task_list.py` |
 
 ---
 
+## Last verified
+
+```
+kuhul-phase-engine-v0.1.0: python -m unittest discover -s tests   ->  Ran 74 tests, OK
+base_health    : banks 9 · categories 238 · bad digests 0 · missing modules none
+extension      : gml-tensor/1 owned by gml.tensor · fields 19 over data, graph, slice, tensor,
+                 tensor.shape · constraints 6 · operator ASSEMBLE
+gml_validate   : col_a STRUCTURALLY_VALIDATED · assembled STRUCTURALLY_VALIDATED ·
+                 category OUT_OF_SCOPE (aiml-gml/1)
+gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (plan only)
+gml_audit      : admitted and run through the planner
+```
+
+Merge order used: **F14 → M2 → base suite → `base_health()` → `extension_summary()` → host tools**.
+
 ## Fixes that must survive a merge
 
 ### Base package (`kuhul-phase-engine-v0.1.0`)
 
-**F14 — a registry owns exactly one schema.** `load_directory` validated *every* document in
-`contracts/`, including other extensions' (`aiml-gml/1`, `gml-math/1`). Consequence: `setUp` raised
-`registry.RegistryError: schema mismatch` and 30 of 48 tests errored.
+**F14 — a registry owns exactly one schema.** Landed in the v3.5 form: `core/extension.py` exposes
+`owns_document(extension, doc)` and `load_directory` skips documents that are not ours; a misspelled
+or foreign schema is therefore *not* validated under the wrong contract. `validate_document` still
+refuses a foreign document when called directly, so the boundary is enforced, not merely tolerated.
 
-- Fix: a schema-ownership predicate (`accepts(doc, registry)` / `Extension.schema_id`) gates
-  validation in `load_directory`; `validate_document` still refuses a foreign schema when called
-  directly, so the boundary is explicit.
-- Verify: `cd kuhul-phase-engine-v0.1.0 && python -m unittest discover -s tests` → green.
-- If erased: every test that builds fixtures via `load_directory` dies at `setUp`, and the count
-  jumps from 0 to ~30 errors. This has happened twice.
+- Guards: `tests/test_merge_guards.py` (loader skips, ownership predicate is the gate) and
+  `tests/test_registry_v3.py::test_registry_validates_all_sources` (asserts both sides — owned
+  documents validate, a foreign one raises `schema mismatch`).
+- Erased twice before this landed; if it vanishes again the signature is ~30 errors at `setUp`.
+
+**M2 — graph-level and `data.value` declarations.** Landed in two layers, and both need a guard
+because tightening one without the other is silent:
+
+1. *Document side* (`core/registry.py`): graph-level attributes are allowlisted and typed, `data`
+   entries must be `value`, and repeated `value` entries stay legal (`len>1` is refused for every
+   field **except** `data.value`). Guards: `test_merge_guards.py` — `vaule`, `directde`, and an
+   invalid `coverage_policy` enum are all rejected.
+2. *Declaration side* (`load_registry`): the graph-level and `data.value` declarations are in the
+   bootstrap `required` set, so deleting one fails at load time instead of leaving every document to
+   fail later as "unregistered field". Guards: `tests/test_declaration_guards.py` — removing the
+   `coverage_policy` declaration, removing the `data.value` declaration, and a repeated-value
+   document that must keep validating.
 
 **B2 — dtype is widened, the mismatch guard is reachable.**
 `float32,float64` are both registered; a lone float64 source + float64 assembly is legal and
@@ -73,21 +100,10 @@ If someone re-narrows the enum to `float32`, the guard becomes dead code again a
 (v3.3) are what keep the registry from drifting into decoration — a `check(...)` added without a
 declaration must fail.
 
-**M2 — graph-level fields are still undeclared (open P3 gap).** `tensor` and `tensor.shape` reject
-unknown attributes, but `data`, `coverage_policy`, `overlap_policy` and `directed` live at graph
-level and are not declared, so `data [ vaule 1.0 ]` passes silently. Patch:
-
-```gml
-  field [ path "graph" name "directed"        type "integer" required 0 ]
-  field [ path "graph" name "data"            type "block"   required 0 ]
-  field [ path "graph" name "overlap_policy"  type "enum" values "reject" required 0 ]
-  field [ path "graph" name "coverage_policy" type "enum" values "complete,sparse" required 0 ]
-```
-
-plus a graph-level allowlist in `validate_document` (`schema, contract, graph_id, tensor, slice` +
-declared graph fields) and a `required` check in `load_registry` so deleting one fails closed at
-bootstrap. Tests: typo in `data` → `unregistered field: data.vaule`; `coverage_policy "sparse"`
-stays legal.
+**M2 — graph-level fields (was open, now landed).** `tensor` and `tensor.shape` reject unknown
+attributes, and so do graph-level attributes and `data.value` (see above). The registry declares
+`directed`, `data`, `overlap_policy`, `coverage_policy` and `value`; a typo is a rejection, and the
+bootstrap `required` set keeps the declarations from disappearing.
 
 **M6 — keep the package's bytes raw.** `.gitattributes` carries
 `kuhul-phase-engine-v0.1.0/** -text`. The manifest's SHA-256 digests cover CRLF files as delivered;
@@ -189,8 +205,9 @@ Expected failure signatures and what they mean:
 
 ## Known gaps at the time of writing
 
-- The base suite is red (67 tests, 31 errors) in the middle of the v3.4/v3.5 merge; the host is
-  deliberately decoupled from it and reports that state instead of inheriting it.
-- M2 (graph-level declarations) is not landed — P3 holds for `tensor`/`tensor.shape` only.
-- `gml-tensor/1` is not self-hosting: its registry is a GML document validated by handwritten code.
+- `gml-tensor/1` is not self-hosting: its registry is a GML document validated by handwritten,
+  dispatch-declared rules. The ledger entries above are how that stays honest until it is.
+- The AIML side of the package (v3.5 `core/aiml_bundle.py`, `tests/test_aiml_port.py`) is newer than
+  the host's use of it: the host reads the phase banks and the extension contract, not the bundle.
+- `M7` is optional: the task list lives here, and `task-list.json` is rendered runtime state.
 - No off-machine backup beyond GitHub; `main` was force-pushed once, so old clones must re-fetch.

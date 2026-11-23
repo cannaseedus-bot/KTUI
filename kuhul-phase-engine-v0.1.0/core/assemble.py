@@ -8,7 +8,7 @@ import sys
 from typing import Mapping
 from gml2 import Block, parse
 from resolvers import resolve, ResolutionError
-from registry import load_registry, validate_document, accepts
+from registry import load_registry, validate_document
 from rules import RuleViolation
 
 class AssemblyError(ValueError): pass
@@ -78,7 +78,7 @@ def parse_source(doc, registry=None):
 
 def resolve_ref(ref, docs):
     try:
-        return resolve(ref, docs, expected="whole_graph")
+        return resolve(ref, docs, expected="whole_graph", expected_schema="gml-tensor/1")
     except ResolutionError as exc:
         raise AssemblyError(str(exc)) from exc
 
@@ -87,6 +87,9 @@ def assemble(doc, docs: Mapping[str,Block], materialize=False):
         raise AssemblyError('assembly must declare gml-tensor/1 tensor_assembly')
     registry=load_registry()
     validate_document(doc,registry)
+    for required in ("data_count","finite_values","dtype_match","bounds_check","no_overlap","complete_coverage"):
+        registry.require(required)
+        registry.extension.require(required)
     gid=graph_identity(doc)
     t=field(doc,'tensor')
     if not isinstance(t,Block): raise AssemblyError('tensor block required')
@@ -137,8 +140,8 @@ def load_directory(path, registry_path=None):
         docs[gid]=doc
     registry = load_registry(registry_path)
     for gid, doc in docs.items():
-        # Another extension's document in the same directory is loaded, but not validated here.
-        if not accepts(doc, registry):
+        from extension import owns_document
+        if not owns_document(registry.extension, doc):
             continue
         validate_document(doc, registry)
         if field(doc,'contract') == 'tensor_source':
