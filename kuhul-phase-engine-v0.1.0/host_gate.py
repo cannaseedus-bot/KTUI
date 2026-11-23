@@ -69,11 +69,16 @@ def git_info(host):
     def capture(args):
         result = run(['git', *args], host, 15)
         return result['stdout'].strip() if result['exit_code'] == 0 else None
-    status = capture(['status', '--porcelain'])
+    tracked = capture(['status', '--porcelain', '-uno'])
+    everything = capture(['status', '--porcelain']) or ''
+    untracked = [line[3:] for line in everything.splitlines() if line.startswith('??')]
     return dict(sha=capture(['rev-parse', 'HEAD']),
                 branch=capture(['rev-parse', '--abbrev-ref', 'HEAD']),
-                dirty=None if status is None else bool(status),
-                status_head=None if not status else '\n'.join(status.splitlines()[:20]))
+                # `dirty` is about tracked content: that is what the suites measure. Untracked scratch
+                # files are recorded separately instead of being conflated with an edited tree.
+                dirty=None if tracked is None else bool(tracked),
+                status_head=None if not tracked else '\n'.join(tracked.splitlines()[:20]),
+                untracked_head=untracked[:20])
 
 
 def load_signatures(path=SIGNATURE_FILE):
@@ -226,7 +231,12 @@ def comparability(before, after):
                                             detail=f'{sha_before or "unknown"} -> {sha_after or "unknown"}'))
     if (after.get('git') or {}).get('dirty'):
         result['informational'].append(dict(code='working_tree_dirty',
-                                            detail='captured with uncommitted changes; recorded, not rejected'))
+                                            detail='captured with tracked changes; recorded, not rejected'))
+    untracked = (after.get('git') or {}).get('untracked_head') or []
+    if untracked:
+        result['informational'].append(dict(code='untracked_files',
+                                            detail=f'{len(untracked)} untracked entr(y/ies); '
+                                                   'tracked content is what the suites measure'))
     provenance = (before.get('provenance') or {}).get('kind', 'unknown')
     result['baseline'] = dict(kind=provenance,
                               complete=bool(before['suite']['summary'].get('complete')),
