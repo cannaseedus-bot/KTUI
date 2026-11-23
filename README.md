@@ -31,8 +31,6 @@ model      read-only   `/workspace` picks a folder, `/allow` grants write+patch
 session    20261123T001407-6b28b2
 ```
 
-The mark is rasterised from `logo.svg`; the pulse is the app's timer, so the SVG file itself stays
-static and script-free.
 
 ## Quick start
 
