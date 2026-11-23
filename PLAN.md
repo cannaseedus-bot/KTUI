@@ -44,6 +44,57 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M5 | Full base suite green before merging to `main` | **done** | `kuhul-phase-engine-v0.1.0/tests` — 74 tests, OK |
 | M6 | Keep `-text` for the package in `.gitattributes` (digest integrity) | guard | `.gitattributes` |
 | M7 | Mirror this task list into `task-list.json` through the bus, if wanted | open | `task_list.py` |
+| M8 | The gate's own unit test file still targets harness v1 and no longer imports | open | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
+
+---
+
+## Host gate evidence (F14 / M2)
+
+Two independent forms, as required — named test cases, then runtime health. Artifacts:
+`host-gate-before-v2.json`, `host-gate-after-v2.json`, `host-gate-report.json`
+(`host-gate-before.json` is the raw v1 baseline those were converted from).
+
+**Evidence A — named recoveries.** 31 tests named as failing before, 31 passing after.
+
+```
+recovered           : 31   (30 classified F14-schema-mismatch, 1 unmatched)
+disappeared         : 0
+new failures        : 0
+unchanged           : 0
+recovered_unmatched : test_contracts.Contracts.test_structural   (V-schema reason, not F14)
+```
+
+**Evidence B — runtime health.** `base_health` and `extension_summary` both exit 0 after the merge:
+
+```
+banks 9 · categories 238 · bad digests 0 · missing modules none
+GML extension `gml-tensor/1` owned by gml.tensor · registry bootstrap `gml-registry/1`
+```
+
+**The verdict stays `inconclusive`, and that is structural, not a code problem:**
+
+1. `assess()` appends *"base_health and extension_summary semantic health not independently
+   verified"* unconditionally, so no ledger can ever reach `evidence_satisfied`. By construction the
+   tool reports evidence; a human decides.
+2. The baseline is partial — 31 failing names were retained, the 17 passing names of that 48-test run
+   were not, so `complete` is false and "incomplete per-test capture" is reported. A fully
+   attributable report needs a v2 capture taken *before* a patch; that cannot be recreated after the
+   fact.
+3. M2 reports *"no original named M2 signature failures"*, correctly: M2's failures were folded into
+   the same `schema mismatch` errors, and its evidence is the **new** guard tests passing rather than
+   recoveries. If M2 is to be closable, the gate needs a "new named guard tests present and green"
+   criterion; recovery alone will never cover it.
+
+**Harness defects found while producing this, one fixed here:**
+
+- **Fixed:** v2's `parse_suite` dropped every documented test (unittest prints the name, the
+  docstring, then the status on three lines), capturing 76 of 80 and setting `complete: false` —
+  which makes every attribution inconclusive. `host_gate.py` now normalises that form: 80/80,
+  `complete: true`.
+- **Reported, not fixed:** captures decode subprocess output with the platform default (cp1252 here),
+  so `·` in the health text is stored as `�`. Pass `encoding='utf-8'` to `subprocess.run`.
+- v1's false positive (signature matching hit *passing* test names such as `test_duplicate_graph_id`)
+  is gone in v2, because signatures are classified only from failure blocks.
 
 ---
 

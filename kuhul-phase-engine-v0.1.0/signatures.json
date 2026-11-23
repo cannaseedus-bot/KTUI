@@ -1,0 +1,7 @@
+{
+  "signatures": [
+    {"id":"F14-schema-mismatch","ledger":"F14","error_pattern":"schema mismatch","traceback_pattern":"extension.py|registry.py|assemble.py"},
+    {"id":"F14-wrong-contract","ledger":"F14","error_pattern":"wrong (?:schema|contract)|reference schema mismatch","traceback_pattern":"resolver|bundle|extension"},
+    {"id":"M2-unknown-field","ledger":"M2","error_pattern":"unknown field|unregistered field","traceback_pattern":"registry.py|extension.py"}
+  ]
+}

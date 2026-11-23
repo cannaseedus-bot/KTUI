@@ -1,0 +1,401 @@
+{
+  "captured_at": "2026-11-22T21:16:00+00:00",
+  "git_sha": "357169b54036f88843fcc9bd63ceb397a81ff1be",
+  "host": "C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0",
+  "command_line": [
+    "C:\\Users\\canna\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-v"
+  ],
+  "signature_declarations": [
+    {
+      "id": "F14-schema-mismatch",
+      "ledger": "F14",
+      "error_pattern": "schema mismatch",
+      "traceback_pattern": "extension.py|registry.py|assemble.py"
+    },
+    {
+      "id": "F14-wrong-contract",
+      "ledger": "F14",
+      "error_pattern": "wrong (?:schema|contract)|reference schema mismatch",
+      "traceback_pattern": "resolver|bundle|extension"
+    },
+    {
+      "id": "M2-unknown-field",
+      "ledger": "M2",
+      "error_pattern": "unknown field|unregistered field",
+      "traceback_pattern": "registry.py|extension.py"
+    }
+  ],
+  "provenance": {
+    "source": "captured -v output from this checkout earlier in the session (pre-patch state)",
+    "kind": "reconstructed names, no fresh run",
+    "distinct_names": 31,
+    "outcomes": "30 errors across 30 names + 4 subTest failures collapsed to test_contracts.Contracts.test_structural",
+    "note": "tracebacks were not retained; only the unittest FAIL/ERROR headers were captured, so attribution is by name only",
+    "key_format": "module.Class.method.method (the harness appends the short name to the qualified id)",
+    "converted_to": "host-gate v2 capture shape",
+    "completeness": "partial: the failing test names were retained, the passing 17 of 48 were not",
+    "tracebacks": "reconstructed from the captured header lines (registry.py line 52, validate_document); full tracebacks were not retained"
+  },
+  "suite": {
+    "run": {
+      "command_line": [
+        "C:\\Users\\canna\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests",
+        "-v"
+      ],
+      "exit_code": 1,
+      "stdout": "Ran 48 tests in 0.211s\n\nFAILED (failures=4, errors=30)\n\nERROR: test_bad_shape (test_assembly.TestAssembly)\nERROR: test_bounds (test_assembly.TestAssembly)\nERROR: test_dtype_mismatch (test_assembly.TestAssembly)\nERROR: test_duplicate_graph_id (test_assembly.TestAssembly)\nERROR: test_gap (test_assembly.TestAssembly)\nERROR: test_materialize_unbound_source (test_assembly.TestAssembly)\nERROR: test_matrix (test_assembly.TestAssembly)\nERROR: test_missing (test_assembly.TestAssembly)\nERROR: test_overlap (test_assembly.TestAssembly)\nERROR: test_plan_only (test_assembly.TestAssembly)\nERROR: test_rank (test_assembly.TestAssembly)\nERROR: test_registry_field_removed_fails_closed (test_assembly.TestAssembly)\nERROR: test_roundtrip (test_assembly.TestAssembly)\nERROR: test_sparse (test_assembly.TestAssembly)\nERROR: test_unsupported_dtype (test_assembly.TestAssembly)\nERROR: test_unused_malformed_source (test_assembly.TestAssembly)\nERROR: test_all_six_callsite_require (test_registry_v3_3.TestV33)\nERROR: test_bad_context_arity_rejected (test_registry_v3_3.TestV33)\nERROR: test_missing_arity_registry_rejected (test_registry_v3_3.TestV33)\nERROR: test_missing_required_rule_callsite (test_registry_v3_3.TestV33)\nERROR: test_require_dispatch (test_registry_v3_3.TestV33)\nERROR: test_unknown_predicate_registry_rejected (test_registry_v3_3.TestV33)\nERROR: test_wrong_arity_registry_rejected (test_registry_v3_3.TestV33)\nERROR: test_constraint_deletion_fails_closed (test_rules_v3_2.TestRuleDispatch)\nERROR: test_dtype_mismatch_public_path (test_rules_v3_2.TestRuleDispatch)\nERROR: test_float64_materializes_when_matched (test_rules_v3_2.TestRuleDispatch)\nERROR: test_registry_declares_all_six_rules (test_rules_v3_2.TestRuleDispatch)\nERROR: test_rule_dispatch_overlap (test_rules_v3_2.TestRuleDispatch)\nERROR: test_unknown_predicate_fails (test_rules_v3_2.TestRuleDispatch)\nERROR: test_registry_validates_all_sources (test_registry_v3.TestRegistryV3)\nFAIL: test_structural (test_contracts.Contracts)\n",
+      "stderr": "",
+      "timed_out": false
+    },
+    "summary": {
+      "cases": {
+        "test_assembly.TestAssembly.test_bad_shape.test_bad_shape": {
+          "test_id": "test_assembly.TestAssembly.test_bad_shape.test_bad_shape",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_bounds.test_bounds": {
+          "test_id": "test_assembly.TestAssembly.test_bounds.test_bounds",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_dtype_mismatch.test_dtype_mismatch": {
+          "test_id": "test_assembly.TestAssembly.test_dtype_mismatch.test_dtype_mismatch",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_duplicate_graph_id.test_duplicate_graph_id": {
+          "test_id": "test_assembly.TestAssembly.test_duplicate_graph_id.test_duplicate_graph_id",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_gap.test_gap": {
+          "test_id": "test_assembly.TestAssembly.test_gap.test_gap",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_materialize_unbound_source.test_materialize_unbound_source": {
+          "test_id": "test_assembly.TestAssembly.test_materialize_unbound_source.test_materialize_unbound_source",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_matrix.test_matrix": {
+          "test_id": "test_assembly.TestAssembly.test_matrix.test_matrix",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_missing.test_missing": {
+          "test_id": "test_assembly.TestAssembly.test_missing.test_missing",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_overlap.test_overlap": {
+          "test_id": "test_assembly.TestAssembly.test_overlap.test_overlap",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_plan_only.test_plan_only": {
+          "test_id": "test_assembly.TestAssembly.test_plan_only.test_plan_only",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_rank.test_rank": {
+          "test_id": "test_assembly.TestAssembly.test_rank.test_rank",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_registry_field_removed_fails_closed.test_registry_field_removed_fails_closed": {
+          "test_id": "test_assembly.TestAssembly.test_registry_field_removed_fails_closed.test_registry_field_removed_fails_closed",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_roundtrip.test_roundtrip": {
+          "test_id": "test_assembly.TestAssembly.test_roundtrip.test_roundtrip",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_sparse.test_sparse": {
+          "test_id": "test_assembly.TestAssembly.test_sparse.test_sparse",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_unsupported_dtype.test_unsupported_dtype": {
+          "test_id": "test_assembly.TestAssembly.test_unsupported_dtype.test_unsupported_dtype",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source": {
+          "test_id": "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_all_six_callsite_require.test_all_six_callsite_require": {
+          "test_id": "test_registry_v3_3.TestV33.test_all_six_callsite_require.test_all_six_callsite_require",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_bad_context_arity_rejected.test_bad_context_arity_rejected": {
+          "test_id": "test_registry_v3_3.TestV33.test_bad_context_arity_rejected.test_bad_context_arity_rejected",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_missing_arity_registry_rejected.test_missing_arity_registry_rejected": {
+          "test_id": "test_registry_v3_3.TestV33.test_missing_arity_registry_rejected.test_missing_arity_registry_rejected",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_missing_required_rule_callsite.test_missing_required_rule_callsite": {
+          "test_id": "test_registry_v3_3.TestV33.test_missing_required_rule_callsite.test_missing_required_rule_callsite",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_require_dispatch.test_require_dispatch": {
+          "test_id": "test_registry_v3_3.TestV33.test_require_dispatch.test_require_dispatch",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_unknown_predicate_registry_rejected.test_unknown_predicate_registry_rejected": {
+          "test_id": "test_registry_v3_3.TestV33.test_unknown_predicate_registry_rejected.test_unknown_predicate_registry_rejected",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3_3.TestV33.test_wrong_arity_registry_rejected.test_wrong_arity_registry_rejected": {
+          "test_id": "test_registry_v3_3.TestV33.test_wrong_arity_registry_rejected.test_wrong_arity_registry_rejected",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_rules_v3_2.TestRuleDispatch.test_constraint_deletion_fails_closed.test_constraint_deletion_fails_closed": {
+          "test_id": "test_rules_v3_2.TestRuleDispatch.test_constraint_deletion_fails_closed.test_constraint_deletion_fails_closed",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_rules_v3_2.TestRuleDispatch.test_dtype_mismatch_public_path.test_dtype_mismatch_public_path": {
+          "test_id": "test_rules_v3_2.TestRuleDispatch.test_dtype_mismatch_public_path.test_dtype_mismatch_public_path",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_rules_v3_2.TestRuleDispatch.test_float64_materializes_when_matched.test_float64_materializes_when_matched": {
+          "test_id": "test_rules_v3_2.TestRuleDispatch.test_float64_materializes_when_matched.test_float64_materializes_when_matched",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_rules_v3_2.TestRuleDispatch.test_registry_declares_all_six_rules.test_registry_declares_all_six_rules": {
+          "test_id": "test_rules_v3_2.TestRuleDispatch.test_registry_declares_all_six_rules.test_registry_declares_all_six_rules",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_rules_v3_2.TestRuleDispatch.test_rule_dispatch_overlap.test_rule_dispatch_overlap": {
+          "test_id": "test_rules_v3_2.TestRuleDispatch.test_rule_dispatch_overlap.test_rule_dispatch_overlap",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_rules_v3_2.TestRuleDispatch.test_unknown_predicate_fails.test_unknown_predicate_fails": {
+          "test_id": "test_rules_v3_2.TestRuleDispatch.test_unknown_predicate_fails.test_unknown_predicate_fails",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_registry_v3.TestRegistryV3.test_registry_validates_all_sources.test_registry_validates_all_sources": {
+          "test_id": "test_registry_v3.TestRegistryV3.test_registry_validates_all_sources.test_registry_validates_all_sources",
+          "outcome": "errored",
+          "error_type": "schema mismatch",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document",
+          "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\registry.py\", line 52, in validate_document\nregistry.RegistryError: schema mismatch\n",
+          "signatures": [
+            "F14-schema-mismatch"
+          ]
+        },
+        "test_contracts.Contracts.test_structural.test_structural": {
+          "test_id": "test_contracts.Contracts.test_structural.test_structural",
+          "outcome": "failed",
+          "error_type": "unknown gml-tensor/1",
+          "traceback_head": "  File \"C:\\Users\\canna\\.aiml\\kuhul-phase-engine-v0.1.0\\core\\validate.py\", line 23, in validate",
+          "traceback": "V-schema: unknown gml-tensor/1\n",
+          "signatures": []
+        }
+      },
+      "ran": 48,
+      "errors": 30,
+      "failures": 4,
+      "ok": false,
+      "complete": false
+    }
+  },
+  "base_health": {
+    "command_line": [
+      "python",
+      "-c",
+      "import phases; print(phases.base_health())"
+    ],
+    "exit_code": null,
+    "stdout": "",
+    "stderr": "not captured at baseline",
+    "timed_out": false
+  },
+  "extension_summary": {
+    "command_line": [
+      "python",
+      "-c",
+      "import phases; print(phases.extension_summary())"
+    ],
+    "exit_code": null,
+    "stdout": "",
+    "stderr": "not captured at baseline",
+    "timed_out": false
+  }
+}
