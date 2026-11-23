@@ -7,6 +7,8 @@
 #     "python-aiml",
 #     "requests",
 #     "beautifulsoup4",
+#     "Pillow>=10.0",
+#     "textual-image",
 # ]
 # ///
 import os
@@ -34,11 +36,23 @@ try:  # session transcripts, so a conversation can be resumed or rewound
     import session_log
 except ImportError:  # pragma: no cover
     session_log = None
-try:  # the header mark: an allowlisted subset of SVG, rasterised to half blocks
-    import svg_logo
+# Prefer a dedicated terminal-image widget; keep the Rich half-block renderer as fallback.
+try:
+    from textual_image.widget import Image as TerminalImage
+except ImportError:
+    TerminalImage = None
+try:
+    import png_logo
+except ImportError:
+    png_logo = None
+try:  # typed contracts for the tools, and the plan composer that admits compositions
+    import functions
+    import planner
 except ImportError:  # pragma: no cover
-    svg_logo = None
+    functions = None
+    planner = None
 import math
+import tempfile
 import shlex
 import subprocess
 import shutil
@@ -61,6 +75,10 @@ from rich.text import Text as RichText
 from openai import OpenAI, pydantic_function_tool
 from pydantic import BaseModel, Field
 import aiml
+try:
+    from mu import Micronaut
+except ImportError:
+    Micronaut = None
 from bs4 import BeautifulSoup
 from functools import partial
 from urllib.parse import quote_plus
@@ -403,53 +421,58 @@ class ChatCommands(CommandProvider):
                 yield Hit(score, matcher.highlight(label), callback, text=label, help=help_text)
 
 class LogoArt(Static):
-    """The header mark, drawn from logo.svg and breathed by a timer.
-
-    Textual has no SVG renderer, so svg_logo.py rasterises an allowlisted subset to half blocks and
-    this widget re-renders it every few frames: the shape tagged id="pulse" brightens and dims. The
-    SVG stays a static, script-free file - the animation lives here, not in the artwork.
-    """
+    """Display logo.png as nearest-neighbor terminal half-block pixels."""
 
     DEFAULT_CSS = """
-    LogoArt { width: 24; height: 12; content-align: center middle; }
+    LogoArt { width: 32; height: 16; content-align: center middle; }
     """
 
-    def __init__(self, *, cols: int = 22, rows: int = 22, **kwargs) -> None:
+    def __init__(self, *, cols: int = 30, rows: int = 30, **kwargs) -> None:
         super().__init__("", markup=False, **kwargs)
         self.cols = cols
         self.rows = rows
-        self.phase = 0.0
         self.logo = None
         self.problem = ""
 
     def on_mount(self) -> None:
-        if svg_logo is None:
-            self.problem = "logo module missing"
+        if png_logo is None:
+            self.problem = "logo: install textual-image, or provide png_logo.py and Pillow"
         else:
             try:
-                self.logo = svg_logo.load_default()
-            except Exception as error:  # unsafe, missing or malformed: say so and keep running
+                self.logo = png_logo.load_default()
+            except Exception as error:
                 self.problem = f"logo: {error}"
         self.draw()
-        self.set_interval(0.16, self.tick)
-
-    def tick(self) -> None:
-        self.phase = (self.phase + 0.16) % 1.0
-        self.draw()
-
-    def pulse(self) -> float:
-        """A smooth 0..0.85 breath, so the marker does not flicker."""
-        return (math.sin(self.phase * 2 * math.pi) + 1) / 2 * 0.85
 
     def draw(self) -> None:
         if self.problem:
             self.update(self.problem)
             return
         try:
-            self.update(self.logo.render(self.cols, self.rows, brighten={"pulse": self.pulse()}))
+            self.update(self.logo.render(self.cols, self.rows))
         except Exception as error:
             self.problem = f"logo: {error}"
             self.update(self.problem)
+
+
+def terminal_logo_path(source: Path) -> Path:
+    """Letterbox the PNG for 16x12 terminal cells (roughly 16x24 pixels).
+
+    The image widget may stretch its input to its CSS rectangle. Preparing
+    a correctly proportioned canvas prevents the logo itself being squashed.
+    """
+    from PIL import Image as PILImage, ImageOps
+
+    with PILImage.open(source) as original:
+        if original.width * original.height > 1_048_576:
+            raise ValueError("logo exceeds 1 megapixel")
+        # Use a 2:3 pixel canvas: 16 columns x 12 double-height cells.
+        canvas = PILImage.new("RGBA", (320, 480), (0, 0, 0, 0))
+        fitted = ImageOps.contain(original.convert("RGBA"), canvas.size, PILImage.Resampling.LANCZOS)
+        canvas.alpha_composite(fitted, ((320 - fitted.width) // 2, (480 - fitted.height) // 2))
+        target = Path(tempfile.gettempdir()) / "knumatic-logo-terminal-16x12.png"
+        canvas.save(target, format="PNG")
+        return target
 
 
 class WorkspaceBar(Static):
@@ -463,12 +486,11 @@ class WorkspaceBar(Static):
             shown = str(root)
         text = RichText()
         text.append("workspace  ", style="bold")
-        text.append(f"{shown}\n")
-        text.append("model      ", style="bold")
-        text.append(f"{mode}", style="green" if mode == "read-write" else "yellow")
-        text.append("   `/workspace` picks a folder, `/allow` grants write+patch\n", style="dim")
-        text.append("session    ", style="bold")
-        text.append(session or "(not recording)", style="dim")
+        text.append(shown)
+        text.append("   ·   ", style="dim")
+        text.append(mode, style="green" if mode == "read-write" else "yellow")
+        text.append("   ·   ", style="dim")
+        text.append("/workspace  /allow", style="dim")
         self.update(text)
 
 
@@ -517,20 +539,28 @@ class ChatApp(App):
     # The palette is the model switcher: system commands (screen, quit…) plus ChatCommands below.
     COMMANDS = App.COMMANDS | {ChatCommands}
     CSS = """
-    Screen { layout: vertical; }
-    #banner { height: 12; padding: 0 1; background: $panel; border-bottom: solid $primary 30%; }
-    #logo { width: 24; height: 12; content-align: center middle; }
-    #workspace-bar { width: 1fr; height: 12; content-align: left middle; }
-    #main { height: 1fr; }
-    #chat-view { width: 2fr; height: 1fr; padding: 1 2; background: $surface; }
-    #task-panel { width: 1fr; border: round $secondary; padding: 0 1; }
+    Screen { layout: vertical; width: 100%; height: 100%; overflow: hidden; }
+    #welcome-logo-row { width: 100%; height: 16; min-height: 16; max-height: 16; align: center middle; }
+    #welcome-logo { width: 32; height: 16; min-height: 16; max-height: 16; }
+    #main { height: 1fr; min-height: 0; width: 100%; }
+    #chat-view { width: 2fr; height: 1fr; min-height: 0; padding: 1 2; background: $surface; }
+    #task-panel { width: 1fr; height: 1fr; min-height: 0; border: round $secondary; padding: 0 1; }
     #task-title { content-align: center middle; text-style: bold; height: 1; }
+    #task-section { height: 1fr; min-height: 5; }
+    #task-body { height: 1fr; overflow-y: auto; }
+    #history-section { height: 1fr; min-height: 7; border-top: solid $secondary; padding-top: 1; }
+    #history-title { height: 1; content-align: center middle; text-style: bold; }
+    #history-body { height: 1fr; overflow-y: auto; color: $text-muted; }
+    #history-help { height: 2; color: $text-muted; }
     Prompt { border: round $primary; margin: 1 0; padding: 1; background: $primary 10%; }
     Response { border: round $success; margin: 1 0; padding: 1; background: $success 10%; }
     ToolLog { border: round $warning; margin: 1 0; padding: 1; background: $warning 10%; color: $text-muted; }
-    Input { dock: bottom; margin: 1; }
+    Input { margin: 0 1; height: 3; }
+    #completion-hint { height: 1; padding: 0 2; color: $text-muted; }
+    #workspace-bar { height: 2; width: 1fr; padding: 0 2; content-align: left middle; background: $surface; color: $text-muted; }
     """
     AUTO_FOCUS = "Input"
+    BINDINGS = [Binding("ctrl+space", "accept_completion", "Complete", priority=True)]
 
     def __init__(self):
         super().__init__()
@@ -547,6 +577,8 @@ class ChatApp(App):
         self.bus = TaskListBus().start() if TaskListBus else None
         self.update_client()
         self.router = self.get_semantic_router()
+        self.completion = Micronaut({"sandbox": self.completion_registry()}) if Micronaut else None
+        self.current_completion = ""
 
     def update_client(self, model: str | None = None):
         config = PROVIDER_CONFIGS[self.current_provider]
@@ -618,6 +650,13 @@ class ChatApp(App):
         learned = alice_dir / "knumatic_learned.aiml"
         if learned.is_file():
             kernel.learn(str(learned))
+        # Reuse this exact python-aiml Kernel; no second parser/compiler.
+        # Prefer the existing compiled corpus directory, with a root fallback.
+        codex = alice_dir / "codex.aiml"
+        if not codex.is_file():
+            codex = APP_ROOT / "codex.aiml"
+        if codex.is_file():
+            kernel.learn(str(codex))
         override = APP_ROOT / "_override.aiml"
         if override.is_file():
             kernel.learn(str(override))
@@ -654,6 +693,129 @@ class ChatApp(App):
             return f"{value:g}°{from_unit} is {result:.0f}°{to_unit}"
         raise SandboxError(f"unknown tool verb {verb!r}")
 
+    @staticmethod
+    def completion_registry() -> tuple[str, ...]:
+        """Declarations from the typed registry, not a hand-written list.
+
+        codex.aiml emits call forms like `read_file(path)`; the host now accepts one only if it is a
+        registered contract (functions.declarations) or a declared plan. This still grants nothing:
+        completion fills the input, it never dispatches.
+        """
+        if functions is None:
+            return (
+                "list_dir(path)", "read_file(path)", "run_command(program, args)",
+                "git_command(command, arguments)", "search_history(query)",
+                "write_file(path, content)", "patch_file(path, find, replace)",
+            )
+        declarations = list(functions.declarations())
+        if planner is not None:
+            declarations += [f"plan:{plan.name}" for plan in planner.load().values()]
+        return tuple(declarations)
+
+    def suggest_completion(self, text: str) -> str:
+        """Existing AIML/SRAI brain -> validated suggestion -> mu.py rank/closure."""
+        if not text.strip() or self.completion is None:
+            return ""
+        # Only the last phrase is queried; no input is executed or submitted.
+        phrase = text.strip().lstrip("/").replace("_", " ")
+        if len(phrase) > 160:
+            return ""
+        try:
+            reply = str(self.router.respond(phrase.upper()) or "").strip()
+        except Exception:
+            return ""
+        if not reply.startswith("CODEX_SUGGEST "):
+            return ""
+        _, _, payload = reply.partition(" ")
+        kind, _, suggestion = payload.partition(" ")
+        if not suggestion:
+            return ""
+        if kind == "function":
+            # Reject names not declared by the active host. This does not grant access.
+            if suggestion not in self.completion_registry():
+                return ""
+            if suggestion.startswith(("write_file", "patch_file")) and not sandbox.allow_write:
+                return ""
+            ctx = self.completion.complete(suggestion.split("(")[0], mode="code", source="sandbox", workspace=sandbox.root)
+            if suggestion not in [candidate.text for candidate in ctx.candidate_functions]:
+                return ""
+        elif kind not in {"command", "sentence", "question"}:
+            return ""
+        return suggestion
+
+    @on(Input.Changed)
+    def update_completion(self, event: Input.Changed) -> None:
+        self.current_completion = self.suggest_completion(event.value)
+        try:
+            self.query_one("#completion-hint", Static).update(
+                f"Ctrl+Space → {self.current_completion}" if self.current_completion else ""
+            )
+        except Exception:
+            pass
+
+    def action_accept_completion(self) -> None:
+        """Fill input only. Never dispatch a tool or submit a chat turn."""
+        if not self.current_completion:
+            return
+        field = self.query_one(Input)
+        field.value = self.current_completion
+        field.cursor_position = len(field.value)
+        self.current_completion = ""
+
+    def plan_answer(self, payload: str) -> str:
+        """`CODEX_PLAN <name> [<term>]`, `CODEX_PLAN run <name> [<term>]` or `CODEX_PLAN registry`.
+
+        The AIML bank only ever *proposes* this; admission is the planner's call: every step must be
+        a registered, implemented function whose types chain.
+        """
+        if functions is None or planner is None:
+            return "the typed registry is unavailable in this environment"
+        head, _, rest = payload.partition(" ")
+        head, rest = head.strip(), rest.strip()
+        if head.lower() in {"registry", "list", ""}:
+            return functions.describe()
+        if head.lower() in {"run", "proposal"}:
+            head, _, rest = rest.partition(" ")
+            head, rest = head.strip(), rest.strip()
+        # AIML upper-cases everything it matches, and plan names are lowercase in plans.toml.
+        plan = planner.resolve(head.lower())
+        blocks = [f"plan **{plan.name}** — {plan.title}"]
+        if plan.steps:
+            blocks.extend(["```", plan.diagram(), "```"])
+        if not plan.admitted:
+            blocks.append("**refused at admission:**")
+            blocks.extend(f"- {problem}" for problem in plan.problems)
+            blocks.append("")
+            blocks.append("A template may propose this; only a registered, implemented composition can run it.")
+            return "\n".join(blocks)
+        blocks.append(f"admitted · authority `{plan.authority}`")
+        if plan.authority != "execute":
+            blocks.append("Nothing was run: an admitted composition with no execution authority stays a proposal.")
+            return "\n".join(blocks)
+        ok, output = planner.run(plan, functions.ToolContext(Path(sandbox.root), sandbox), term=rest)
+        blocks.append("**ran:**" if ok else "**stopped:**")
+        blocks.extend(["```", output, "```"])
+        return "\n".join(blocks)
+
+    def action_plans(self) -> None:
+        """List every declared plan and whether the registry admits it."""
+        if planner is None:
+            self.say_system("The plan composer is unavailable in this environment.")
+            return
+        plans = planner.load()
+        if not plans:
+            self.say_system("No plans declared in plans.toml.")
+            return
+        lines = ["Plans from `plans.toml`, resolved against the registry:", ""]
+        for plan in plans.values():
+            state = "admitted" if plan.admitted else "refused"
+            lines.append(f"- `{plan.name}` · {plan.authority} · {state} · {plan.chain()}")
+            for problem in plan.problems:
+                lines.append(f"    - {problem}")
+        lines.append("")
+        lines.append("`/plan <name> [term]` shows the graph; `/plan run <name> [term]` runs an admitted one.")
+        self.say_system("\n".join(lines))
+
     def local_answer(self, text: str) -> tuple[str, str] | None:
         """AIML first. Returns (kind, text), or None when the turn belongs to the model."""
         try:
@@ -661,6 +823,11 @@ class ChatApp(App):
         except Exception:
             reply = ""
         if not reply or "__LLM_FALLBACK__" in reply:
+            return None
+        if reply.upper().startswith("CODEX_PLAN "):
+            # A proposal the host resolves, never an invocation the template performs.
+            return "plan", self.plan_answer(reply[len("CODEX_PLAN "):].strip())
+        if reply.startswith(("CODEX_SUGGEST ", "CODEX_LOOKUP ")):
             return None
         if reply.upper().startswith("TOOL "):
             verb, _, argument = reply[5:].partition(" ")
@@ -687,6 +854,7 @@ class ChatApp(App):
                 f"Start with {alias} next time — writes gpt-oss.toml",
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
+        commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["workspace"] = ("Workspace: pick the folder the model may edit", self.action_pick_workspace, f"Currently {sandbox.root}")
         commands["allow"] = ("Workspace: grant write and patch", partial(self.action_allow, "on"), "The model may change files here")
         commands["readonly"] = ("Workspace: back to read-only", partial(self.action_allow, "off"), "Reads and searches only")
@@ -714,13 +882,77 @@ class ChatApp(App):
                 partial(self.action_switch, provider),
                 f"{token} loaded from .env" if PROVIDER_CONFIGS[provider]["api_key"] else f"no {token} yet - /keys shows where to get one",
             )
+        commands["task"] = ("Tasks: /task <description>", self.action_task_help, "Add or manage tasks in the TASKS panel")
+        commands["task_list"] = ("Tasks: show list", partial(self.task_command, "list"), "Display tasks")
+        commands["task_done"] = ("Tasks: mark done", partial(self.task_command, "done"), "Usage: /task done <number>")
+        commands["task_start"] = ("Tasks: start", partial(self.task_command, "start"), "Usage: /task start <number>")
+        commands["task_block"] = ("Tasks: block", partial(self.task_command, "block"), "Usage: /task block <number>")
         commands["clear"] = ("Chat: clear", self.action_clear, "Drop the conversation, keep the system prompt")
         return commands
+
+    def action_task_help(self) -> None:
+        self.say_system(
+            "Tasks: `/task <description>` adds a task. "
+            "Use `/task list`, `/task done N`, `/task start N`, "
+            "`/task block N`, or `/task priority high N`. "
+            "Numbers must be supported by the installed task-list backend."
+        )
+
+    def task_command(self, argument: str) -> None:
+        """Route task commands through the installed TaskListBus, never a UI-only list."""
+        argument = argument.strip()
+        if not argument:
+            self.action_task_help()
+            return
+        if not self.bus:
+            self.say_system("Task list is unavailable (`task_list.py` not loaded).")
+            return
+        verb, _, remainder = argument.partition(" ")
+        verb = verb.lower()
+        remainder = remainder.strip()
+        if verb in {"list", "ls"} and not remainder:
+            bus_text = "task list"
+        elif verb in {"done", "start", "block", "unblock", "remove"}:
+            if not remainder:
+                self.say_system(f"Usage: `/task {verb} <task number, ID, or title>`")
+                return
+            bus_text = f"{verb} task {remainder}"
+        elif verb == "priority":
+            level, _, number = remainder.partition(" ")
+            if level.lower() not in {"high", "medium", "low"} or not number.strip():
+                self.say_system("Usage: `/task priority high|medium|low <task number, ID, or title>`")
+                return
+            bus_text = f"priority {level.lower()} {number.strip()}"
+        elif verb in {"clear", "clear_done", "clear_all"}:
+            bus_text = "clear done" if remainder == "done" or verb == "clear_done" else "clear tasks" if remainder == "all" or verb == "clear_all" else ""
+            if not bus_text:
+                self.say_system("Usage: `/task clear done|all`")
+                return
+        else:
+            bus_text = f"add task {argument}"
+        try:
+            outcome = self.bus.apply(bus_text)
+            if not isinstance(outcome, dict):
+                self.say_system("Task backend returned an unexpected response.")
+                return
+            reply = str(outcome.get("reply") or "Task backend did not return a message.")
+            self.say_system(f"**[Tasks]**\n\n{reply}")
+            if outcome.get("ok"):
+                self.render_tasks(self.bus.snapshot())
+        except Exception as error:
+            self.say_system(f"Task command failed: {error}")
+
+    def add_task(self, title: str) -> None:
+        """Compatibility entry point for the legacy backslash task shortcut."""
+        self.task_command(title)
 
     def handle_command(self, text: str) -> None:
         """`/models`, `/model <alias>`, `/advisor <name>`, or any key from get_commands()."""
         name, _, argument = text[1:].partition(" ")
         name, argument = name.strip().lower(), argument.strip()
+        if name == "task":
+            self.task_command(argument)
+            return
         if name in {"model", "models"}:
             if argument:
                 self.action_use_model(argument)
@@ -757,6 +989,12 @@ class ChatApp(App):
             return
         if name in {"new", "new_session"}:
             self.action_new_session()
+            return
+        if name == "plan":
+            if argument:
+                self.say_system(self.plan_answer(argument))
+            else:
+                self.action_plans()
             return
         if name in {"workspace", "cwd"}:
             if argument:
@@ -869,6 +1107,7 @@ class ChatApp(App):
         if session_log is None or not self.session_id:
             return
         session_log.append(self.session_id, role, content, model=self.model_name)
+        self.refresh_history()
 
     def render_transcript(self) -> None:
         """Redraw the chat view from self.messages, which is the truth after a rewind or resume."""
@@ -882,23 +1121,34 @@ class ChatApp(App):
                 view.mount(Response(str(message.get("content") or "")))
         view.scroll_end(animate=False)
 
-    def action_sessions(self) -> None:
+    def refresh_history(self) -> None:
+        """Render the saved session index in the sidebar, not in chat."""
+        try:
+            body = self.query_one("#history-body", Static)
+        except Exception:
+            return
         if session_log is None:
-            self.say_system("Session logging is unavailable in this environment.")
+            body.update("Session history unavailable")
             return
-        rows = session_log.sessions(limit=10)
-        if not rows:
-            self.say_system("No sessions recorded yet — this one starts now.")
-            return
-        lines = ["Recent sessions, newest first:", ""]
-        for index, row in enumerate(rows, start=1):
-            when = str(row["started"])[:16].replace("T", " ")
-            mark = "*" if row["id"] == self.session_id else " "
-            lines.append(f"{mark}{index}. `{row['id']}` · {when} · {row['turns']} turn(s) · {row['preview']}")
-        lines.append("")
-        lines.append("`/resume <number|id>` loads one, `/rewind [n]` drops the last n exchanges, `/new` starts fresh.")
-        lines.append("* marks the session you are in.")
-        self.say_system("\n".join(lines))
+        try:
+            rows = session_log.sessions(limit=12)
+            if not rows:
+                body.update("No saved sessions yet")
+                return
+            lines = []
+            for index, row in enumerate(rows, 1):
+                active = "●" if row["id"] == self.session_id else " "
+                date = str(row.get("started", ""))[:16].replace("T", " ")
+                preview = str(row.get("preview") or "(empty session)").replace("\n", " ")
+                lines.append(f"{active} {index}. {date} · {row.get('turns', 0)} turns")
+                lines.append(f"   {preview[:42]}")
+            body.update("\n".join(lines))
+        except Exception as exc:
+            body.update(f"History unavailable: {type(exc).__name__}")
+
+    def action_sessions(self) -> None:
+        self.refresh_history()
+        self.query_one("#history-body", Static).scroll_visible()
 
     def _session_row(self, which: str) -> dict | None:
         rows = session_log.sessions(limit=50) if session_log else []
@@ -933,6 +1183,7 @@ class ChatApp(App):
             {"role": record["role"], "content": record["content"]} for record in records
         ]
         self.render_transcript()
+        self.refresh_history()
         self.say_system(
             f"Resumed `{row['id']}` — {len(records)} message(s), {row['turns']} turn(s).\n\n"
             "Continuing here appends to the same file; `/rewind` trims it, `/new` starts a different one."
@@ -964,6 +1215,7 @@ class ChatApp(App):
         self.messages = self.messages[:1]
         self.query_one("#chat-view", VerticalScroll).remove_children()
         self.update_workspace_bar()
+        self.refresh_history()
         self.say_system(f"New session `{self.session_id}`. `/sessions` lists the old ones; `/resume` loads one.")
 
     # -- workspace: which folder, and what the model may do with it -----------------------------------
@@ -1055,21 +1307,49 @@ class ChatApp(App):
             self.say_system(f"**{sandbox.root}** is read-only again: reads, searches and allowlisted commands only.")
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        with Horizontal(id="banner"):
-            yield LogoArt(id="logo")
-            yield WorkspaceBar(id="workspace-bar")
         with Horizontal(id="main"):
             with VerticalScroll(id="chat-view"):
-                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nGit, answered locally from AIML (no model needed): `what changed`, `show the diff`, `recent commits`, `which branch`, `tracked files`, `last commit`, `what is the time`, `convert 25 celsius to fahrenheit`.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.\n\nWorkspace: `/workspace` (or Ctrl+P) picks the folder the model may read, `/allow` grants write and patch, `/allow off` revokes it — choosing another folder resets the grant.\n\nHistory: `/sessions` lists past conversations, `/resume [n]` loads one, `/rewind [n]` drops the last exchanges, `/new` starts fresh.")
+                # The logo is part of the first chat entry, not a fixed header.
+                # It scrolls away naturally as the conversation grows.
+                logo_path = APP_ROOT / "logo.png"
+                with Horizontal(id="welcome-logo-row"):
+                    if TerminalImage is not None and logo_path.is_file():
+                        yield TerminalImage(str(logo_path), id="welcome-logo")
+                    else:
+                        yield LogoArt(id="welcome-logo")
+                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: `/task fix header size`, add task …, done …, start …, block …, priority high …, task list.\n\nGit, answered locally from AIML (no model needed): `what changed`, `show the diff`, `recent commits`, `which branch`, `tracked files`, `last commit`, `what is the time`, `convert 25 celsius to fahrenheit`.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.\n\nWorkspace: `/workspace` (or Ctrl+P) picks the folder the model may read, `/allow` grants write and patch, `/allow off` revokes it — choosing another folder resets the grant.")
             with Vertical(id="task-panel"):
-                yield Static("TASKS", id="task-title")
-                yield Static("", id="task-body")
-        yield Input(placeholder="Type your message here...")
+                with Vertical(id="task-section"):
+                    yield Static("TASKS", id="task-title")
+                    yield Static("", id="task-body")
+                with Vertical(id="history-section"):
+                    yield Static("HISTORY", id="history-title")
+                    yield Static("", id="history-body")
+                    yield Static("/resume N  /new  /rewind N", id="history-help")
+        yield Static("", id="completion-hint")
+        yield Input(placeholder="Type your message here... (Ctrl+Space to complete)")
+        yield WorkspaceBar(id="workspace-bar")
         yield Footer()
+
+    def on_resize(self, event) -> None:
+        """Record the viewport dimensions reported by Textual for resize diagnosis.
+
+        Textual normally relayouts automatically; avoid forcing a second refresh
+        from inside its resize event, which can interfere with the redraw cycle.
+        """
+        try:
+            from datetime import datetime as _datetime
+            with (APP_ROOT / "resize-debug.log").open("a", encoding="utf-8") as log:
+                log.write(
+                    f"{_datetime.now().isoformat(timespec='seconds')} "
+                    f"event={event.size} app={self.size} screen={self.screen.size}\n"
+                )
+        except (OSError, AttributeError):
+            pass
 
     def on_mount(self) -> None:
         self.update_workspace_bar()
+        self.refresh_history()
         if not self.bus:
             return
         self.render_tasks(self.bus.snapshot())
@@ -1102,6 +1382,11 @@ class ChatApp(App):
             return
 
         # 1. Task-list commands, resolved through the AIML bank by the bus.
+        # Both /task and \task use the same task-list mutation path.
+        task_match = re.fullmatch(r"\\task(?:\s+(.*))?", text, flags=re.IGNORECASE | re.DOTALL)
+        if task_match:
+            self.add_task(task_match.group(1) or "")
+            return
         if self.bus:
             outcome = self.bus.apply(text)
             if outcome["ok"] or outcome.get("intent"):

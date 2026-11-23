@@ -77,10 +77,14 @@ reports the runtime, the model and whether the server is answering.
 | `chat_app.py` | The TUI: header, chat, task panel, command palette, sandbox tools |
 | `task-engine.py` | Headless sandboxed terminal; also `models`, `default`, `prepare`, `launch`, `tasks` |
 | `gpt-oss.toml` | The only config: server, `[models]`, `[sandbox]`, `model_dir` |
+| `functions.py` | Typed contracts for every callable: parameters, output type, authority, handler |
+| `planner.py`, `plans.toml` | Compositions of those contracts, and the admission rules that gate them |
+| `mu.py` | Six-phase completion pipeline; suggests names, never executes |
+| `codex.aiml` | Declarative completion bank: `CODEX_SUGGEST` / `CODEX_PLAN` proposals |
 | `_override.aiml` | The tool bridge — patterns that answer with `TOOL <verb>` or `__LLM_FALLBACK__` |
 | `model_config.py` | Edits `default_model` in `gpt-oss.toml` without disturbing the rest of the file |
 | `session_log.py` | One JSONL transcript per session (resume, rewind, search) |
-| `svg_logo.py`, `logo.svg` | Allowlisted-subset SVG → half-block rasteriser, and the mark |
+| `svg_logo.py`, `png_logo.py`, `logo.png` | Header mark: allowlisted-subset SVG rasteriser, and the PNG half-block renderer |
 | `task_list.py` | The `task-list.json` bus and its AIML command bank |
 | `interaction_log.py` | Prompt/answer pairs, mined into AIML by `pattern_dumper.py` |
 | `start.bat` | Launcher: model choice, advisor tokens, health wait, then the app |
@@ -110,6 +114,7 @@ Typed with a leading `/`, or picked from `Ctrl+P`:
 | Command | Does |
 |---|---|
 | `/models` | The table above, marked with the default and what the server is actually serving |
+| `/plan [name\|registry]` | Lists declared compositions, shows one graph, or prints the function registry |
 | `/model <alias>` | Points this conversation at one alias; warns when the server is serving another |
 | `/default [alias]` | Writes `default_model` to `gpt-oss.toml` (bare form uses the current model) |
 | `/workspace [path]` | Opens the folder picker, or sets the workspace directly |
@@ -137,6 +142,54 @@ git status/diff/log/branch/ls-files/show, time, Celsius ↔ Fahrenheit, file lis
 
 Weather and translation deliberately return `__LLM_FALLBACK__` — they need the network or a real
 model, so the app hands them over instead of inventing output.
+
+## Plans: composition, not invention
+
+A single `TOOL` verb answers one question. Some questions are a *composition*, and that is what
+`functions.py`, `plans.toml` and `planner.py` add:
+
+```
+search(pattern, path, glob) → files
+parse_aiml(files)           → categories   ← files
+filter_categories(...)      → categories   ← categories
+rank_by_context(...)        → ranked       ← categories
+fold_lines(...)             → text         ← ranked
+```
+
+`functions.py` registers what a callable *is* — its parameter types, its output type, its authority
+and, only if it is really implemented, its handler. `plans.toml` declares compositions by name.
+AIML/SRAI may **propose** one (`codex.aiml` emits `CODEX_PLAN proposal <name> <term>`), but the name
+is not authority: `planner.resolve` admits a plan only when every step is registered, has a handler,
+and type-chains from the previous step's output. `planner.run` then requires
+`authority = "execute"`.
+
+```
+you type: find aiml categories git status
+
+plan search_aiml_categories — Find the AIML categories that mention something
+  admitted · authority execute
+  ran:  AIML categories matching GIT STATUS
+          GIT STATUS           →  TOOL git status
+          WHAT CHANGED         →  <srai>GIT STATUS</srai>
+          …
+```
+
+The second plan exists to be refused, and that is the point of the whole layer:
+
+```
+plan weather_report — Fetch the weather and summarise it
+  refused at admission:
+  - step 1: fetch_weather is declared but has no handler (proposal only)
+```
+
+`fetch_weather` is *registered* (its contract is known) but has no handler, so admission stops
+before anything runs — a template cannot conjure a capability the host does not have. The same
+refusal covers an unregistered name, a type mismatch (`wants path, but step 1 gives categories`), a
+missing argument, and an authority the runner does not recognise.
+
+`/plan` lists every declared plan with its verdict, `/plan <name>` shows the graph, `/plan registry`
+prints the contracts, and `Ctrl+Space` completion now draws its names from the registry
+(`plan:…` entries included) instead of a hand-written list.
 
 ## Workspace and permissions
 

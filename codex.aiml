@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  KNUMATIC codex.aiml / 1
+  Declarative completion patterns for user, model, and bot inputs.
+  Template outputs are suggestion identifiers/text ONLY, never tool invocations.
+  The host loads these categories into its AIML/SRAI matcher and maps emitted
+  CODEX_SUGGEST values to registered candidates. Accept != execute.
+
+  Six-phase binding (host-owned):
+    Pop    prefix                 capture the partial input
+    Wo     cursor                 identify the completion span
+    Yax    mode                   code | command | sentence | question | path
+    Sek    source                 select this bank / sandbox / gramstore
+    Ch'en  workspace              scope and validate candidate provenance
+    Xul    candidate_functions    deduplicate, rank, close suggestions
+
+  A standard AIML engine responds to whole utterances, not arbitrary cursor
+  slices. The Textual adapter should send the current token/phrase to this bank
+  and replace only the selected span. The host must validate emitted names
+  against task-engine.py's actual TOOL_SCHEMAS and available workspace symbols.
+-->
+<aiml version="1.0.1" encoding="UTF-8">
+
+  <!-- Canonical function completions. No file writes or dispatch here. -->
+  <category><pattern>READ F*</pattern><template><srai>CODEX READ FILE</srai></template></category>
+  <category><pattern>READ FILE</pattern><template><srai>CODEX READ FILE</srai></template></category>
+  <category><pattern>CODEX READ FILE</pattern><template>CODEX_SUGGEST function read_file(path)</template></category>
+
+  <category><pattern>WRITE F*</pattern><template><srai>CODEX WRITE FILE</srai></template></category>
+  <category><pattern>CODEX WRITE FILE</pattern><template>CODEX_SUGGEST function write_file(path, content)</template></category>
+
+  <category><pattern>LIST D*</pattern><template><srai>CODEX LIST DIR</srai></template></category>
+  <category><pattern>CODEX LIST DIR</pattern><template>CODEX_SUGGEST function list_dir(path)</template></category>
+
+  <category><pattern>RUN C*</pattern><template><srai>CODEX RUN COMMAND</srai></template></category>
+  <category><pattern>CODEX RUN COMMAND</pattern><template>CODEX_SUGGEST function run_command(program, args)</template></category>
+
+  <category><pattern>SEARCH *</pattern><template><srai>CODEX SEARCH</srai></template></category>
+  <category><pattern>CODEX SEARCH</pattern><template>CODEX_SUGGEST function search(pattern, path, glob)</template></category>
+
+  <category><pattern>UPDATE TASK *</pattern><template><srai>CODEX UPDATE TASK</srai></template></category>
+  <category><pattern>CODEX UPDATE TASK</pattern><template>CODEX_SUGGEST function update_task_list(action, task)</template></category>
+
+  <!-- Task commands: suggestions only; task_list.py remains the mutation authority. -->
+  <category><pattern>TASK STA*</pattern><template><srai>CODEX TASK START</srai></template></category>
+  <category><pattern>CODEX TASK START</pattern><template>CODEX_SUGGEST command /task start 1</template></category>
+  <category><pattern>TASK START</pattern><template><srai>CODEX TASK START</srai></template></category>
+
+  <category><pattern>TASK DON*</pattern><template><srai>CODEX TASK DONE</srai></template></category>
+  <category><pattern>CODEX TASK DONE</pattern><template>CODEX_SUGGEST command /task done 1</template></category>
+  <category><pattern>TASK DONE</pattern><template><srai>CODEX TASK DONE</srai></template></category>
+
+  <category><pattern>TASK BLO*</pattern><template><srai>CODEX TASK BLOCK</srai></template></category>
+  <category><pattern>CODEX TASK BLOCK</pattern><template>CODEX_SUGGEST command /task block 1</template></category>
+  <category><pattern>TASK BLOCK</pattern><template><srai>CODEX TASK BLOCK</srai></template></category>
+
+  <category><pattern>TASK LIS*</pattern><template><srai>CODEX TASK LIST</srai></template></category>
+  <category><pattern>CODEX TASK LIST</pattern><template>CODEX_SUGGEST command /task list</template></category>
+  <category><pattern>TASK LIST</pattern><template><srai>CODEX TASK LIST</srai></template></category>
+
+  <!-- Language completion is also declarative; ranked alternatives may come
+       from GramStore, but these templates do not claim to generate new facts. -->
+  <category><pattern>FIX THE HEADER *</pattern><template><srai>CODEX HEADER SENTENCE</srai></template></category>
+  <category><pattern>CODEX HEADER SENTENCE</pattern><template>CODEX_SUGGEST sentence fix the header layout on resize</template></category>
+
+  <category><pattern>HOW DO I INSPECT *</pattern><template><srai>CODEX INSPECT QUESTION</srai></template></category>
+  <category><pattern>CODEX INSPECT QUESTION</pattern><template>CODEX_SUGGEST question how do I inspect files in the workspace?</template></category>
+
+  <!-- Plans: recognition only. A template proposes a composition by name; the host resolves it
+       against functions.py (typed contracts) and planner.py (admission). Nothing here executes,
+       and a plan whose steps are unregistered or unimplemented is refused with its reasons. -->
+  <category><pattern>FIND AIML CATEGORIES *</pattern><template>CODEX_PLAN proposal search_aiml_categories <star/></template></category>
+  <category><pattern>WHICH AIML CATEGORIES MENTION *</pattern><template>CODEX_PLAN proposal search_aiml_categories <star/></template></category>
+  <category><pattern>SEARCH AIML CATEGORIES *</pattern><template><srai>FIND AIML CATEGORIES <star/></srai></template></category>
+  <category><pattern>SHOW THE AIML CHAIN</pattern><template>CODEX_PLAN proposal search_aiml_chain</template></category>
+  <category><pattern>WEATHER REPORT</pattern><template>CODEX_PLAN proposal weather_report</template></category>
+  <category><pattern>WEATHER REPORT *</pattern><template>CODEX_PLAN proposal weather_report <star/></template></category>
+  <category><pattern>SHOW THE PLAN *</pattern><template>CODEX_PLAN proposal <star/></template></category>
+  <category><pattern>FUNCTION REGISTRY</pattern><template>CODEX_PLAN registry</template></category>
+  <category><pattern>WHAT FUNCTIONS DO YOU HAVE</pattern><template><srai>FUNCTION REGISTRY</srai></template></category>
+
+  <!-- Fallback vocabulary requests: return a registry lookup hint, not an
+       arbitrary function name. The host must supply real candidates. -->
+  <category><pattern>CODEX FUNCTIONS</pattern><template>CODEX_LOOKUP source sandbox mode code</template></category>
+  <category><pattern>CODEX PATHS</pattern><template>CODEX_LOOKUP source workspace mode path</template></category>
+  <category><pattern>CODEX SENTENCES</pattern><template>CODEX_LOOKUP source gramstore mode sentence</template></category>
+
+</aiml>

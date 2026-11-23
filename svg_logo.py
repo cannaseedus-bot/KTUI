@@ -30,7 +30,7 @@ SAFE_ATTRS = {"id", "fill", "points", "x", "y", "width", "height", "cx", "cy", "
 HEX_COLOUR = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$")
 PATH_TOKEN = re.compile(r"[MLHVZmlhvz]|-?\d*\.?\d+(?:[eE][-+]?\d+)?")
 FORBIDDEN_TEXT = ("<!doctype", "<!entity", "&")
-MAX_BYTES = 64 * 1024
+MAX_BYTES = 64 * 100024
 MAX_SHAPES = 256
 
 

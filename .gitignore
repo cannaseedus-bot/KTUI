@@ -20,3 +20,6 @@ task-list.json
 
 # The vendored AIML corpus keeps its own Mercurial checkout metadata (.hg, ~6 MB)
 aiml-en-us-foundation-alice/.hg/
+
+# Local debug output (resize traces and the like)
+*.log

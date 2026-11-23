@@ -339,10 +339,10 @@ def render_panel(document: dict) -> list[str]:
     marks = {"todo": "·", "doing": "▸", "blocked": "!", "done": "✓"}
     order = {"doing": 0, "blocked": 1, "todo": 2, "done": 3}
     rows = []
-    for task in sorted(tasks, key=lambda item: (order.get(item["status"], 3), item["title"].lower())):
+    for index, task in sorted(enumerate(tasks, 1), key=lambda pair: (order.get(pair[1]["status"], 3), pair[1]["title"].lower())):
         marker = marks.get(task["status"], "·")
         star = "*" if task["priority"] == "high" else " "
-        rows.append(f"{marker}{star} {task['title'][:44]}")
+        rows.append(f"{index}. {marker}{star} {task['title'][:40]}")
     done = sum(1 for task in tasks if task["status"] == "done")
     rows.append("")
     rows.append(f"{len(tasks) - done} open / {done} done")
