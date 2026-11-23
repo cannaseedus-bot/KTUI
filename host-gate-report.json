@@ -691,7 +691,7 @@
       "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 14:41\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.156
+      "duration_seconds": 0.172
     },
     "extension_summary_before": {
       "command_line": [
@@ -716,10 +716,10 @@
       "timed_out": false,
       "duration_seconds": 0.109
     },
-    "captured_at": "2026-11-23T22:22:55.665321+00:00",
+    "captured_at": "2026-11-23T22:32:07.354059+00:00",
     "health_correlation": {
-      "suite_sha": "3f1b8ae81aaf7546f057fa35edbce47f2a3dab50",
-      "health_sha": "3f1b8ae81aaf7546f057fa35edbce47f2a3dab50",
+      "suite_sha": "6b0688405945fd50535324660b6201fb96dd0c1d",
+      "health_sha": "6b0688405945fd50535324660b6201fb96dd0c1d",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -728,11 +728,11 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 3f1b8ae81aaf7546f057fa35edbce47f2a3dab50"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 6b0688405945fd50535324660b6201fb96dd0c1d"
       },
       {
-        "code": "working_tree_dirty",
-        "detail": "captured with uncommitted changes; recorded, not rejected"
+        "code": "untracked_files",
+        "detail": "20 untracked entr(y/ies); tracked content is what the suites measure"
       },
       {
         "code": "baseline_partial",
@@ -875,6 +875,8 @@
       }
     },
     "evidence_satisfied": true,
+    "tested_commit": "6b0688405945fd50535324660b6201fb96dd0c1d",
+    "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
     "note": "evidence_satisfied describes the recorded evidence; it grants no permission"

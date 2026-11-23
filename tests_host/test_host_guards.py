@@ -147,5 +147,19 @@ class M7LedgerMirrorsIntoTheTaskList(unittest.TestCase):
         self.assertIn("a human task", [task["title"] for task in document["tasks"]])
 
 
+class M9EvidenceNamesItsCommit(unittest.TestCase):
+    """The committed report must say which commit it tested, and that the tree was clean."""
+
+    def test_report_names_the_tested_commit(self):
+        report = json.loads((ROOT / "host-gate-report.json").read_text(encoding="utf-8"))
+        verdict = report["verdict"]
+        self.assertRegex(verdict.get("tested_commit") or "", r"^[0-9a-f]{40}$",
+                         "the report must name the commit it tested")
+        self.assertTrue(verdict.get("captured_clean"),
+                        "evidence must come from a tree whose tracked content was committed")
+        self.assertFalse(verdict["merge_authorized"])
+        self.assertEqual(verdict["authority"], "human")
+
+
 if __name__ == "__main__":
     unittest.main()
