@@ -353,6 +353,8 @@ def main():
     parser.add_argument('--suite-command', nargs='+',
                         default=[sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-v'])
     parser.add_argument('--signatures', type=Path, default=SIGNATURE_FILE)
+    parser.add_argument('--ledger', type=Path,
+                        help='optional: append this report to a tamper-evident audit ledger')
     parser.add_argument('--provenance-kind', default='original-capture',
                         help='label a capture: original-capture, or historical-partial when reconstructed')
     args = parser.parse_args()
@@ -384,6 +386,16 @@ def main():
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+    if args.ledger:
+        # Optional plugin. The record is audit history; recording a verdict never authorizes a merge.
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+            import ledger_plugin
+            record = ledger_plugin.record_gate_report(report, args.ledger)
+            print('Appended to ledger', args.ledger, 'sequence', record['sequence'],
+                  'signature', 'ed25519' if record.get('signature') else 'none')
+        except Exception as error:
+            print('ledger append failed:', error, file=sys.stderr)
     print(json.dumps({ledger: dict(state=verdict['state'],
                                    reasons=[reason['code'] for reason in verdict['reasons']])
                       for ledger, verdict in report['verdict']['ledgers'].items()}

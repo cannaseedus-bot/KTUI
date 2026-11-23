@@ -23,3 +23,6 @@ aiml-en-us-foundation-alice/.hg/
 
 # Local debug output (resize traces and the like)
 *.log
+
+# Audit ledger signing key (generated locally, never committed)
+.ledger-key.pem

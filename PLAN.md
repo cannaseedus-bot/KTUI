@@ -46,6 +46,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M7 | The ledger is mirrored into `task-list.json` and agrees with it | **guard** | `mirror_ledger.py`, `tests_host/test_host_guards.py::M7…` (ids, status, note, idempotence, human tasks preserved) |
 | M8 | Harness self-tests: v2.1 rules covered by 14 named tests | **guard** | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
 | M9 | Gate evidence names the commit it tested and comes from a clean tree | **guard** | `tests_host/test_host_guards.py::M9…`; artifacts are committed **after** the code they test, so `tested_commit` is the artifact commit's parent |
+| M10 | Optional audit ledger: append-only, hash-chained, Ed25519-signed records | **guard** | `ledger_plugin.py`, `ledger.gml`, `tests_host/test_ledger.py::M10…` |
 
 ---
 
@@ -140,6 +141,34 @@ gate cycle starts there.
 
 ---
 
+## Optional audit ledger (M10)
+
+`ledger_plugin.py` is opt-in. It appends host events to an append-only JSONL file where each record
+carries `sequence`, `previous_hash`, `content_hash`, `timestamp` and - when a key is available - an
+Ed25519 signature over the canonical body. `host_gate.py --ledger <path>` records a gate verdict; the
+default is off, and a recorded verdict authorizes nothing.
+
+- **Canonical form** is `json.dumps(body, sort_keys=True, separators=(",", ":"))` over UTF-8, and
+  floats are refused: byte-stable serialization is a guarantee, so a payload either has one or the
+  append fails.
+- **The digest covers content only** - `content_hash`, `signature` and `public_key` are excluded from
+  their own body. That was a real bug on first write: the digest was computed before those fields
+  were added, so every record failed its own verification until the exclusion was explicit.
+- **Tamper evidence is per index**: editing, deleting or reordering a record breaks `content_mismatch`,
+  `sequence_gap` or `broken_link` at a named line, and `append()` refuses to add to a chain that no
+  longer verifies.
+- **Signing is honest**: `ed25519:` signatures verify against the record's `public_key`, a wrong key
+  fails, and an unsigned ledger reports `signed 0 / unsigned N` with `algorithm: sha256 only` rather
+  than implying authenticity it does not have. The key lives in `.ledger-key.pem`, gitignored.
+- **What it is not**: a distributed ledger. One authority, no consensus, no network validation, no
+  double-spend prevention. It is a tamper-evident audit trail for this host, which is what the
+  evidence record needs.
+
+`ledger.gml` describes the record shape and the plugin reads it, so the document stays the source of
+truth for the shape while the host enforces it - and, as always, describes rather than authorizes.
+
+---
+
 ## Last verified
 
 ```
@@ -160,7 +189,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 10 tests, OK (M3-M9)
+host guards    : 21 tests, OK (M3-M10; ledger M10 is 11 of them)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 
