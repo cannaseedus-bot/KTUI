@@ -4,6 +4,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'core'))
 from gml2 import parse,serialize
 from assemble import assemble,load_directory,AssemblyError
 from registry import RegistryError,load_registry
+from rules import RuleViolation
 P=Path(__file__).resolve().parents[1]/'contracts'
 class TestAssembly(unittest.TestCase):
     def setUp(self):
@@ -13,7 +14,7 @@ class TestAssembly(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             for f in P.glob('*.gml'): (Path(d)/f.name).write_text(f.read_text())
             (Path(d)/'unused.gml').write_text('graph [ schema "gml-tensor/1" contract "tensor_source" graph_id "tensor/unused" tensor [ rank 2 shape [ rows 2 cols 2 ] dtype "float32" layout "row_major" ] data [ value 1.0 ] ]')
-            with self.assertRaisesRegex(AssemblyError,'data count'): load_directory(d)
+            with self.assertRaisesRegex(RuleViolation,'data count'): load_directory(d)
     def test_materialize_unbound_source(self):
         docs=dict(self.docs)
         source=docs['tensor/col_a']
@@ -21,18 +22,12 @@ class TestAssembly(unittest.TestCase):
         docs['tensor/col_a']=Block(tuple(a for a in source.entries if a.name!='data'))
         with self.assertRaisesRegex(AssemblyError,'gml://tensor/col_a'): assemble(self.root,docs,True)
     def test_unsupported_dtype(self):
-        x=serialize(self.root).replace('dtype "float32"','dtype "float64"')
+        x=serialize(self.root).replace('dtype "float32"','dtype "float16"')
         with self.assertRaisesRegex(RegistryError,'tensor.dtype enum mismatch'): assemble(parse(x),self.docs)
     def test_dtype_mismatch(self):
-        from unittest.mock import patch
-        from assemble import parse_source
-        def alternate_dtype(doc):
-            shape,dtype,data=parse_source(doc)
-            if any(a.name=='graph_id' and a.value=='tensor/col_a' for a in doc.entries):
-                return shape,'float64',data
-            return shape,dtype,data
-        with patch('assemble.parse_source',side_effect=alternate_dtype):
-            with self.assertRaisesRegex(AssemblyError,'dtype mismatch'): assemble(self.root,self.docs)
+        root=parse(serialize(self.root).replace('dtype "float32"','dtype "float64"'))
+        with self.assertRaisesRegex(RuleViolation,'dtype mismatch'):
+            assemble(root,{**self.docs,'tensor/assembled':root})
     def test_registry_field_removed_fails_closed(self):
         registry=(Path(__file__).resolve().parents[1]/'schemas/tensor-registry.gml').read_text()
         registry=registry.replace('  field [ path "tensor" name "layout" type "enum" values "row_major" required 1 ]\n','')
@@ -55,23 +50,23 @@ class TestAssembly(unittest.TestCase):
         self.assertEqual(plan.coverage,12); self.assertIsNone(data)
     def test_overlap(self):
         x=serialize(self.root).replace('row_offset 4\n    col_offset 0','row_offset 0\n    col_offset 0')
-        with self.assertRaisesRegex(AssemblyError,'overlap'): assemble(parse(x),self.docs)
+        with self.assertRaisesRegex(RuleViolation,'overlap'): assemble(parse(x),self.docs)
     def test_bounds(self):
         x=serialize(self.root).replace('row_offset 4\n    col_offset 0','row_offset 5\n    col_offset 0')
-        with self.assertRaisesRegex(AssemblyError,'out of bounds'): assemble(parse(x),self.docs)
+        with self.assertRaisesRegex(RuleViolation,'out of bounds'): assemble(parse(x),self.docs)
     def test_missing(self):
         x=serialize(self.root).replace('gml://tensor/col_a','gml://tensor/absent')
         with self.assertRaisesRegex(AssemblyError,'unresolved'): assemble(parse(x),self.docs)
     def test_gap(self):
         x=serialize(self.root).replace('row_offset 4\n    col_offset 0','row_offset 3\n    col_offset 0')
-        with self.assertRaises(AssemblyError): assemble(parse(x),self.docs)
+        with self.assertRaises(RuleViolation): assemble(parse(x),self.docs)
     def test_bad_shape(self):
         x=serialize(self.docs['tensor/col_a']).replace('rows 4\n      cols 1','rows 3\n      cols 1')
         docs=dict(self.docs);docs['tensor/col_a']=parse(x)
-        with self.assertRaisesRegex(AssemblyError,'data count'): assemble(self.root,docs)
+        with self.assertRaisesRegex(RuleViolation,'data count'): assemble(self.root,docs)
     def test_sparse(self):
         x=serialize(self.root).replace('coverage_policy "complete"','coverage_policy "sparse"').replace('row_offset 4\n    col_offset 0','row_offset 3\n    col_offset 0')
-        with self.assertRaisesRegex(AssemblyError,'overlap'): assemble(parse(x),self.docs)
+        with self.assertRaisesRegex(RuleViolation,'overlap'): assemble(parse(x),self.docs)
     def test_rank(self):
         x=serialize(self.root).replace('rank 2','rank 3')
         with self.assertRaisesRegex(RegistryError,'tensor.rank required value 2'): assemble(parse(x),self.docs)

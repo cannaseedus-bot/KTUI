@@ -8,7 +8,8 @@ import sys
 from typing import Mapping
 from gml2 import Block, parse
 from resolvers import resolve, ResolutionError
-from registry import load_registry, validate_document
+from registry import load_registry, validate_document, accepts
+from rules import RuleViolation
 
 class AssemblyError(ValueError): pass
 
@@ -52,25 +53,26 @@ def graph_identity(doc):
     if not isinstance(gid,str) or not gid: raise AssemblyError('graph_id required')
     return gid
 
-def parse_source(doc):
+def parse_source(doc, registry=None):
+    registry=registry or load_registry()
+    validate_document(doc,registry)
     if field(doc,'schema')!='gml-tensor/1' or field(doc,'contract')!='tensor_source':
         raise AssemblyError('source must declare gml-tensor/1 tensor_source')
     gid=graph_identity(doc)
     t=field(doc,'tensor')
     if not isinstance(t,Block): raise AssemblyError('tensor declaration missing')
-    if field(t,'rank')!=2: raise AssemblyError('this assembler supports rank 2 only')
+    # rank is enforced by the registry
     shape=shape_of(t)
     dtype=field(t,'dtype')
-    if dtype!='float32': raise AssemblyError('only float32 supported')
-    if field(t,'layout')!='row_major': raise AssemblyError('only row_major supported')
+    # dtype enum is enforced by the registry
+    # layout enum is enforced by the registry
     data=field(doc,'data')
     vals=None
     if data is not None:
         if not isinstance(data,Block): raise AssemblyError('data must be block')
         raw=values(data,'value')
-        if len(raw)!=shape[0]*shape[1]: raise AssemblyError(f'{gid}: data count does not match shape')
-        if any(type(x) not in (float,int) or not math.isfinite(x) for x in raw):
-            raise AssemblyError('data must be finite numbers')
+        registry.require('data_count').check(values=raw,shape=shape)
+        registry.require('finite_values').check(values=raw)
         vals=tuple(float(x) for x in raw)
     return shape,dtype,vals
 
@@ -83,12 +85,13 @@ def resolve_ref(ref, docs):
 def assemble(doc, docs: Mapping[str,Block], materialize=False):
     if field(doc,'schema')!='gml-tensor/1' or field(doc,'contract')!='tensor_assembly':
         raise AssemblyError('assembly must declare gml-tensor/1 tensor_assembly')
-    validate_document(doc, load_registry())
+    registry=load_registry()
+    validate_document(doc,registry)
     gid=graph_identity(doc)
     t=field(doc,'tensor')
-    if not isinstance(t,Block) or field(t,'rank')!=2: raise AssemblyError('rank-2 tensor required')
+    if not isinstance(t,Block): raise AssemblyError('tensor block required')
     shape=shape_of(t); dtype=field(t,'dtype')
-    if dtype!='float32' or field(t,'layout')!='row_major': raise AssemblyError('unsupported dtype/layout')
+    # dtype/layout/rank are registry-validated
     if field(doc,'overlap_policy','reject')!='reject': raise AssemblyError('only reject overlap supported')
     if field(doc,'coverage_policy','complete') not in ('complete','sparse'):
         raise AssemblyError('invalid coverage_policy')
@@ -96,7 +99,7 @@ def assemble(doc, docs: Mapping[str,Block], materialize=False):
     source_cache = {}
     for source_id, source_doc in docs.items():
         if field(source_doc,'contract') == 'tensor_source':
-            source_cache[source_id] = parse_source(source_doc)
+            source_cache[source_id] = parse_source(source_doc,registry)
     # Resolve and preflight all slices before allocating or writing output.
     prepared=[]
     for block in values(doc,'slice'):
@@ -105,10 +108,9 @@ def assemble(doc, docs: Mapping[str,Block], materialize=False):
         src_id=graph_identity(src)
         if src_id not in source_cache: raise AssemblyError(f'not a tensor_source: {ref!r}')
         src_shape,src_dtype,src_data=source_cache[src_id]
-        if src_dtype!=dtype: raise AssemblyError('dtype mismatch')
+        registry.require('dtype_match').check(source_dtype=src_dtype,assembly_dtype=dtype,source_id=src_id)
         row=integer(field(block,'row_offset'),'row_offset'); col=integer(field(block,'col_offset'),'col_offset')
-        if row+src_shape[0]>shape[0] or col+src_shape[1]>shape[1]:
-            raise AssemblyError('slice out of bounds')
+        registry.require('bounds_check').check(row=row,col=col,source_shape=src_shape,target_shape=shape)
         prepared.append((ref,row,col,src_shape,src_data))
     if materialize:
         missing=sorted({ref for ref,_,_,_,data in prepared if data is None})
@@ -118,13 +120,12 @@ def assemble(doc, docs: Mapping[str,Block], materialize=False):
         for r in range(src_shape[0]):
             for c in range(src_shape[1]):
                 dst=(row+r,col+c)
-                if dst in occupied: raise AssemblyError(f'overlap at {dst}')
+                registry.require('no_overlap').check(destination=dst,occupied=occupied)
                 occupied.add(dst)
                 if materialize: out[dst[0]*shape[1]+dst[1]]=src_data[r*src_shape[1]+c]
         slices.append(Slice(ref,(row,col),src_shape,src_data))
     total=shape[0]*shape[1]
-    if field(doc,'coverage_policy','complete')=='complete' and len(occupied)!=total:
-        raise AssemblyError(f'incomplete coverage: {len(occupied)}/{total}')
+    registry.require('complete_coverage').check(coverage_policy=field(doc,'coverage_policy','complete'),occupied=occupied,total=total)
     return Plan(gid,shape,dtype,tuple(slices),len(occupied),total), (tuple(out) if materialize else None)
 
 def load_directory(path, registry_path=None):
@@ -136,9 +137,12 @@ def load_directory(path, registry_path=None):
         docs[gid]=doc
     registry = load_registry(registry_path)
     for gid, doc in docs.items():
+        # Another extension's document in the same directory is loaded, but not validated here.
+        if not accepts(doc, registry):
+            continue
         validate_document(doc, registry)
         if field(doc,'contract') == 'tensor_source':
-            parse_source(doc)
+            parse_source(doc,registry)
     return docs
 
 if __name__=='__main__':

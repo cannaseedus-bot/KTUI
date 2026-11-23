@@ -2,14 +2,21 @@ import sys,unittest,tempfile
 from pathlib import Path
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'core'))
 from gml2 import parse,serialize
-from registry import load_registry,validate_document,RegistryError
+from registry import load_registry,validate_document,accepts,RegistryError
 from assemble import load_directory
 ROOT=Path(__file__).resolve().parents[1]
 class TestRegistryV3(unittest.TestCase):
  def test_registry_validates_all_sources(self):
+  """P1: every tensor document validates; a foreign extension's document is out of scope."""
   docs=load_directory(ROOT/'contracts')
   reg=load_registry()
-  for doc in docs.values(): self.assertTrue(validate_document(doc,reg))
+  owned=[doc for doc in docs.values() if accepts(doc,reg)]
+  foreign=[doc for doc in docs.values() if not accepts(doc,reg)]
+  self.assertTrue(owned,'fixtures must contain tensor documents')
+  self.assertTrue(foreign,'fixtures must contain another extension, or the boundary is untested')
+  for doc in owned: self.assertTrue(validate_document(doc,reg))
+  with self.assertRaisesRegex(RegistryError,'schema mismatch'):
+   validate_document(foreign[0],reg)
  def test_missing_shape_decl_fails_closed(self):
   text=(ROOT/'schemas/tensor-registry.gml').read_text()
   text='\n'.join(x for x in text.splitlines() if 'name "shape"' not in x)

@@ -42,3 +42,17 @@ Run: `python -m unittest discover -s tests -v` from this package directory.
 
 ## v3 registry enforcement
 The bootstrap registry now rejects unknown tensor, shape, and slice attributes, unsupported field types, and rank values other than the registry-declared `required_value 2`. `assemble()` checks the registered assembly fields even for direct callers. The parser and original graph fixtures remain unchanged. This is still a bounded bootstrap registry, not general-purpose self-hosting or XCFE admission.
+
+
+## v3.2 rule dispatch
+Six mandatory GML-declared constraints dispatch to fixed, pure Python predicates through `core/rules.py`. Missing/unknown declarations fail closed at registry load. Dtype enum now accepts float32 and float64 (numeric Python values; no binary float64 ABI promise). The GML grammar is unchanged. Registry bootstrap and predicate implementations remain Python; this is not self-hosting, execution admission, or GPU dispatch.
+
+## v3.3 — structural rule dispatch
+
+- `Registry.require(name)` is a production call-site gate, not a test-only assertion.
+- Each GML `constraint` declares `arity` matching the trusted keyword-only predicate signature.
+- `rules._PREDICATES` is private and only `rules.dispatch` calls implementations.
+- `assemble.py` uses `registry.require(name).check(**context)` for all six rules.
+- Missing rules and unknown predicates fail closed; GML never executes code.
+- Arity counts keyword context parameters (not tensor rank or number of slices).
+- This is not a sandbox, self-hosting GML evaluator, or XCFE admission.

@@ -3,7 +3,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'core'))
 from gml2 import parse,serialize,Block,Attribute
-from validate import validate
+from validate import validate, one, attrs
 from bundle import load_bundle
 
 class Contracts(unittest.TestCase):
@@ -11,16 +11,29 @@ class Contracts(unittest.TestCase):
     def setUpClass(cls):
         cls.registry=parse((ROOT/'schemas/registry.gml').read_text())
         cls.bundle=load_bundle(ROOT/'contracts')
+        # This registry owns gml-core/2, aiml-gml/1 and gml-math/1. The tensor contracts in the
+        # same directory declare gml-tensor/1 and are validated by schemas/tensor-registry.gml;
+        # asserting them here would either fail or pass vacuously.
+        cls.owned={one(node,'schema_id') for node in attrs(cls.registry,'node')
+                   if one(node,'kind')=='schema'}
+    def _owned_documents(self):
+        for path in sorted((ROOT/'contracts').glob('*.gml')):
+            doc=parse(path.read_text())
+            if one(doc,'schema') in self.owned:
+                yield path,doc
     def test_roundtrip(self):
         for path in (ROOT/'contracts').glob('*.gml'):
             with self.subTest(path=path.name):
                 doc=parse(path.read_text()); self.assertEqual(parse(serialize(doc)),doc)
                 self.assertEqual(serialize(parse(serialize(doc))),serialize(doc))
     def test_structural(self):
-        for path in (ROOT/'contracts').glob('*.gml'):
+        checked=0
+        for path,doc in self._owned_documents():
             with self.subTest(path=path.name):
-                result=validate(parse(path.read_text()),self.registry,self.bundle)
+                result=validate(doc,self.registry,self.bundle)
                 self.assertEqual(result.state,'STRUCTURALLY_VALIDATED',result.failures)
+                checked+=1
+        self.assertTrue(checked,'no document of this registry was validated')
     def test_unresolved_binding_not_rejected(self):
         doc=parse((ROOT/'contracts/srai.gml').read_text())
         result=validate(doc,self.registry,self.bundle,{})

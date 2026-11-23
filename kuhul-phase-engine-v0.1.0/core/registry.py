@@ -1,8 +1,50 @@
 """Minimal GML bootstrap registry validation; no runtime dispatch."""
 from pathlib import Path
+from dataclasses import dataclass
 from gml2 import parse, Block
 
 class RegistryError(ValueError): pass
+
+# The one schema this registry owns. Documents that declare another extension (aiml-gml/1,
+# gml-math/1) live in the same directories but are not this registry's business: validating them
+# here would reject legal documents and claim authority this registry does not have.
+SCHEMA_ID = 'gml-tensor/1'
+
+def accepts(doc, registry=None):
+    """True when the document declares this registry's extension."""
+    return one(doc, 'schema') == SCHEMA_ID
+
+@dataclass(frozen=True)
+class Constraint:
+    name: str
+    predicate: str
+    arity: int
+    scope: str
+
+    def check(self, **context):
+        from rules import dispatch
+        if len(context) != self.arity:
+            raise RegistryError(f"constraint {self.name!r} expects {self.arity} arguments, got {len(context)}")
+        return dispatch(self.predicate, **context)
+
+@dataclass(frozen=True)
+class Registry:
+    contracts: dict
+    fields: dict
+    constraints: dict
+
+    def require(self, name):
+        rule = self.constraints.get(name)
+        if rule is None:
+            raise RegistryError(f"constraint {name!r} required but not declared in registry")
+        return rule
+
+    def __getitem__(self, index):
+        return (self.contracts, self.fields, self.constraints)[index]
+
+    def __iter__(self):
+        return iter((self.contracts, self.fields, self.constraints))
+
 
 def attrs(b,key): return [a.value for a in b.entries if a.name==key]
 def one(b,key,default=None):
@@ -37,11 +79,22 @@ def load_registry(path=None):
     for (path,name),decl in fields.items():
         if one(decl,'type') not in supported:
             raise RegistryError(f'unsupported registry type: {path}.{name}')
-    return contracts,fields
+    required_rules={'data_count','finite_values','dtype_match','bounds_check','no_overlap','complete_coverage'}
+    from rules import predicate_arity
+    rules={}
+    for rule in attrs(doc,'constraint'):
+        name=one(rule,'name'); predicate=one(rule,'predicate'); scope=one(rule,'scope'); arity=one(rule,'arity')
+        if name in rules or name not in required_rules or predicate!=name or scope not in ('source','assembly') or one(rule,'authority')!='declaration_only':
+            raise RegistryError(f'invalid constraint declaration: {name}')
+        if type(arity) is not int or arity < 0 or arity != predicate_arity(predicate):
+            raise RegistryError(f"constraint {name!r} arity mismatch: declared {arity}, predicate expects {predicate_arity(predicate)}")
+        rules[name]=Constraint(name,predicate,arity,scope)
+    if set(rules)!=required_rules: raise RegistryError(f'missing constraint declarations: {sorted(required_rules-set(rules))}')
+    return Registry(contracts,fields,rules)
 
 def validate_document(doc,registry):
-    contracts,fields=registry
-    if one(doc,'schema')!='gml-tensor/1': raise RegistryError('schema mismatch')
+    contracts,fields,*_=registry
+    if one(doc,'schema')!=SCHEMA_ID: raise RegistryError('schema mismatch')
     contract=one(doc,'contract')
     if contract not in contracts: raise RegistryError('unregistered contract')
     for name in contracts[contract]:
