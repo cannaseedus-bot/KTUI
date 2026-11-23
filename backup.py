@@ -110,9 +110,15 @@ def verify(bundle: Path, *, expect_commit: str | None = None, run_suites: bool =
         suites = {}
         if run_suites:
             package = clone / "kuhul-phase-engine-v0.1.0"
+            # Deliberately NOT `discover -s tests_host`: that would run the backup test against the
+            # clone, which clones again - an infinite regress I hit the first time this ran. The two
+            # host suites that matter here are named explicitly.
             for label, cwd, command in (
                     ("package", package, [sys.executable, "-m", "unittest", "discover", "-s", "tests"]),
-                    ("host", clone, [sys.executable, "-m", "unittest", "discover", "-s", "tests_host"])):
+                    ("host-guards", clone, [sys.executable, "-m", "unittest", "discover", "-s", "tests_host",
+                                            "-p", "test_host_guards.py"]),
+                    ("ledger", clone, [sys.executable, "-m", "unittest", "discover", "-s", "tests_host",
+                                       "-p", "test_ledger.py"])):
                 if not cwd.is_dir():
                     suites[label] = dict(ok=False, reason="directory missing in the restore")
                     continue

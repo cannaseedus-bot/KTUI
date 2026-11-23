@@ -174,9 +174,11 @@ default is off, and a recorded verdict authorizes nothing.
 - **Tamper evidence is per index**: editing, deleting or reordering a record breaks `content_mismatch`,
   `sequence_gap` or `broken_link` at a named line, and `append()` refuses to add to a chain that no
   longer verifies.
-- **Signing is honest**: `ed25519:` signatures verify against the record's `public_key`, a wrong key
-  fails, and an unsigned ledger reports `signed 0 / unsigned N` with `algorithm: sha256 only` rather
-  than implying authenticity it does not have. The key lives in `.ledger-key.pem`, gitignored.
+- **Signing is explicit**: a record is signed only when the caller passes a key or the
+  `KNUMATIC_LEDGER_KEY` env var is set - the mere presence of `.ledger-key.pem` must not silently
+  change what the ledger records. `ed25519:` signatures verify against the record's `public_key`, a
+  wrong key fails, and an unsigned ledger reports `signed 0 / unsigned N` with `algorithm: sha256
+  only` rather than implying authenticity it does not have.
 - **What it is not**: a distributed ledger. One authority, no consensus, no network validation, no
   double-spend prevention. It is a tamper-evident audit trail for this host, which is what the
   evidence record needs.
@@ -206,7 +208,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 21 tests, OK (M3-M10; ledger M10 is 11 of them)
+host guards    : 26 tests, OK (M3-M11: guards, ledger 11, backup 5)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 

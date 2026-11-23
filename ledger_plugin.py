@@ -134,7 +134,11 @@ def verify_signature(record: dict, signature: str, public_hex: str) -> bool:
 def schema_fields(path: Path = SCHEMA_PATH) -> tuple[tuple[str, ...], str]:
     """Field names from the GML document. The document describes the record; this module enforces it."""
     try:
-        import gml2
+        try:  # the package's own parser is tracked, unlike a loose gml2.py in the checkout root
+            import phases
+            gml2 = phases.core_module("gml2")
+        except Exception:
+            import gml2
         document = gml2.parse(Path(path).read_text(encoding="utf-8"))
         fields = []
         for entry in getattr(document, "entries", []):
@@ -181,7 +185,10 @@ def append(entry: dict, path: Path = LEDGER_PATH, *, key_path: Path | None = Non
     body["payload"] = payload
     record = dict(body)
     record["content_hash"] = content_hash(record)
-    key = load_key(key_path, create=create_key)
+    # Signing is explicit: a key on disk does not silently change what the ledger records. The env
+    # var counts as explicit configuration; the mere existence of .ledger-key.pem does not.
+    wants_signature = bool(key_path or create_key or os.environ.get(KEY_ENV))
+    key = load_key(key_path, create=create_key) if wants_signature else None
     if key is not None:
         record["signature"] = sign(record, key)
         record["public_key"] = public_bytes(key)

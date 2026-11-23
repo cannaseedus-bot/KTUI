@@ -55,7 +55,8 @@ class M11IndependentBackup(unittest.TestCase):
         self.assertEqual(report["restored_head"], self.created["entry"]["head"])
         self.assertGreater(report["commits"], 0)
         self.assertTrue(report["suites"]["package"]["ok"], report["suites"]["package"])
-        self.assertTrue(report["suites"]["host"]["ok"], report["suites"]["host"])
+        self.assertTrue(report["suites"]["host-guards"]["ok"], report["suites"]["host-guards"])
+        self.assertTrue(report["suites"]["ledger"]["ok"], report["suites"]["ledger"])
 
     def test_tampered_bundle_is_reported(self):
         copied = Path(self.folder.name) / "tampered"
