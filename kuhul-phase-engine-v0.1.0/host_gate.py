@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Read-only host evidence collector. Never authorizes merging."""
 import argparse
+import os
 import datetime
 import json
 import re
@@ -12,8 +13,12 @@ SIGNATURE_FILE = Path(__file__).with_name('signatures.json')
 BAD = {'failed', 'errored'}
 
 def run(cmd, cwd, timeout):
+    # Captured output must be lossless: the child prints with the host locale unless told
+    # otherwise, and decoding cp1252 bytes as utf-8 replaces '·' with U+FFFD in the evidence.
+    env = {**os.environ, 'PYTHONUTF8': '1', 'PYTHONIOENCODING': 'utf-8'}
     try:
-        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=timeout, errors='replace')
+        p = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, encoding='utf-8',
+                           env=env, timeout=timeout, errors='replace')
         return dict(command_line=cmd, exit_code=p.returncode, stdout=p.stdout, stderr=p.stderr, timed_out=False)
     except subprocess.TimeoutExpired as exc:
         def decode(v):

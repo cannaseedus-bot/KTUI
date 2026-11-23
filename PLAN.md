@@ -85,16 +85,36 @@ GML extension `gml-tensor/1` owned by gml.tensor · registry bootstrap `gml-regi
    recoveries. If M2 is to be closable, the gate needs a "new named guard tests present and green"
    criterion; recovery alone will never cover it.
 
-**Harness defects found while producing this, one fixed here:**
+**Does the harness deliver the seven properties it claims?** Audited against the code, with the
+report as evidence:
 
-- **Fixed:** v2's `parse_suite` dropped every documented test (unittest prints the name, the
-  docstring, then the status on three lines), capturing 76 of 80 and setting `complete: false` —
-  which makes every attribution inconclusive. `host_gate.py` now normalises that form: 80/80,
-  `complete: true`.
-- **Reported, not fixed:** captures decode subprocess output with the platform default (cp1252 here),
-  so `·` in the health text is stored as `�`. Pass `encoding='utf-8'` to `subprocess.run`.
-- v1's false positive (signature matching hit *passing* test names such as `test_duplicate_graph_id`)
-  is gone in v2, because signatures are classified only from failure blocks.
+| Claim | Holds | How it is enforced |
+|---|---|---|
+| Declared signatures | yes | `signatures.json`, validated at load: duplicate ids, unknown ledger, and both patterns are compiled |
+| Named test evidence | yes* | per-test `outcome` + `traceback` block, keyed by qualified id; *was incomplete until the docstring fix below |
+| F14/M2 attribution | yes | `classify(error_type, block, signatures)` runs on **each failure's** block, never the whole log |
+| Unmatched recoveries | yes | `recovered_unmatched` — this run reports `test_contracts.test_structural` rather than claiming it |
+| Disappeared ≠ fixed | yes | `recovered` requires `after == passed`; an absent test lands in `disappeared` (0 here) |
+| Runtime health captured independently | yes* | separate `run()` results for `base_health` and `extension_summary`; *was lossy until the decoding fix below |
+| Closure conservative, merge never authorized | yes | `assess()` appends the health-semantics reason unconditionally; `merge_authorized: false` |
+
+**Two harness defects found and fixed in this checkout** — both were silently weakening the evidence:
+
+1. `parse_suite` dropped every *documented* test: unittest prints the name, the docstring, then the
+   status on three lines, so the single-line regex captured 76 of 80 and set `complete: false`,
+   which makes every attribution inconclusive. Normalised now: **80/80, `complete: true`**.
+2. Captures were **not verbatim**: the child printed with the host locale (cp1252) while the parent
+   decoded utf-8, so the `·` in the health line was stored as `�`. The child now runs with
+   `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` and the decode is utf-8, so the stored health text reads
+   `banks 9 · categories 238 · bad digests 0 · missing modules none · newest edit 14:41` exactly.
+
+v1's false positive (signature matching hit *passing* test names such as `test_duplicate_graph_id`)
+is gone in v2: signatures are classified only from failure blocks.
+
+**Capture before you patch.** The one thing that cannot be recovered afterwards is the baseline: a
+report can only attribute by name if the pre-patch state was captured. Run
+`host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
+gate cycle starts there.
 
 ---
 
@@ -249,8 +269,11 @@ header. The remote's pre-recovery history is preserved as branch `backup/origin-
 ## Merge checklist (run after every base merge)
 
 ```bat
-:: 1. the base's own suite must be green before anything is merged
+:: 0. capture BEFORE patching anything, or the report cannot attribute by name afterwards
 cd kuhul-phase-engine-v0.1.0
+python host_gate.py --host . --capture ..\host-gate-before-v2.json
+
+:: 1. the base's own suite must be green before anything is merged
 python -m unittest discover -s tests
 ::    expect: "OK" (67 tests and growing); errors usually mean the F14 schema gate was dropped
 
