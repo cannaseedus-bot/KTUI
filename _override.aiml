@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The AIML side of the tool bridge.
+
+  A template here answers in one of two ways:
+
+    TOOL <verb> <args>   the app runs the verb (git, time, convert, files) and replies with its output
+    __LLM_FALLBACK__     nothing local knows this, so the app hands the turn to the model
+
+  The pattern is the semantic part; `<srai>` keeps one canonical phrasing per tool so "what changed"
+  and "git status" cannot drift apart. Anything that needs the network or a real model (weather,
+  translation) falls back on purpose rather than inventing an answer.
+
+  Wildcard note: `*` matches words, and `<star/>` substitutes them into the template.
+-->
+<aiml version="2.0">
+
+  <!-- ============================ git: reads only ============================ -->
+  <category><pattern>GIT STATUS</pattern><template>TOOL git status</template></category>
+  <category><pattern>WHAT CHANGED</pattern><template><srai>GIT STATUS</srai></template></category>
+  <category><pattern>WHAT HAS CHANGED</pattern><template><srai>GIT STATUS</srai></template></category>
+  <category><pattern>STATUS OF THE REPO</pattern><template><srai>GIT STATUS</srai></template></category>
+  <category><pattern>SHOW ME THE CHANGES</pattern><template><srai>GIT STATUS</srai></template></category>
+  <category><pattern>WHAT IS THE STATUS</pattern><template><srai>GIT STATUS</srai></template></category>
+
+  <category><pattern>GIT DIFF</pattern><template>TOOL git diff</template></category>
+  <category><pattern>WHAT IS THE DIFF</pattern><template><srai>GIT DIFF</srai></template></category>
+  <category><pattern>SHOW THE DIFF</pattern><template><srai>GIT DIFF</srai></template></category>
+  <category><pattern>SHOW ME THE DIFF</pattern><template><srai>GIT DIFF</srai></template></category>
+  <category><pattern>DIFF</pattern><template><srai>GIT DIFF</srai></template></category>
+
+  <category><pattern>GIT LOG</pattern><template>TOOL git log --oneline -10</template></category>
+  <category><pattern>RECENT COMMITS</pattern><template><srai>GIT LOG</srai></template></category>
+  <category><pattern>SHOW THE LOG</pattern><template><srai>GIT LOG</srai></template></category>
+  <category><pattern>WHAT DID I COMMIT</pattern><template><srai>GIT LOG</srai></template></category>
+
+  <category><pattern>GIT BRANCH</pattern><template>TOOL git branch</template></category>
+  <category><pattern>WHICH BRANCH</pattern><template><srai>GIT BRANCH</srai></template></category>
+  <category><pattern>WHAT BRANCH AM I ON</pattern><template><srai>GIT BRANCH</srai></template></category>
+
+  <category><pattern>TRACKED FILES</pattern><template>TOOL git ls-files</template></category>
+  <category><pattern>WHAT FILES ARE TRACKED</pattern><template><srai>TRACKED FILES</srai></template></category>
+  <category><pattern>GIT FILES</pattern><template><srai>TRACKED FILES</srai></template></category>
+
+  <category><pattern>LAST COMMIT</pattern><template>TOOL git show --stat HEAD</template></category>
+  <category><pattern>WHAT WAS THE LAST COMMIT</pattern><template><srai>LAST COMMIT</srai></template></category>
+  <category><pattern>SHOW THE LAST COMMIT</pattern><template><srai>LAST COMMIT</srai></template></category>
+
+  <!-- ============================ local, deterministic ============================ -->
+  <category><pattern>WHAT IS THE TIME</pattern><template>TOOL time</template></category>
+  <category><pattern>WHAT TIME IS IT</pattern><template><srai>WHAT IS THE TIME</srai></template></category>
+  <category><pattern>TIME</pattern><template><srai>WHAT IS THE TIME</srai></template></category>
+
+  <category>
+    <pattern>CONVERT * CELSIUS TO FAHRENHEIT</pattern>
+    <template>TOOL convert <star/> C F</template>
+  </category>
+  <category>
+    <pattern>CONVERT * FAHRENHEIT TO CELSIUS</pattern>
+    <template>TOOL convert <star/> F C</template>
+  </category>
+  <category>
+    <pattern>WHAT IS * CELSIUS IN FAHRENHEIT</pattern>
+    <template>TOOL convert <star/> C F</template>
+  </category>
+  <category>
+    <pattern>HOW MANY FILES ARE IN THIS FOLDER</pattern>
+    <template>TOOL files</template>
+  </category>
+
+  <!-- ============================ jokes: static, no tool ============================ -->
+  <category><pattern>TELL ME A JOKE</pattern><template>Why did the robot go to the bar? It needed a byte.</template></category>
+  <category><pattern>DO YOU KNOW ANY JOKES</pattern><template><srai>TELL ME A JOKE</srai></template></category>
+  <category><pattern>JOKE</pattern><template><srai>TELL ME A JOKE</srai></template></category>
+  <category><pattern>ANOTHER JOKE</pattern><template>I would tell you a git joke, but it would not commit.</template></category>
+
+  <!-- ============================ honest fallbacks ============================ -->
+  <!-- Weather and translation need the network or a real model: say so instead of inventing data. -->
+  <category><pattern>WHAT IS THE WEATHER *</pattern><template>__LLM_FALLBACK__</template></category>
+  <category><pattern>TRANSLATE *</pattern><template>__LLM_FALLBACK__</template></category>
+
+</aiml>

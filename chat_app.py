@@ -39,10 +39,12 @@ try:  # the header mark: an allowlisted subset of SVG, rasterised to half blocks
 except ImportError:  # pragma: no cover
     svg_logo = None
 import math
+import shlex
 import subprocess
 import shutil
 import requests
 import webbrowser
+from datetime import datetime
 from pathlib import Path
 from enum import Enum
 from typing import Callable
@@ -198,7 +200,12 @@ class Sandbox:
             raise SandboxError(f"{program} is not allowlisted")
         if any(a.split("=")[0] in DENIED_FLAGS for a in args):
             raise SandboxError("denied flag passed")
-        
+        # The allowlist is per subcommand, the same way the terminal enforces it: `git push` and
+        # `python -c` both go through here, and only the second is on the list.
+        allowed = ALLOWED_PROGRAMS[program]
+        if allowed and not any(item in allowed for item in args):
+            raise SandboxError(f"{program} needs one of: {', '.join(sorted(allowed))}")
+
         argv = [program] + args
         try:
             res = subprocess.run(argv, cwd=str(self.root), capture_output=True, text=True, timeout=10, shell=False)
@@ -219,8 +226,11 @@ class ListDirArgs(BaseModel):
 class ReadFileArgs(BaseModel):
     path: str = Field(..., description="Relative path to read")
 class RunCommandArgs(BaseModel):
-    program: str = Field(..., description="git, python, node")
-    args: list[str] = Field(..., description="List of string arguments")
+    program: str = Field(..., description="Allowlisted program: git, python, node (python/node take -c/-m/-e)")
+    args: list[str] = Field(..., description="Arguments, e.g. ['status'] for git status")
+class GitArgs(BaseModel):
+    command: str = Field(..., description="Read-only git subcommand: status, diff, log, show, branch, ls-files, grep, describe")
+    arguments: list[str] = Field(default_factory=list, description="Extra arguments, e.g. ['--oneline', '-10'] for log")
 class HistoryArgs(BaseModel):
     query: str = Field("", description="Text to look for in earlier sessions; empty lists the newest messages")
     limit: int = Field(10, description="How many messages to return at most")
@@ -253,6 +263,9 @@ def execute_tool(name: str, args: dict) -> str:
             return sandbox.read_file(args["path"])
         elif name == "run_command":
             return sandbox.run_command(args["program"], args["args"])
+        elif name == "git_command":
+            extra = [str(item) for item in (args.get("arguments") or [])]
+            return sandbox.run_command("git", [str(args.get("command") or "status")] + extra)
         elif name == "search_history":
             if session_log is None:
                 return "session logging is unavailable"
@@ -530,7 +543,7 @@ class ChatApp(App):
         # Every conversation is a session on disk: /resume and /rewind work off that file, and the
         # model can look back at it with the search_history tool.
         self.session_id = session_log.new_session() if session_log else ""
-        self.messages = [{"role": "system", "content": "You are a helpful coding assistant. Use tools to inspect the repo."}]
+        self.messages = [{"role": "system", "content": self.system_prompt()}]
         self.bus = TaskListBus().start() if TaskListBus else None
         self.update_client()
         self.router = self.get_semantic_router()
@@ -591,17 +604,71 @@ class ChatApp(App):
         return "\n".join(lines)
 
     def get_semantic_router(self):
+        """Learn the local AIML banks, most specific last.
+
+        `_override.aiml` is the tool bridge (git, time, convert, files) and must win over anything
+        generic; `knumatic_learned.aiml` is the dumper's output from past conversations; the corpus
+        `startup.xml` is used only when it exists, which it does not in the ALICE tarball.
+        """
         kernel = aiml.Kernel()
         alice_dir = APP_ROOT / "aiml-en-us-foundation-alice"
-        if alice_dir.exists():
-            startup = alice_dir / "startup.xml"
-            if startup.exists(): kernel.learn(str(startup))
-
-        # Fallback override, also anchored to the repository root
+        startup = alice_dir / "startup.xml"
+        if alice_dir.is_dir() and startup.is_file():
+            kernel.learn(str(startup))
+        learned = alice_dir / "knumatic_learned.aiml"
+        if learned.is_file():
+            kernel.learn(str(learned))
         override = APP_ROOT / "_override.aiml"
-        kernel.learn(str(override)) if override.exists() else None
+        if override.is_file():
+            kernel.learn(str(override))
         kernel.setBotPredicate("name", "KNUMATIC")
         return kernel
+
+    # -- the AIML side of the tool bridge ------------------------------------------------------------
+    def run_tool_verb(self, verb: str, argument: str) -> str:
+        """Execute what a `TOOL <verb> <args>` template asked for. Only verbs this file knows."""
+        verb = (verb or "").strip().lower()
+        argument = (argument or "").strip()
+        if verb == "git":
+            # run_command keeps its own allowlist and subcommand checks; this adds no power.
+            return sandbox.run_command("git", shlex.split(argument) or ["status"])
+        if verb == "files":
+            return sandbox.list_dir(".")
+        if verb == "time":
+            stamp = datetime.now().strftime("%I:%M %p")
+            return f"It's {stamp.lstrip('0')}."
+        if verb == "convert":
+            parts = argument.replace(",", " ").split()
+            if len(parts) < 3:
+                raise SandboxError("convert needs: <value> C F | <value> F C")
+            value = float(parts[0])
+            from_unit, to_unit = parts[1].upper(), parts[2].upper()
+            if from_unit == to_unit:
+                return f"{value:g}{from_unit}"
+            if from_unit == "C" and to_unit == "F":
+                result = value * 9 / 5 + 32
+            elif from_unit == "F" and to_unit == "C":
+                result = (value - 32) * 5 / 9
+            else:
+                raise SandboxError(f"cannot convert {from_unit} to {to_unit}")
+            return f"{value:g}°{from_unit} is {result:.0f}°{to_unit}"
+        raise SandboxError(f"unknown tool verb {verb!r}")
+
+    def local_answer(self, text: str) -> tuple[str, str] | None:
+        """AIML first. Returns (kind, text), or None when the turn belongs to the model."""
+        try:
+            reply = (self.router.respond(text.upper()) or "").strip()
+        except Exception:
+            reply = ""
+        if not reply or "__LLM_FALLBACK__" in reply:
+            return None
+        if reply.upper().startswith("TOOL "):
+            verb, _, argument = reply[5:].partition(" ")
+            try:
+                return "tool", self.run_tool_verb(verb, argument)
+            except Exception as error:
+                return "error", str(error)
+        return "aiml", reply
 
     def get_commands(self) -> dict[str, tuple[str, Callable[[], object], str]]:
         """Ctrl+P and `/commands`: local models first (fastest to deepest), then advisors."""
@@ -900,6 +967,41 @@ class ChatApp(App):
         self.say_system(f"New session `{self.session_id}`. `/sessions` lists the old ones; `/resume` loads one.")
 
     # -- workspace: which folder, and what the model may do with it -----------------------------------
+    def system_prompt(self) -> str:
+        """The model's brief: where it is, what it may do, and which tools it actually has.
+
+        A model cannot call what it cannot name, so the tool list is spelled out with the phrasings
+        that map to each one.
+        """
+        tools = [
+            "list_dir(path) and read_file(path) to look around",
+            "git_command(command, arguments) for status/diff/log/show/branch/ls-files/grep",
+            "run_command(program, args) for the allowlisted git/python/node",
+            "search_history(query) for what was said in earlier sessions",
+        ]
+        if sandbox.allow_write:
+            tools.append("write_file(path, content) and patch_file(path, find, replace) to change files")
+        permission = (
+            "read-write: writes and patches are allowed here"
+            if sandbox.allow_write
+            else "read-only: no writes until the human grants it with /allow"
+        )
+        return (
+            "You are the coding assistant inside KNUMATIC, a local terminal. Act with tools instead of "
+            "guessing: when a question is about the workspace, call one rather than describing what "
+            "you would do.\n"
+            f"Workspace: {sandbox.root} — {permission}.\n"
+            "Tools: " + "; ".join(tools) + ".\n"
+            "git here is read-only (status, diff, log, show, branch, ls-files, grep, describe); there is "
+            "no shell and no network. Paths are workspace-relative. If a tool refuses, report the "
+            "refusal and why - never claim work you did not do."
+        )
+
+    def refresh_system_prompt(self) -> None:
+        """Keep the brief in step with the workspace and the grant, for the running conversation."""
+        if self.messages and self.messages[0].get("role") == "system":
+            self.messages[0]["content"] = self.system_prompt()
+
     def update_workspace_bar(self) -> None:
         try:
             bar = self.query_one("#workspace-bar", WorkspaceBar)
@@ -930,6 +1032,7 @@ class ChatApp(App):
         was_writable = sandbox.allow_write
         sandbox.set_root(resolved, allow_write=False)
         self.update_workspace_bar()
+        self.refresh_system_prompt()
         note = " Write permission was dropped with the old folder." if was_writable else ""
         self.say_system(
             f"Workspace is now `{resolved}` — read-only.{note}\n\n"
@@ -942,6 +1045,7 @@ class ChatApp(App):
         allow = word not in {"off", "no", "read", "readonly", "read-only", "false"}
         sandbox.allow_write = allow
         self.update_workspace_bar()
+        self.refresh_system_prompt()
         if allow:
             self.say_system(
                 f"**{sandbox.root}** is read-write for this session: the model can `write_file` and "
@@ -957,7 +1061,7 @@ class ChatApp(App):
             yield WorkspaceBar(id="workspace-bar")
         with Horizontal(id="main"):
             with VerticalScroll(id="chat-view"):
-                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.\n\nWorkspace: `/workspace` (or Ctrl+P) picks the folder the model may read, `/allow` grants write and patch, `/allow off` revokes it — choosing another folder resets the grant.\n\nHistory: `/sessions` lists past conversations, `/resume [n]` loads one, `/rewind [n]` drops the last exchanges, `/new` starts fresh.")
+                yield Response("Agent active. Type 'list_dir .' to inspect files, or 'search web for X'.\n\nTask commands: add task …, done …, start …, block …, priority high …, task list.\n\nGit, answered locally from AIML (no model needed): `what changed`, `show the diff`, `recent commits`, `which branch`, `tracked files`, `last commit`, `what is the time`, `convert 25 celsius to fahrenheit`.\n\nModels: `/models` lists them fastest → deepest, `/model <alias>` picks one for this session, `/default <alias>` makes it what start.bat serves next time, Ctrl+P opens the palette.\n\nAdvisors: `/keys` shows where each API key comes from, `/advisor openai|deepseek|anthropic` switches, `/local` comes back.\n\nWorkspace: `/workspace` (or Ctrl+P) picks the folder the model may read, `/allow` grants write and patch, `/allow off` revokes it — choosing another folder resets the grant.\n\nHistory: `/sessions` lists past conversations, `/resume [n]` loads one, `/rewind [n]` drops the last exchanges, `/new` starts fresh.")
             with Vertical(id="task-panel"):
                 yield Static("TASKS", id="task-title")
                 yield Static("", id="task-body")
@@ -1013,10 +1117,16 @@ class ChatApp(App):
             v.mount(Response(f"**[Local Execution]**\n\n{res}"))
             return
 
-        # 3. AIML
-        aiml_res = self.router.respond(text.upper())
-        if aiml_res and "__LLM_FALLBACK__" not in aiml_res:
-            v.mount(Response(f"**[Local AIML]**\n\n{aiml_res}"))
+        # 3. AIML, including its tool bridge: a template that says TOOL git status runs it here and
+        # returns the output instead of paying for a model round trip.
+        local = self.local_answer(text)
+        if local:
+            kind, body = local
+            heading = {"tool": "Local tool (AIML → sandbox)", "aiml": "Local AIML", "error": "Local tool refused"}[kind]
+            if kind == "tool":
+                v.mount(Response(f"**[{heading}]**\n\n```\n{body}\n```"))
+            else:
+                v.mount(Response(f"**[{heading}]**\n\n{body}"))
             return
 
         # 4. LLM with Tools
@@ -1038,6 +1148,7 @@ class ChatApp(App):
             pydantic_function_tool(ListDirArgs),
             pydantic_function_tool(ReadFileArgs),
             pydantic_function_tool(RunCommandArgs),
+            pydantic_function_tool(GitArgs),
             pydantic_function_tool(HistoryArgs),
         ]
         if sandbox.allow_write:
