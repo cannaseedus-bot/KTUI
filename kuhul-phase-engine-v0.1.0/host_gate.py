@@ -69,15 +69,24 @@ def git_info(host):
     def capture(args):
         result = run(['git', *args], host, 15)
         return result['stdout'].strip() if result['exit_code'] == 0 else None
-    tracked = capture(['status', '--porcelain', '-uno'])
+    # The gate's own artifacts are outputs of this tool: comparing a fresh capture against the
+    # previous committed one always looks like an edit, so they are excluded from the dirtiness
+    # measure. Everything else tracked still counts.
+    GATE_OUTPUTS = ('host-gate-',)
+    def _is_output(line):
+        return any(name in line for name in GATE_OUTPUTS)
+    tracked_raw = capture(['status', '--porcelain', '-uno']) or ''
+    tracked_lines = [line for line in tracked_raw.splitlines() if not _is_output(line)]
+    tracked = '\n'.join(tracked_lines)
     everything = capture(['status', '--porcelain']) or ''
-    untracked = [line[3:] for line in everything.splitlines() if line.startswith('??')]
+    untracked = [line[3:] for line in everything.splitlines()
+                 if line.startswith('??') and not _is_output(line)]
     return dict(sha=capture(['rev-parse', 'HEAD']),
                 branch=capture(['rev-parse', '--abbrev-ref', 'HEAD']),
                 # `dirty` is about tracked content: that is what the suites measure. Untracked scratch
                 # files are recorded separately instead of being conflated with an edited tree.
                 dirty=None if tracked is None else bool(tracked),
-                status_head=None if not tracked else '\n'.join(tracked.splitlines()[:20]),
+                status_head=None if not tracked_lines else '\n'.join(tracked_lines[:20]),
                 untracked_head=untracked[:20])
 
 
