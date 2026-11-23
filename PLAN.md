@@ -39,11 +39,11 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | F16 | M2.1: `data.value` declared `repeatable 1`, other fields non-repeatable; validation errors name the scope (`graph.` vs `data.`) | **guard** | `schemas/tensor-registry.gml`, `core/registry.py` |
 | M1 | Re-apply F14 after the v3.4/v3.5 merge | **done** | `core/extension.py`, `core/assemble.py` |
 | M2 | Graph-level and `data.value` declarations; unknown fields fail closed | **guard** | `schemas/tensor-registry.gml`, `core/registry.py`, `tests/test_merge_guards.py`, `tests/test_declaration_guards.py` |
-| M3 | Keep `extension_contract()` reading the GML document, not a Python class | guard | `phases.py` |
-| M4 | Confirm `gml_*` functions still run after the merge | **done** | `functions.py` (verified after v3.5) |
-| M5 | Full base suite green before merging to `main` | **done** | `kuhul-phase-engine-v0.1.0/tests` — 74 tests, OK |
-| M6 | Keep `-text` for the package in `.gitattributes` (digest integrity) | guard | `.gitattributes` |
-| M7 | Mirror this task list into `task-list.json` through the bus, if wanted | open | `task_list.py` |
+| M3 | `extension_contract()` reads the GML document, not a Python class | **guard** | `tests_host/test_host_guards.py::M3…` (edits a registry fixture, asserts the contract changes) |
+| M4 | The `gml_*` functions stay registered and callable | **guard** | `tests_host/test_host_guards.py::M4…` (enumeration, imports, representative calls, gml_audit run) |
+| M5 | The package suite is green **after** integration, every run | **guard** | `tests_host/test_host_guards.py::M5…` (runs the suite as a subprocess) |
+| M6 | The `-text` rule survives, so manifest digests stay valid | **guard** | `tests_host/test_host_guards.py::M6…` (`git check-attr text` = unset, `bad_digest` empty) |
+| M7 | The ledger is mirrored into `task-list.json` and agrees with it | **guard** | `mirror_ledger.py`, `tests_host/test_host_guards.py::M7…` (ids, status, note, idempotence, human tasks preserved) |
 | M8 | Harness self-tests: v2.1 rules covered by 14 named tests | **guard** | `kuhul-phase-engine-v0.1.0/test_host_gate.py` |
 
 ---
@@ -150,6 +150,9 @@ repeatability  : data.value repeatable 1 · duplicate dtype -> tensor.dtype requ
 gml_validate   : col_a / assembled STRUCTURALLY_VALIDATED · category OUT_OF_SCOPE (aiml-gml/1)
 gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (plan only)
 gml_audit      : admitted and run through the planner
+package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
+host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
+harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
 ```
 
 Merge order used: **F14 → F14.1 → M2 → M2.1 → base suite → `base_health()` → `extension_summary()`
