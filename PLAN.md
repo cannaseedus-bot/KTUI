@@ -35,6 +35,8 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | F12 | Phase package adapter: digest-gated banks, contract order, collisions | guard | `phases.py`, `.gitattributes` |
 | F13 | GML functions, `gml_audit` plan, `/gml` | done | `functions.py`, `plans.toml`, `chat_app.py` |
 | F14 | Registry owns exactly one schema; foreign documents are not ours to validate | **guard** | `core/extension.py` (`owns_document`), `tests/test_merge_guards.py`, `tests/test_registry_v3.py` |
+| F15 | F14.1: a document with **no** schema is malformed (rejected, not skipped); a foreign document **referenced** by a validated graph is refused | **guard** | `core/extension.py` (`owns_document`), `core/resolvers.py` (`expected_schema`), `core/assemble.py` |
+| F16 | M2.1: `data.value` declared `repeatable 1`, other fields non-repeatable; validation errors name the scope (`graph.` vs `data.`) | **guard** | `schemas/tensor-registry.gml`, `core/registry.py` |
 | M1 | Re-apply F14 after the v3.4/v3.5 merge | **done** | `core/extension.py`, `core/assemble.py` |
 | M2 | Graph-level and `data.value` declarations; unknown fields fail closed | **guard** | `schemas/tensor-registry.gml`, `core/registry.py`, `tests/test_merge_guards.py`, `tests/test_declaration_guards.py` |
 | M3 | Keep `extension_contract()` reading the GML document, not a Python class | guard | `phases.py` |
@@ -48,17 +50,25 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 ## Last verified
 
 ```
-kuhul-phase-engine-v0.1.0: python -m unittest discover -s tests   ->  Ran 74 tests, OK
+kuhul-phase-engine-v0.1.0: python -m unittest discover -s tests   ->  Ran 80 tests, OK
+                            occurrences of "schema mismatch": 0 (the F14 signature is gone)
 base_health    : banks 9 · categories 238 · bad digests 0 · missing modules none
 extension      : gml-tensor/1 owned by gml.tensor · fields 19 over data, graph, slice, tensor,
                  tensor.shape · constraints 6 · operator ASSEMBLE
-gml_validate   : col_a STRUCTURALLY_VALIDATED · assembled STRUCTURALLY_VALIDATED ·
-                 category OUT_OF_SCOPE (aiml-gml/1)
+discovery      : 4 tensor documents owned, 7 foreign skipped (no validation under the wrong contract)
+malformed      : ExtensionError: document has no schema
+cross-schema   : AssemblyError: reference schema mismatch: expected 'gml-tensor/1',
+                 got ['aiml-gml/1'] for 'gml://categories/main'
+repeatability  : data.value repeatable 1 · duplicate dtype -> tensor.dtype required once ·
+                 four value entries in one data block -> valid
+gml_validate   : col_a / assembled STRUCTURALLY_VALIDATED · category OUT_OF_SCOPE (aiml-gml/1)
 gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (plan only)
 gml_audit      : admitted and run through the planner
 ```
 
-Merge order used: **F14 → M2 → base suite → `base_health()` → `extension_summary()` → host tools**.
+Merge order used: **F14 → F14.1 → M2 → M2.1 → base suite → `base_health()` → `extension_summary()`
+→ host tools**. F14/F14.1/M2/M2.1 are now **host-verified** in this checkout, which is the state the
+ledger records — superseding the earlier "host-unverified" note in the standalone patch report.
 
 ## Fixes that must survive a merge
 
@@ -73,6 +83,24 @@ refuses a foreign document when called directly, so the boundary is enforced, no
   `tests/test_registry_v3.py::test_registry_validates_all_sources` (asserts both sides — owned
   documents validate, a foreign one raises `schema mismatch`).
 - Erased twice before this landed; if it vanishes again the signature is ~30 errors at `setUp`.
+
+**F15 — the three F14.1 distinctions, and only one of them is a skip.** Verified in this checkout:
+
+| Situation | Behaviour | Evidence |
+|---|---|---|
+| foreign document during **discovery** | skipped, not validated under the wrong contract | `load_directory`: 4 owned, 7 skipped |
+| foreign document **referenced** by a validated graph | rejection, because the binding is checked | `AssemblyError: reference schema mismatch: expected 'gml-tensor/1', got ['aiml-gml/1'] for 'gml://categories/main'` |
+| document with **no schema** | malformed, rejected | `ExtensionError: document has no schema` |
+
+`resolvers.resolve(ref, docs, expected_schema=…)` is the seam: `assemble.py` passes
+`expected_schema="gml-tensor/1"` for whole-graph references, so a tensor caller and an AIML caller
+each enforce their own boundary without the resolver knowing either schema.
+
+**F16 — M2.1 repeatability and error scope.** `data.value` is declared `repeatable 1`; every other
+field defaults to non-repeatable, so a duplicate `dtype` is `tensor.dtype required once` while four
+`value` entries in one `data` block validate. Validation errors name the scope
+(`unregistered field in data block: data.vaule`, `unregistered field: graph.coverag_policy`), which
+is what makes a typo report point at the right level instead of a generic rejection.
 
 **M2 — graph-level and `data.value` declarations.** Landed in two layers, and both need a guard
 because tightening one without the other is silent:
