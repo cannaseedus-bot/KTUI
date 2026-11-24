@@ -62,6 +62,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M23 | Answers carry clickable reference links (Wikipedia, Britannica, NASA, Space.com) labelled as searches | **guard** | `links.py`, `chat_app.py` (`maybe_reference`, `/links`), `micronaut_server.py`, `tests_host/test_links.py::M23…` |
 | M24 | The five GML/2 contract issues: reference modes, dynamic SRAI, runtime cycle guard, capability ladder, ordered templates | **guard** | `srai_resolver.py`, `aiml_host.states`, `core/rules.py` (segments required), `tests_host/test_gml2_contracts.py::M24…` |
 | M25 | AIML round-trip conformance: 131 real categories migrated, validated, and answering identically to python-aiml | **guard** | `aiml_graph.py`, `tests_host/test_aiml_roundtrip.py::M25…` |
+| M26 | Retrieval and composition: the two contracts are consumed - rank relations, compose a verified paragraph | **guard** | `compose.py`, `compose.aiml`, `aiml_contracts/{retrieval,composition}.gml`, `tests_host/test_compose.py::M26…` |
 
 ---
 
@@ -153,6 +154,42 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Retrieval and composition (M26)
+
+The gap named at the end of M25 is closed: `retrieval.gml` and `composition.gml` were contracts nothing
+read. Both are now load-bearing, and the paragraph is verified before anyone sees it.
+
+```
+you : my dog's name is Rex  ·  my dog is playful  ·  my dog is big
+you : tell me about my dog
+bot : pet (Rex) is playful and big. That is everything I have recorded about pet (Rex).
+      (3 relation(s), verification passed)
+```
+
+- **retrieval.gml** declares `strategy lexical_then_recency`, the two weights, `min_score 0.10` and
+  `max_candidates 6`. Scoring is `0.7 * lexical-overlap + 0.3 * recency`, filtered by the threshold,
+  capped by the contract, and sorted deterministically.
+- **composition.gml** declares the output type, `max_sentences`, `attribute_order`, the separator, the
+  conjunction and the sentence templates. Editing `max_sentences 2 -> 1` in a copy changes the answer,
+  which is asserted.
+- **verification before prose**: an attribute that is not in the projection fails with
+  `unsupported_attribute` and the paragraph is withheld - "nothing was invented to fill the gap" is
+  the wording the user gets. A value that changed (Max -> Rex) is a **warning**, not a failure: the
+  projection already answers with the newest, so history is reported without blocking.
+- the name is treated as an identifier, not an attribute: "pet (Rex) is playful and big" reads;
+  "pet is Rex, playful and big" does not.
+
+One real defect surfaced while making the guards hermetic: `user_memory` bound `path=EVENTS` as a
+default argument, so the module captured the file at *import* time and monkeypatching `EVENTS` had no
+effect - tests were reading the production log. Every entry point now resolves the path at call time.
+That is why the "empty memory" guard could pass while the real log had facts in it.
+
+Also fixed while wiring: `compose.aiml` had been overwritten with an unrelated 112 KB Python file (a
+corrupted write), and the `local_answer` branch for `compose` had landed *after* the `gitop` return,
+unreachable. Both are now correct and guarded.
 
 ---
 
@@ -690,7 +727,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 168 tests, OK (M3-M25: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12, gml2 15, roundtrip 13)
+host guards    : 179 tests, OK (M3-M26: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12, gml2 15, roundtrip 13, compose 11)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

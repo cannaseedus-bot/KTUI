@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Composition routing. A pattern here asks for a paragraph about a subject the user owns; the host
+  retrieves the relations from memory, composes them under the declared contract, and verifies before
+  it answers. Matching is recognition, not authority, and the paragraph may only use recorded facts.
+-->
+<aiml version="2.0">
+
+  <category><pattern>TELL ME ABOUT MY DOG</pattern><template>COMPOSE pet</template></category>
+  <category><pattern>TELL ME ABOUT MY PET</pattern><template><srai>TELL ME ABOUT MY DOG</srai></template></category>
+  <category><pattern>WHAT IS MY DOG LIKE</pattern><template><srai>TELL ME ABOUT MY DOG</srai></template></category>
+  <category><pattern>WHATS MY DOG LIKE</pattern><template><srai>TELL ME ABOUT MY DOG</srai></template></category>
+  <category><pattern>DESCRIBE MY DOG</pattern><template><srai>TELL ME ABOUT MY DOG</srai></template></category>
+  <category><pattern>WHAT DO YOU KNOW ABOUT MY DOG</pattern><template><srai>TELL ME ABOUT MY DOG</srai></template></category>
+  <category><pattern>COMPOSE MY DOG</pattern><template><srai>TELL ME ABOUT MY DOG</srai></template></category>
+
+</aiml>

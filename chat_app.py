@@ -83,6 +83,10 @@ try:  # clickable reference links for a topic
     import links
 except ImportError:  # pragma: no cover
     links = None
+try:  # retrieval and composition: the two contracts that were declared but never consumed
+    import compose
+except ImportError:  # pragma: no cover
+    compose = None
 import math
 import tempfile
 import shlex
@@ -899,6 +903,9 @@ class ChatApp(App):
         git_bank = APP_ROOT / "gitops.aiml"
         if git_bank.is_file():
             kernel.learn(str(git_bank))
+        compose_bank = APP_ROOT / "compose.aiml"
+        if compose_bank.is_file():
+            kernel.learn(str(compose_bank))
         override = APP_ROOT / "_override.aiml"
         if override.is_file():
             kernel.learn(str(override))
@@ -1091,6 +1098,22 @@ class ChatApp(App):
             return f"unknown git operation `{verb}` - try commit, push, sync or build"
         status = "**ok**" if result["ok"] else f"**failed** (exit {result.get('exit_code')})"
         return f"{result['output']}\n\n{status}"
+
+    def execute_compose(self, argument: str) -> str:
+        """Retrieve, compose and verify a paragraph about one subject. Reads only."""
+        if compose is None:
+            return "the composition module is unavailable"
+        subject = (argument or "").strip() or "pet"
+        result = compose.paragraph(self.user_id, f"tell me about my {subject}")
+        if not result["ok"]:
+            reasons = "; ".join(problem["detail"]
+                               for problem in result["verification"]["problems"][:3])
+            return (f"I cannot compose that yet: {reasons or result['plan'].get('reason')}. "
+                    "Nothing was invented to fill the gap.")
+        return compose.summary(result)
+
+    def action_compose(self, argument: str = "") -> None:
+        self.say_system(self.execute_compose(argument))
 
     def execute_memory(self, kind: str, argument: str) -> str:
         """Run an admitted memory operation and say what happened, with the event id."""
@@ -1415,6 +1438,8 @@ class ChatApp(App):
             return "aiml", self._maybe_offer(text, turn.answer)
         if turn.kind == "gitop":
             return "gitop", self.execute_gitop(turn.answer)
+        if turn.kind == "compose":
+            return "compose", self.execute_compose(turn.answer)
         return "aiml", turn.answer
 
     def _local_answer_direct(self, text: str) -> tuple[str, str] | None:

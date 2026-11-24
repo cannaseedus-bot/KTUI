@@ -37,7 +37,7 @@ class MemoryError_(ValueError):
     """A memory operation the host refuses (not to be confused with the builtin MemoryError)."""
 
 
-def _read(path: Path = EVENTS) -> list[dict]:
+def _read(path: Path | None = None) -> list[dict]:
     if not Path(path).is_file():
         return []
     rows = []
@@ -71,7 +71,7 @@ def schema_fields(path: Path = SCHEMA_PATH) -> tuple[tuple[str, ...], str]:
 
 
 def remember(*, user: str, subject: str, predicate: str, value: str, source: str = "user_message",
-             path: Path = EVENTS, key_path: Path | None = None) -> dict:
+             path: Path | None = None, key_path: Path | None = None) -> dict:
     """Append one fact event. The caller must have admitted the write already."""
     user = (user or "").strip()
     subject = (subject or "").strip()
@@ -81,6 +81,7 @@ def remember(*, user: str, subject: str, predicate: str, value: str, source: str
     text = "" if value is None else str(value).strip()
     if not text:
         raise MemoryError_("memory writes need a value")
+    path = Path(path or EVENTS)
     payload = dict(user_id=user, type="fact_asserted", subject=subject, predicate=predicate,
                    value=text, source=source, status="accepted")
     record = ledger_plugin.append({"kind": "memory:fact", "payload": payload}, path, key_path=key_path)
@@ -88,23 +89,26 @@ def remember(*, user: str, subject: str, predicate: str, value: str, source: str
     return record
 
 
-def forget(*, user: str, subject: str, predicate: str, path: Path = EVENTS) -> dict:
+def forget(*, user: str, subject: str, predicate: str, path: Path | None = None) -> dict:
     """Retract one predicate. History keeps the assertion; the projection stops using it."""
+    path = Path(path or EVENTS)
     payload = dict(user_id=user, type="fact_retracted", subject=subject, predicate=predicate,
                    source="user_message", status="accepted")
     record = ledger_plugin.append({"kind": "memory:retract", "payload": payload}, path)
     return dict(record, event_id=f"evt-{record['sequence']:06d}")
 
 
-def events(user: str | None = None, path: Path = EVENTS) -> list[dict]:
+def events(user: str | None = None, path: Path | None = None) -> list[dict]:
+    path = Path(path or EVENTS)
     rows = _read(path)
     if user is None:
         return rows
     return [row for row in rows if (row.get("payload") or {}).get("user_id") == user]
 
 
-def projection(user: str, path: Path = EVENTS) -> dict[str, dict[str, str]]:
+def projection(user: str, path: Path | None = None) -> dict[str, dict[str, str]]:
     """Current facts for one user: subject -> predicate -> value, newest surviving event wins."""
+    path = Path(path or EVENTS)
     facts: dict[str, dict[str, str]] = {}
     for row in events(user, path):
         payload = row.get("payload") or {}
@@ -119,8 +123,9 @@ def projection(user: str, path: Path = EVENTS) -> dict[str, dict[str, str]]:
     return {subject: predicates for subject, predicates in facts.items() if predicates}
 
 
-def graph(user: str, path: Path = EVENTS) -> dict:
+def graph(user: str, path: Path | None = None) -> dict:
     """The relational view for one user, as a GML document."""
+    path = Path(path or EVENTS)
     facts = projection(user, path)
     nodes: list[dict] = [dict(id=0, kind="user", ref=user)]
     edges: list[dict] = []
@@ -167,8 +172,9 @@ def validate(document: dict) -> dict:
                 nodes=len(document.get("nodes") or []), edges=len(document.get("edges") or []))
 
 
-def answer(user: str, subject: str, predicate: str, path: Path = EVENTS) -> str:
+def answer(user: str, subject: str, predicate: str, path: Path | None = None) -> str:
     """A grounded sentence from the projection, or an honest miss."""
+    path = Path(path or EVENTS)
     facts = projection(user, path)
     value = (facts.get(subject) or {}).get(predicate)
     if not value:
@@ -176,12 +182,13 @@ def answer(user: str, subject: str, predicate: str, path: Path = EVENTS) -> str:
     return f"{subject.replace('.', ' ')}: {predicate} is {value}."
 
 
-def erase(user: str, path: Path = EVENTS) -> dict:
+def erase(user: str, path: Path | None = None) -> dict:
     """Remove one user's payloads. The only destructive operation, and it leaves a tombstone.
 
     Append-only history is an audit property; a person's right to removal is not negotiable against
     it, so erasure compacts the log and records that it did so. Other users' events are untouched.
     """
+    path = Path(path or EVENTS)
     rows = _read(path)
     kept, removed = [], 0
     for row in rows:

@@ -284,6 +284,8 @@ class Daemon:
             proposal = ("identity", "", "")
         elif selected.upper().startswith("MEMORY "):
             proposal = ("memory", selected[len("MEMORY "):].strip(), "")
+        elif selected.upper().startswith("COMPOSE "):
+            proposal = ("compose", selected[len("COMPOSE "):].strip(), "")
         elif selected.upper().startswith("MEMQUERY "):
             proposal = ("memquery", selected[len("MEMQUERY "):].strip(), "")
         elif selected.upper().startswith("CODEX_PLAN "):
@@ -315,6 +317,8 @@ class Daemon:
             admitted, why = self.admit(payload, argument)
         elif kind == "plan":
             admitted, why = self.admit_plan(payload)
+        elif kind == "compose":
+            admitted, why = True, "composition is read-only over recorded relations"
         elif kind in {"memory", "memquery"}:
             admitted, why = self.admit_memory(kind, payload)
         elif kind == "gitop":
