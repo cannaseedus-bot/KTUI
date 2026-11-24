@@ -238,8 +238,13 @@ class Sandbox:
 
         argv = [program] + args
         try:
-            res = subprocess.run(argv, cwd=str(self.root), capture_output=True, text=True, timeout=10, shell=False)
-            out = res.stdout.strip() or res.stderr.strip() or "(no output)"
+            # Decode explicitly: the platform default is cp1252 here, and any byte outside it (an
+            # em-dash in a diff, a box-drawing character in output) makes capture fail with
+            # stdout=None - which then looked like "'NoneType' object has no attribute 'strip'".
+            res = subprocess.run(argv, cwd=str(self.root), capture_output=True, text=True,
+                                 encoding="utf-8", errors="replace", timeout=10, shell=False)
+            out = ((res.stdout or "").strip() or (res.stderr or "").strip()
+                   or f"(no output · exit {res.returncode})")
             return out[:2000]
         except Exception as e:
             return str(e)
@@ -340,13 +345,71 @@ def execute_tool(name: str, args: dict) -> str:
 # Regex Fast-Path (for Instant local execution)
 def check_regex_fast_path(text: str):
     text_lower = text.lower()
-    # Web search
+    # Web search: this build has no web tool, so a match is a request we must answer honestly rather
+    # than fabricate a result for.
     search_match = re.search(r"(?:search(?: the)? web for|look up) (.*)", text_lower)
     if search_match: return "search_web", search_match.group(1).strip()
-    # Math
+    # Math: computed locally, and only when it really parses.
     math_match = re.search(r"(?:calculate|math) (.*)", text_lower)
     if math_match: return "compute_math", math_match.group(1).strip()
     return None, None
+
+
+def safe_math(expression: str) -> str | None:
+    """Evaluate arithmetic without eval: numbers, + - * / // % ** and parentheses only."""
+    import ast
+    import operator
+
+    operators = {ast.Add: operator.add, ast.Sub: operator.sub, ast.Mult: operator.mul,
+                 ast.Div: operator.truediv, ast.FloorDiv: operator.floordiv,
+                 ast.Mod: operator.mod, ast.Pow: operator.pow, ast.USub: operator.neg,
+                 ast.UAdd: operator.pos}
+
+    def walk(node):
+        if isinstance(node, ast.Expression):
+            return walk(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.BinOp) and type(node.op) in operators:
+            left, right = walk(node.left), walk(node.right)
+            if isinstance(node.op, ast.Pow) and abs(right) > 512:
+                raise ValueError("exponent too large")
+            return operators[type(node.op)](left, right)
+        if isinstance(node, ast.UnaryOp) and type(node.op) in operators:
+            return operators[type(node.op)](walk(node.operand))
+        raise ValueError(f"not arithmetic: {type(node).__name__}")
+
+    if not expression or len(expression) > 200:
+        return None
+    try:
+        value = walk(ast.parse(expression, mode="eval"))
+    except Exception:
+        return None
+    if isinstance(value, float):
+        return f"{value:g}"
+    return str(value)
+
+
+def fast_path_outcome(text: str) -> dict | None:
+    """What the fast path should do with this text, decided without touching the model.
+
+    Returns None when there is nothing to do. A web request is *not* a result: no web tool is wired
+    into this build, so the honest action is to say so and let the model answer from training data.
+    """
+    intent, argument = check_regex_fast_path(text)
+    if intent == "search_web":
+        return dict(action="explain_no_web", argument=argument,
+                    note=(f"No web tool in this build, so I cannot search for \"{argument}\". "
+                          "The model can answer from its training data (which may be out of date) - "
+                          "it cannot browse either."))
+    if intent == "compute_math":
+        result = safe_math(argument)
+        if result is None:
+            return dict(action="defer", argument=argument,
+                        note=f"\"{argument}\" is not arithmetic I can evaluate locally.")
+        return dict(action="math", argument=argument, result=result,
+                    note=f"{argument} = {result}")
+    return None
 
 # =====================================================================
 # 3. THE AGENT (LLM + Tools)
@@ -1744,13 +1807,16 @@ class ChatApp(App):
                 v.mount(Response(f"**[Tasks]**\n\n{outcome['reply']}"))
                 return
 
-        # 2. Regex Fast-Path
-        intent, arg = check_regex_fast_path(text)
-        if intent:
-            v.mount(ToolLog(f"Fast-Path Triggered: {intent}"))
-            if intent == "search_web": res = f"🌐 Result for {arg}"
-            else: res = f"🧮 Result for {arg}"
-            v.mount(Response(f"**[Local Execution]**\n\n{res}"))
+        # 2. Fast path: only what can be answered for real. A fabricated "Result for ..." is worse
+        # than no answer, because it looks like a tool ran.
+        outcome = fast_path_outcome(text)
+        if outcome:
+            if outcome["action"] == "math":
+                v.mount(Response(f"**[Local math]**\n\n`{outcome['argument']}` = "
+                                 f"**{outcome['result']}**"))
+                return
+            v.mount(ToolLog(outcome["note"]))
+            self.stream_llm_response(text)
             return
 
         # 3. AIML, including its tool bridge: a template that says TOOL git status runs it here and

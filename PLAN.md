@@ -52,6 +52,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M13 | AIML bundle consumed as declarations: resolved proposals, zero authority | **guard** | `aiml_host.py`, `functions.py` (`aiml_bundle_validate`, `aiml_propose`), `tests_host/test_aiml_bundle_host.py::M13…` |
 | M14 | The daemon introduces itself (not ALICE), lists its models and its mark; the mark is downsized | **guard** | `identity.aiml`, `chat_app.py` (`identity_text`), `logo.png`, `tests_host/test_identity_logo.py::M14…` |
 | M15 | Routing honesty: refusals answer locally, every turn kind renders, model handoffs say why | **guard** | `daemon.py` (refused kind), `chat_app.py` (`routing_note`, headings), `tests_host/test_routing.py::M15…` |
+| M16 | Tool calls run for real; the fast path refuses instead of fabricating | **guard** | `chat_app.py` (`safe_math`, `fast_path_outcome`, utf-8 subprocess decode), `tests_host/test_tools.py::M16…` |
 
 ---
 
@@ -143,6 +144,31 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Tool calls and the fast path (M16)
+
+Reported: *"make sure the Daemon Bot tool calls are still working"*, with a screenshot of
+`search the web for news on Nvidia` answering `🌐 Result for news on nvidia`. That was not a tool call
+- it was a fabricated result for a tool this build does not have.
+
+- **The fast path no longer invents anything.** A web request produces
+  `No web tool in this build, so I cannot search for "…". The model can answer from its training data
+  (which may be out of date) - it cannot browse either.` and then hands the turn to the model. A
+  request that looks like arithmetic is *computed*: `safe_math` parses with `ast` and allows only
+  numbers, `+ - * / // % **` and parentheses - no `eval`, no names, no calls, division by zero and
+  runaway exponents refused. Anything else defers with a note instead of pretending.
+- **A real bug surfaced while checking the tool calls:** `what is the diff` answered
+  `'NoneType' object has no attribute 'strip'`. `Sandbox.run_command` decoded subprocess output with
+  the platform default (cp1252), so any diff containing an em-dash or a box-drawing character failed
+  to decode, left `stdout` as `None`, and was swallowed into a string. It now decodes utf-8 with
+  `errors="replace"`, and treats a `None` stream as empty.
+- **The verbs are asserted, not assumed:** `git status|diff|log|branch`, `time`, `convert`, `files`
+  answer with real output; `rm` and `git push` are still refused by the sandbox.
+
+The guard deliberately asserts the *shape* of tool output rather than searching for error words: a
+`git diff` contains the source of the test, including the very strings a naive check would flag.
 
 ---
 
@@ -335,7 +361,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 55 tests, OK (M3-M15: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4)
+host guards    : 63 tests, OK (M3-M16: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 
