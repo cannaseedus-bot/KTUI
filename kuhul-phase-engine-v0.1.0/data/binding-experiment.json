@@ -1,0 +1,249 @@
+{
+  "schema": "kuhul://experiment/binding/v1",
+  "cases": [
+    "pair-01",
+    "chain-01"
+  ],
+  "started_at": "2026-11-24T09:13:02Z",
+  "conditions": [
+    "A_baseline",
+    "E_wo_binding"
+  ],
+  "results": {
+    "planner": {
+      "A_baseline": {
+        "rows": [
+          {
+            "case": "pair-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "phase_ok": true,
+            "targets_ok": true,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "operator_pair",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"transformed\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "phase_ok": true,
+            "targets_ok": false,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "full_composition",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"result\",\n    \"binding\": \"combine\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ],
+        "complete": 1,
+        "graph": 2,
+        "phase_ok": 2,
+        "targets_ok": 1,
+        "conflicts": 0
+      },
+      "E_wo_binding": {
+        "rows": [
+          {
+            "case": "pair-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "phase_ok": true,
+            "targets_ok": true,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "operator_pair",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "phase_ok": true,
+            "targets_ok": true,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "full_composition",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"proposition\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"evidence\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"result\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ],
+        "complete": 2,
+        "graph": 2,
+        "phase_ok": 2,
+        "targets_ok": 2,
+        "conflicts": 0
+      }
+    },
+    "worker": {
+      "A_baseline": {
+        "rows": [
+          {
+            "case": "pair-01",
+            "parsed": true,
+            "verdict": "extra_operators",
+            "complete": false,
+            "phase_ok": true,
+            "targets_ok": false,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "operator_pair",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"fold\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"filter\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "missing_operators",
+            "complete": false,
+            "phase_ok": true,
+            "targets_ok": true,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "full_composition",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ],
+        "complete": 0,
+        "graph": 0,
+        "phase_ok": 2,
+        "targets_ok": 1,
+        "conflicts": 0
+      },
+      "E_wo_binding": {
+        "rows": [
+          {
+            "case": "pair-01",
+            "parsed": true,
+            "verdict": "extra_operators",
+            "complete": false,
+            "phase_ok": true,
+            "targets_ok": true,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "operator_pair",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  }\n]\n```"
+          },
+          {
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "misplaced_accumulate",
+            "complete": false,
+            "phase_ok": true,
+            "targets_ok": true,
+            "binding": {
+              "schema": "kuhul://evidence/binding/v1",
+              "family": "full_composition",
+              "mode": "deterministic",
+              "allowed": [
+                "graph.matches"
+              ],
+              "raw_target": null,
+              "resolved_target": "graph.matches",
+              "conflict": false,
+              "accepted": false,
+              "reason": "no target was proposed",
+              "admitted": false,
+              "authority": "declaration_only"
+            },
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Xul\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  },\n  {\n    \"phase\": \"Xul\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\",\n    \"schema_uri\": \"urn:kuhul:schema:binding-context:v1\"\n  }\n]\n```"
+          }
+        ],
+        "complete": 0,
+        "graph": 0,
+        "phase_ok": 2,
+        "targets_ok": 2,
+        "conflicts": 0
+      }
+    }
+  },
+  "note": "E keeps the short session profile and adds only the Wo binding context; the corpus expectations are used by the harness, never by the binding",
+  "authority": "declaration_only",
+  "execution": false
+}

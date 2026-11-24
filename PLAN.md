@@ -104,6 +104,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M64 | Grams-u: deterministic n-gram extraction with sliding/bound windowing, provenance digests, and relations left to GML | **guard** | `grams.py`, `tests_host/test_grams.py` (13 tests) |
 | M65 | The schema URI bus: typed handoffs gated by edge + capability, and version evolution only through registered adapters | **guard** | `schema_bus.py`, `data/schemas.json`, `tests_host/test_schema_bus.py` (21 tests) |
 | M66 | Re-score from stored replies, a declared completeness contract, and task families that pick the profile deterministically | **guard** | `rescore.py`, `evaluation/scoring-contract.json`, `evaluation/task-sessions.json`, `tests_host/test_protocol_rescore.py` (16 tests) |
+| M67 | Condition E: Wo resolves the allowed target before inference - targets fixed 1/2 -> 2/2 for the planner with the graph untouched | **guard** | `data/targets.json`, `binding_resolver.py`, `data/binding-experiment.json`, `tests_host/test_binding_resolver.py` (13 tests) |
 
 ---
 
@@ -195,6 +196,46 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Condition E: Wo binds the target (M67)
+
+The dominant remaining failure was target selection - a **registered but unauthorized** URI. So the binding
+moved into Wo, and the model stopped being asked to invent something the runtime already knows.
+
+```
+target registry · 11 famil(ies)
+  full_composition   deterministic  graph.matches
+  uri_binding        constrained    gml://relations, kuhul://phases/sek
+  refusal            unbound        (none)
+```
+
+**Measured: 2 models × 2 conditions × 2 cases, short session profile, binding context only.**
+
+| model | condition | complete | graph | phase | targets | conflicts |
+|---|---|---|---|---|---|---|
+| planner qwen | A baseline | 1/2 | 2 | 2 | 1 | 0 |
+| planner qwen | **E Wo binding** | **2/2** | 2 | 2 | **2** | 0 |
+| worker gemma | A baseline | 0/2 | 0 | 2 | 1 | 0 |
+| worker gemma | **E Wo binding** | 0/2 | 0 | 2 | **2** | 0 |
+
+**This is the first condition that fixes the dominant failure without a trade.** Targets went 1/2 → 2/2 for
+both models; the planner kept every exact graph it had (graph 2/2, phase 2/2) and completed both cases. Gemma's
+targets also went to 2/2 while its graph stayed broken (0/2) - so E is neutral for the worker rather than
+harmful, which is what "don't reintroduce the operator-completeness confound" was asking for.
+
+E uses the **short profile** plus a typed binding context, never the 1,688-character D envelope, so the
+operator-completeness confound from D is not in the comparison.
+
+**Two rules enforced, both tested:**
+
+- **the live path reads `kuhul://targets/v1`, never the corpus** - `binding_resolver` does not import the
+  scorer or the expectations, and a test asserts that;
+- **a conflict is evidence, not a correction** - the model's raw target is kept, the resolved target is
+  recorded beside it, and a mismatch is `admitted: false` with the reason *"rejected, not rewritten"*. Zero
+  conflicts here because every accepted proposal named the bound target; the guard exists for the case where
+  it doesn't.
 
 ---
 

@@ -1,0 +1,74 @@
+{
+  "schema": "kuhul://targets/v1",
+  "authority": "declaration_only",
+  "note": "Wo binds one of these before inference. The evaluation corpus compares the result against its own frozen expectations; the live path never reads them.",
+  "families": {
+    "operator_pair": {
+      "allowed": [
+        "graph.matches"
+      ],
+      "mode": "deterministic"
+    },
+    "full_composition": {
+      "allowed": [
+        "graph.matches"
+      ],
+      "mode": "deterministic"
+    },
+    "operator_containment": {
+      "allowed": [
+        "graph.matches"
+      ],
+      "mode": "deterministic"
+    },
+    "phase_selection": {
+      "allowed": [
+        "graph.matches"
+      ],
+      "mode": "deterministic"
+    },
+    "uri_binding": {
+      "allowed": [
+        "gml://relations",
+        "kuhul://phases/sek"
+      ],
+      "mode": "constrained"
+    },
+    "refusal": {
+      "allowed": [],
+      "mode": "unbound"
+    },
+    "unknown_facts": {
+      "allowed": [],
+      "mode": "unbound"
+    },
+    "srai_redirect": {
+      "allowed": [
+        "gml://relations"
+      ],
+      "mode": "deterministic"
+    },
+    "rest_route": {
+      "allowed": [
+        "gml://relations"
+      ],
+      "mode": "deterministic"
+    },
+    "runtime_introspection": {
+      "allowed": [
+        "kuhul://phases/sek"
+      ],
+      "mode": "deterministic"
+    },
+    "phase_traversal": {
+      "allowed": [
+        "graph.matches"
+      ],
+      "mode": "deterministic"
+    }
+  },
+  "default": {
+    "allowed": [],
+    "mode": "unbound"
+  }
+}
