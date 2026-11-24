@@ -221,5 +221,56 @@ class FailureClassTests(unittest.TestCase):
         self.assertFalse(entry["onboarding"]["independent"])
 
 
+class NoSelfApprovalTests(unittest.TestCase):
+    """A key generated inside this project can never make a case independently reviewed."""
+
+    def test_the_registry_holds_only_the_author(self):
+        registry = review_attestations.registry()
+        self.assertTrue(registry["available"])
+        self.assertEqual(list(registry["by_id"]), ["agent://session-author"])
+        entry = registry["by_id"]["agent://session-author"]
+        self.assertFalse(entry["onboarding"]["independent"])
+
+    def test_the_empty_reviewer_slot_holds_no_key(self):
+        import json
+
+        record = json.loads((ROOT / "evaluation" / "reviewers.json").read_text(encoding="utf-8"))
+        slot = record["awaiting_external_reviewer"]
+        self.assertEqual(slot["status"], "none")
+        self.assertNotIn("public_key", json.dumps(slot))
+        self.assertIn("cannot stand in", slot["note"])
+
+    def test_no_attestation_names_anyone_but_the_author(self):
+        rows = review_attestations.load()
+        self.assertTrue(rows)
+        for row in rows:
+            self.assertEqual(row["reviewer"], "agent://session-author")
+
+    def test_the_corpus_reports_zero_eligible(self):
+        corpus = evaluation_harness.load()
+        self.assertEqual(corpus["independently_attested"], [])
+        self.assertEqual(len(corpus["eligible"]), 16, "regression eligibility is unaffected")
+        status = review_attestations.status(corpus)
+        self.assertEqual(status["counts"]["benchmark_eligible"], 0)
+
+    def test_a_key_would_not_be_enough_anyway(self):
+        # even a valid signature from a new signer fails the independence test without onboarding
+        folder = tempfile.TemporaryDirectory()
+        pair = keypair(Path(folder.name))
+        corpus = evaluation_harness.load()
+        case = corpus["by_id"]["pair-01"]
+        signed = review_attestations.sign(attestation(case, "reviewer://someone"), pair["private_path"])
+        report = review_attestations.check(
+            dict(by_id={case["id"]: case}), [signed],
+            dict(ok=True, available=True,
+                 by_id={"reviewer://someone": dict(role="reviewer",
+                                                   public_key=pair["public_key"])},
+                 problems=[]))
+        self.assertEqual(report["verified"], 1, "the signature is valid")
+        self.assertEqual(report["independent"], 0, "a valid signature is not an independent review")
+        self.assertEqual(report["verdicts"][0]["independence_reason"], "onboarding_missing")
+        folder.cleanup()
+
+
 if __name__ == "__main__":
     unittest.main()
