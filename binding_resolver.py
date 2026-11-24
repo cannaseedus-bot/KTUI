@@ -58,8 +58,37 @@ def load(path: Path | None = None) -> dict:
                 default=record.get("default") or dict(allowed=[], mode="unbound"))
 
 
-def binding(registry: dict, family: str) -> dict:
-    """What Wo may bind for a task family - derived from the registry, not from any expectation."""
+def _observe(event: str, request_id: str | None, **detail) -> None:
+    """Emit a Wo observation only when a request id was supplied: nothing is fabricated."""
+    if not request_id:
+        return
+    try:
+        import phase_events
+        phase_events.emit(request_id, event, phase="Wo", source="host", detail=detail or None)
+    except Exception:
+        return
+
+
+def binding(registry: dict, family: str, *, request_id: str | None = None) -> dict:
+    """What Wo may bind for a task family - derived from the registry, not from any expectation.
+
+    When a request id is supplied this is the instrumented Wo handler: enter, resolve, exit. The resolver's
+    return value and exception behaviour are unchanged, and a failure still ends the phase.
+    """
+    _observe("phase_enter", request_id, operation="binding_resolver", family=str(family))
+    try:
+        result = _resolve(registry, family)
+    except BaseException as error:
+        _observe("phase_exit", request_id, operation="binding_resolver", family=str(family),
+                 ok=False, outcome=("cancelled" if isinstance(error, (KeyboardInterrupt, GeneratorExit))
+                                    else "failed"), error=type(error).__name__)
+        raise
+    _observe("phase_exit", request_id, operation="binding_resolver", family=str(family),
+             ok=True, outcome="ok", mode=result.get("mode"), allowed=len(result.get("allowed") or []))
+    return result
+
+
+def _resolve(registry: dict, family: str) -> dict:
     entry = (registry.get("families") or {}).get(str(family))
     if entry is None:
         entry = registry.get("default") or dict(allowed=[], mode="unbound")

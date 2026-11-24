@@ -225,5 +225,73 @@ class BoundedHistoryTests(unittest.TestCase):
                            "a committed phase event changes what the projection would show")
 
 
+class WoInstrumentationTests(unittest.TestCase):
+    """Wo is a real host handler now: enter, resolve, exit - and a failure still ends the phase."""
+
+    def setUp(self):
+        phase_events.reset()
+
+    def test_a_wo_resolution_is_observed(self):
+        import binding_resolver
+
+        registry = binding_resolver.load()
+        resolved = binding_resolver.binding(registry, "full_composition", request_id="wo-1")
+        self.assertEqual(resolved["mode"], "deterministic")
+        view = phase_events.observe("wo-1")
+        self.assertEqual(view["phases"], ["Wo"])
+        self.assertTrue(view["complete"])
+        self.assertEqual(view["families"], ["phase_enter", "phase_exit"])
+
+    def test_the_callers_return_value_is_unchanged(self):
+        import binding_resolver
+
+        registry = binding_resolver.load()
+        with_id = binding_resolver.binding(registry, "uri_binding", request_id="wo-2")
+        without = binding_resolver.binding(registry, "uri_binding")
+        self.assertEqual(with_id, without)
+
+    def test_a_resolution_without_a_request_id_records_nothing(self):
+        import binding_resolver
+
+        binding_resolver.binding(binding_resolver.load(), "refusal")
+        self.assertEqual(phase_events.events(""), [])
+
+    def test_interleaved_wo_requests_keep_independent_sequences(self):
+        import binding_resolver
+
+        registry = binding_resolver.load()
+        binding_resolver.binding(registry, "full_composition", request_id="wo-a")
+        binding_resolver.binding(registry, "refusal", request_id="wo-b")
+        a, b = phase_events.events("wo-a"), phase_events.events("wo-b")
+        self.assertEqual([record["request_id"] for record in a], ["wo-a", "wo-a"])
+        self.assertEqual([record["request_id"] for record in b], ["wo-b", "wo-b"])
+        self.assertEqual([record["sequence"] for record in a], [1, 2])
+        self.assertEqual([record["sequence"] for record in b], [1, 2])
+
+    def test_a_partial_failure_does_not_synthesize_later_phases(self):
+        import binding_resolver
+        import phase_routing
+
+        phase_routing.route("tell me about my dog", request_id="turn-x")
+        original = binding_resolver._resolve
+
+        def broken(registry, family):
+            raise RuntimeError("the target registry is unreadable")
+
+        binding_resolver._resolve = broken
+        try:
+            with self.assertRaises(RuntimeError):
+                binding_resolver.binding(binding_resolver.load(), "full_composition",
+                                         request_id="turn-x")
+        finally:
+            binding_resolver._resolve = original
+        view = phase_events.observe("turn-x")
+        self.assertEqual(view["phases"], ["Pop", "Wo"], "no phase after the failure is invented")
+        self.assertEqual(view["state"], "failed")
+        self.assertNotIn("Yax", view["phases"])
+        self.assertNotIn("Sek", view["phases"])
+        self.assertNotIn("Xul", view["phases"])
+
+
 if __name__ == "__main__":
     unittest.main()
