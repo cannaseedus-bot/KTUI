@@ -126,6 +126,29 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:a-versus-ce-across-the-frozen-corpus -->
 <!-- milestone:a-generated-key-is-not-a-reviewer -->
 <!-- milestone:keymaker-identities-not-authority -->
+<!-- milestone:local-profile-is-configuration-not-authority -->
+## A local profile is configuration, not an authority
+
+Agreed on the shape, with one boundary kept: a bot on one machine needs a profile file, not OAuth - and a profile
+must not become a second place where permissions or secrets live.
+
+| piece | behaviour |
+|---|---|
+| `save` / `load` | one JSON profile per user under `profiles/`, path resolved per call, user ids validated |
+| `validate` | refuses capability keys and secret keys **at any depth** (`capabilities`, `grants`, `token`, `api_key`, `secret`, `password`, `private_key`, ...), and refuses bindings outside the registered schemes |
+| `read_for_answer` | a narrow shareable subset - `display_name`, `locale`, `timezone`, `notes`, `preferences` - plus the declared bindings |
+| `/profile` | shows it, and says that a profile steers what the bot *says*, never what it may *do* |
+
+Two choices made rather than defaulted: a **missing** profile is an empty profile, not an error and not a signup
+prompt; and **IndexedDB and cookies are not used** - there is no browser origin here, a cookie on loopback is a
+claim rather than authentication, and client-side storage must never be the source of truth for a bot's
+configuration.
+
+Still refused outright: a bot that hands a user their API token on request. A token is a bearer secret issued out
+of band; a model able to echo it turns the transcript and the evidence ledger into a disclosure channel.
+
+---
+
 ## keymaker: identities, not authority
 
 A standalone utility, one signature format, no second attestation contract:
