@@ -118,6 +118,32 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 ---
 
 <!-- milestone:wo-instrumentation-and-write-verification -->
+<!-- milestone:learning-chain-end-to-end -->
+## The learning chain is exercised end to end
+
+The chain existed as parts and is now walked in one call: candidate validated against `semantic-candidate:v1`,
+learning delta (authority `proposal`), routed along its declared edge with an authenticated producer, verified only
+on `PASS`/`FAIL`, appended to the evidence ledger.
+
+```
+learning pipeline · ok · 5 hop(s) · verdict PASS · admitted False · persistence evidence_only · graph_mutated False
+```
+
+| boundary | how it holds |
+|---|---|
+| no graph mutation | `graph_mutated: false` on the record |
+| no admission | `admitted: false` at every hop; delta stays `proposal`, verified stays `verified` |
+| no unverified hop | a `FAIL` is recorded as `FAIL`; an invalid verdict is refused before the ledger; a malformed candidate writes nothing |
+
+One defect found immediately: the first version validated the **delta** but not the **candidate**, so a payload with
+`score: "high"` produced a well-formed delta carrying nonsense and reached the ledger. The candidate hop now runs
+first, which is why the refusal reads `candidate_invalid` rather than surfacing as a type error three hops later.
+
+The ledger row is evidence that a proposal was **verified**. It is not an admission, and it is not persistence into
+GramStore - `persistence: evidence_only` says so in the record itself.
+
+---
+
 ## Wo is instrumented, and writes are verified
 
 **Wo is a real host handler now**, not a label: `binding(..., request_id=...)` emits `phase_enter` / `phase_exit`
