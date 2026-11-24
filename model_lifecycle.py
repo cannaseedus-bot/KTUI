@@ -165,8 +165,10 @@ class Lifecycle:
             return dict(schema=SCHEMA, model=name, state="hot", started=False, port=port,
                         note="already serving; nothing was launched")
         launched = _host_call(self.host, "launch", name, entry["launch"])
-        deadline = _host_call(self.host, "clock") + entry["startup_timeout_seconds"]
-        while _host_call(self.host, "clock") < deadline:
+        # Startup is wall-clock time, not the injected idle clock: waiting on a fake clock that never
+        # advances would spin forever, and a real launch takes real seconds.
+        deadline = time.monotonic() + entry["startup_timeout_seconds"]
+        while time.monotonic() < deadline:
             if _listening(port, self.host):
                 self.owned[name] = dict(pid=launched.get("pid"), port=port,
                                         started_at=_host_call(self.host, "clock"))

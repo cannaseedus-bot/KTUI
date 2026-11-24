@@ -91,6 +91,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M51 | Three instruction conditions on one frozen graph validator - and the system-prompt confound that changed the answer | **guard** | `condition_experiment.py`, `data/condition-experiment.json`, `data/condition-stability.json`, `tests_host/test_condition_experiment.py` (12 tests) |
 | M52 | One versioned operator contract (`kuhul://operators/v1`) rendered into the prompt and enforced by the validator; the clean two-condition protocol | **guard** | `data/operators.json`, `plan_graph.contract`, `contract_experiment.py`, `data/contract-experiment.json`, `tests_host/test_contract_experiment.py` (11 tests) |
 | M53 | The contract as a session template: rules-only vs rules+examples, measured on Qwen | **guard** | `data/session-profiles.json`, `session_profile.py`, `data/session-experiment.json`, `tests_host/test_session_profile.py` (13 tests) |
+| M54 | Lease-wrapped inference: one startup per cold model, the lease always returns, cold starts measured apart | **guard** | `inference_session.py`, `model_lifecycle.py`, `tests_host/test_inference_session.py` (12 tests) |
 
 ---
 
@@ -182,6 +183,46 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Lease-wrapped inference (M54)
+
+Planning and invoking are now separate events, and the lease covers the whole call:
+
+```
+Pop    recognise the request
+Wo     resolve micronaut and binding
+Yax    select - a COLD registered model is still a candidate
+Sek    single-flight wake (one startup per model), then acquire a lease
+Ch'en  dispatch under the lease
+Xul    release in `finally`, record wake / inference / total latency
+```
+
+Measured live against the running planner, through a full contract session:
+
+```
+planner · warm · wake 31 ms · inference 3562 ms · total 3593 ms · lease released True
+record: request_id live-1 · inference model · tokens {total: 38}
+```
+
+Four behaviours, each guarded:
+
+| behaviour | evidence |
+|---|---|
+| **single flight** | four concurrent requests for one cold model → **one launch**; exactly one caller sees `model_was_cold` |
+| **lease discipline** | success, `TimeoutError` in dispatch, and an unready backend all end with `leases == 0` |
+| **cold vs warm separate** | `wake_latency_ms`, `inference_latency_ms`, `total_latency_ms`, `model_was_cold`, `lease_released` are separate fields, and inference latency is `None` when nothing was dispatched |
+| **cold is selectable** | `select(allow_cold=True)` returns `planner` with `cold: true` while nothing is listening; `allow_cold=False` refuses with `no_healthy_endpoint` |
+
+One bug this surfaced in M48's code: `Lifecycle.ensure` waited on the **injected idle clock**, so with a clock
+that does not advance the readiness loop spun forever - the test suite hung for two minutes before I saw it.
+Startup now waits on the wall clock, which is what a real launch takes, and a test pins a one-second timeout.
+
+**Still not done, deliberately:** the app does not call `infer()` yet, so turns still stream through the
+session without a lease; and the idle sweep still has no scheduled owner - `release_idle()` exists, is
+tested, and needs a daemon loop to call it. Those are the two pieces that would make this the default path
+rather than a tested mechanism.
 
 ---
 
@@ -1724,7 +1765,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 460 tests, OK (M3-M53) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 472 tests, OK (M3-M54) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
