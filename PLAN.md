@@ -106,6 +106,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M66 | Re-score from stored replies, a declared completeness contract, and task families that pick the profile deterministically | **guard** | `rescore.py`, `evaluation/scoring-contract.json`, `evaluation/task-sessions.json`, `tests_host/test_protocol_rescore.py` (16 tests) |
 | M67 | Condition E: Wo resolves the allowed target before inference - targets fixed 1/2 -> 2/2 for the planner with the graph untouched | **guard** | `data/targets.json`, `binding_resolver.py`, `data/binding-experiment.json`, `tests_host/test_binding_resolver.py` (13 tests) |
 | M68 | Scoring v2 (correct / incorrect / missing) and the re-score of 36 saved replies - which demotes Qwen C from 6/6 to 0/6 bound | **guard** | `evaluation/scoring-contract-v2.json`, `evaluation_harness.scoring_v2`, `rescore.py`, `data/session-experiment-36.rescored.json`, `tests_host/test_protocol_rescore.py` (24 tests) |
+| M69 | The real streaming path holds the lease: one acquire/release per turn, cancellation safe, and time-to-first-token measured separately from the wake | **guard** | `chat_app.stream_llm_response`, `inference_session.StreamingCall.begin/note_chunk/end`, `tests_host/test_app_stream_turn.py` (7 tests) |
 
 ---
 
@@ -197,6 +198,46 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The application now holds the lease (M69)
+
+`stream_llm_response` iterates under `StreamingCall`, so the lease spans the stream Textual consumes - not the
+call that opens it. One real Textual turn, against the live planner:
+
+```
+chunks 1 · wake 16 ms · first_token 10,594 ms · stream 235 ms · total 10,829 ms
+model_was_cold False · lease_released True · record 1 (real-turn-1, 10,829 ms) · leases after {}
+```
+
+**T_turn = T_wake + T_first_token + T_stream**, and the boundaries are stated in the measurement rather than
+implied: the wake is 16 ms, the first token takes 10.6 s, and the remaining stream is 235 ms. For a 1.7B model
+on this machine **time-to-first-token is essentially the whole turn** - which is the number a user feels, and
+which the previous "total only" view hid.
+
+Seven guards run the **real entry point** (a fake client, a real `stream_llm_response`):
+
+| observation | result |
+|---|---|
+| selected backend | `advisor` for the default `gpt-oss-20b` session, by alias |
+| lifecycle | exactly one acquire and one release, leases back to zero |
+| rendered text | the assistant message carries the chunks in order |
+| cancellation | a stream that raises mid-iteration still releases and records the error |
+| evidence | one request id shared by the turn and its record |
+| authority | inference never marks a proposal admitted or an execution observed |
+| no double lease | the app passes `turn` through; nothing else acquires |
+
+Three defects found while wiring, all in my own code:
+
+1. **The alias did not match the served name.** `model_name` is the absolute GGUF path llama-server reports
+   (`gpt-oss-20b-MXFP4.gguf`) while the manifest declares `gpt-oss-20b`, so `backend_for_alias` returned None and
+   no lease was taken - silently. It now matches on the file stem, and an unmatched name still gets no lease
+   rather than a wrong one.
+2. **The streamed turn never set `last_record`**, so `/evidence` would have shown a local turn while a streamed
+   one went unrecorded.
+3. **The first attempt asserted `planner`** when the default session model is the advisor - my expectation, not
+   the code.
 
 ---
 

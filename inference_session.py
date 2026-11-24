@@ -177,10 +177,62 @@ class StreamingCall:
         self.total_ms = None
         self.model_was_cold = None
         self.lease_released = False
+        self.leased = False
+        self.finished = False
+        self.wake_latency_ms = None
+        self.text_chars = 0
         self.error = None
         self.wake = None
         self._started = None
         self._first = None
+
+    # -- manual driving: the app owns the client stream and calls these around its own loop -------------
+    def begin(self) -> dict:
+        """Wake (if needed) and take the lease. Called before the first chunk is requested."""
+        self._started = time.monotonic()
+        self.wake = self.waker.ensure(self.model)
+        self.model_was_cold = bool(self.wake.get("model_was_cold"))
+        self.wake_latency_ms = self.wake.get("wake_latency_ms")
+        if self.wake.get("state") != "hot":
+            self.error = self.wake.get("note") or "the backend did not become ready"
+            self.total_ms = int(round((time.monotonic() - self._started) * 1000))
+            raise SessionError(self.error)
+        self.waker.lifecycle.acquire(self.model)
+        self.leased = True
+        return dict(model=self.model, cold=self.model_was_cold,
+                    wake_latency_ms=self.wake_latency_ms)
+
+    def note_chunk(self, text: str = "") -> None:
+        """One token or content delta arrived: record the first, count them all."""
+        if self._first is None:
+            self._first = time.monotonic()
+        self.chunks += 1
+        self.text_chars += len(str(text or ""))
+
+    def end(self, error: str | None = None) -> dict:
+        """Release the lease and freeze the measurements. Safe to call twice."""
+        if self.finished:
+            return self.measurements
+        self.finished = True
+        now = time.monotonic()
+        if error:
+            self.error = str(error)[:200]
+        if self._started is None:
+            self._started = now
+        self.first_token_ms = (int(round((self._first - self._started) * 1000))
+                              if self._first else None)
+        self.stream_ms = (int(round((now - self._first) * 1000)) if self._first else None)
+        self.total_ms = int(round((now - self._started) * 1000))
+        if self.leased:
+            try:
+                self.waker.lifecycle.release(self.model)
+                self.lease_released = True
+            except Exception as problem:
+                self.lease_released = False
+                self.error = (self.error or "") + f" release:{type(problem).__name__}"
+        if self.record:
+            self._record()
+        return self.measurements
 
     def __iter__(self):
         started = time.monotonic()
@@ -227,9 +279,13 @@ class StreamingCall:
 
     @property
     def measurements(self) -> dict:
-        return dict(chunks=self.chunks, first_token_ms=self.first_token_ms,
+        """T_turn = T_wake + T_first_token + T_remaining, with the boundaries stated rather than implied."""
+        return dict(chunks=self.chunks, text_chars=self.text_chars,
+                    wake_latency_ms=self.wake_latency_ms, first_token_ms=self.first_token_ms,
                     stream_ms=self.stream_ms, total_ms=self.total_ms,
-                    model_was_cold=self.model_was_cold, lease_released=self.lease_released)
+                    model_was_cold=self.model_was_cold, lease_released=self.lease_released,
+                    boundaries=("wake is measured to readiness and included in total; first_token is "
+                                "from readiness to the first chunk; stream is first chunk to end"))
 
     def summary(self) -> str:
         state = "cold start" if self.model_was_cold else "warm"

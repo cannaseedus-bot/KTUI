@@ -2440,6 +2440,20 @@ class ChatApp(App):
             tools.append(pydantic_function_tool(GmlValidateArgs))
             tools.append(pydantic_function_tool(GmlAssembleArgs))
 
+        # One lease for this turn: StreamingCall owns it, so nothing else acquires one. The lease spans the
+        # iteration below, which is the stream Textual actually consumes.
+        turn = None
+        if inference_session is not None and self.waker is not None and self.lifecycle is not None:
+            backend = model_lifecycle.backend_for_alias(self.lifecycle.declaration, self.model_name)
+            if backend is not None:
+                turn = inference_session.StreamingCall(
+                    self.waker, backend, self.messages, None,
+                    request_id=self.request_id, record=False)
+                try:
+                    turn.begin()
+                except Exception:
+                    turn = None          # a model the lifecycle cannot wake still streams as before
+
         try:
             with self.client.chat.completions.stream(
                 model=self.model_name,
@@ -2449,6 +2463,8 @@ class ChatApp(App):
                 full = ""
                 for event in stream:
                     if event.type == "content.delta":
+                        if turn is not None:
+                            turn.note_chunk(event.delta)
                         full += event.delta
                         resp.update(full)
                         v.scroll_end(animate=False)
@@ -2476,7 +2492,23 @@ class ChatApp(App):
 
         except Exception as e:
             resp.update(f"**LLM Error:** {e}")
+            if turn is not None:
+                turn.error = f"{type(e).__name__}: {e}"[:200]
         finally:
+            if turn is not None:
+                # Evidence, not success: a failed or interrupted stream still records its observation.
+                self.last_stream = turn.measurements
+                self.last_stream_error = turn.error
+                try:
+                    turn.end(error=turn.error)
+                    self.last_stream = turn.measurements
+                    self.last_record = evidence_record.append(evidence_record.build(
+                        input_text=user_text, request_id=self.request_id, inference="model",
+                        model_id=self.model_name, latency_ms=turn.total_ms,
+                        schema_validation=("error" if turn.error else "streamed"),
+                        operators=[]))
+                except Exception as problem:      # losing an observation is a defect, not a failure
+                    self.last_stream_error = f"{type(problem).__name__}: {problem}"
             v.scroll_end(animate=False)
 
     async def follow_up_llm_response(self):

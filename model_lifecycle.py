@@ -255,6 +255,30 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     raise SystemExit(main())
 
+def backend_for_alias(declaration: dict, alias: str) -> str | None:
+    """Which lifecycle backend serves a model name.
+
+    The app's model name may be an alias (`gpt-oss-20b`) or the absolute path llama-server reports, so the
+    comparison uses the file name as well: an unmatched name simply gets no lease rather than a wrong one.
+    """
+    target = str(alias or "").strip()
+    if not target:
+        return None
+    from pathlib import PurePath
+
+    exact = {target.lower(), PurePath(target).name.lower()}
+    stem = PurePath(target).stem.lower()
+    for name, entry in (declaration.get("by_name") or {}).items():
+        declared = str(entry["launch"]["alias"]).strip().lower()
+        if declared in exact:
+            return name
+        # llama-server reports its own file name (`gpt-oss-20b-MXFP4.gguf`) where the manifest declares the
+        # alias (`gpt-oss-20b`), so a stem that starts with the alias is the same model.
+        if declared and (stem.startswith(declared) or declared.startswith(stem)):
+            return name
+    return None
+
+
 def observed(lifecycle: "Lifecycle") -> dict:
     """What the green screen may display: leases, ownership and idle budget - read, never acted on."""
     view = {}
