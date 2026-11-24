@@ -127,6 +127,38 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:a-generated-key-is-not-a-reviewer -->
 <!-- milestone:keymaker-identities-not-authority -->
 <!-- milestone:local-profile-is-configuration-not-authority -->
+<!-- milestone:correctness-controlled-execution-and-evidence -->
+## Correctness, controlled execution, and evidence-of-evidence
+
+The security story had been three stories at once. `SECURITY.md` now writes the threat model down - one user on one
+machine, loopback only - and the guard `tests_host/test_runtime_independence.py` states the division in code:
+
+| concern | mechanism | required |
+|---|---|---|
+| correctness | typed schema checks, `plan_graph`, proposal validation | **yes** - no adversary needed |
+| controlled execution | `declaration_only`, `admitted: false`, capability gates | **yes** - the one boundary |
+| evidence-of-evidence | SHA-256 digests, hash chain, same-commit gate, Ed25519 attestations | **optional facility** |
+
+**No runtime module imports the optional layer**, and the runtime imports cleanly with that layer blocked. Delete
+`review_attestations`, `keymaker`, `evidence_gate`, `evaluation_harness`, `rescore` and `review_packet`, and the bot
+still reasons, retrieves, composes and answers. The attestation work is a facility for defending an evaluation, not
+a gate every interaction passes through - which is what the "007" feeling was really about.
+
+Recorded there as well, because the intuition was mostly right:
+
+- a local model has no persistent memory and cannot open files; **three real leak paths are application decisions** -
+  the app puts a secret in the prompt, the app gives the model a tool, or the app records the interaction (prompt
+  text is stored as a digest plus length; tool output is not automatically digested);
+- the boundary worth keeping is not cryptographic: **data does not become an instruction by being read**;
+- the token handout stays refused;
+- TLS, OAuth, session stores and remote identity are **out of scope** for a workstation, and nothing pretends
+  otherwise.
+
+No new cryptographic code was written this turn, and nothing was removed: the attestation system stays frozen and
+tested, and the corpus still reports **0 independently approved**.
+
+---
+
 ## A local profile is configuration, not an authority
 
 Agreed on the shape, with one boundary kept: a bot on one machine needs a profile file, not OAuth - and a profile
