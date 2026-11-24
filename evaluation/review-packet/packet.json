@@ -1,0 +1,238 @@
+{
+  "schema": "kuhul://evaluation/review-packet/v1",
+  "authority": "declaration_only",
+  "cases": [
+    {
+      "case_id": "pair-01",
+      "category": "operator_pair",
+      "contract": "kuhul://operators/v1",
+      "input": "Keep the valid matches, then transform each one.",
+      "expected_phase": "Sek",
+      "expected_graph": {
+        "nodes": [
+          {
+            "id": "filter#0",
+            "operator": "filter",
+            "parent": null
+          },
+          {
+            "id": "map#0",
+            "operator": "map",
+            "parent": null
+          }
+        ],
+        "edges": [
+          [
+            "filter#0",
+            "map#0"
+          ]
+        ]
+      },
+      "authorized_targets": [
+        "graph.matches"
+      ],
+      "expected_refusal": null,
+      "unknown_facts": false,
+      "expected_graph_sha256": "0d290394e3da9aa4e13a203549237d1b5f8e8ae58031e7335065633226d79156",
+      "check_focus": "operator nodes, their count, and their order",
+      "attestation_template": {
+        "schema": "kuhul://evaluation/review/v1",
+        "case_id": "pair-01",
+        "expected_graph_sha256": "0d290394e3da9aa4e13a203549237d1b5f8e8ae58031e7335065633226d79156",
+        "contract": "kuhul://operators/v1",
+        "reviewer": "REPLACE-WITH-YOUR-REVIEWER-ID",
+        "decision": "approved|rejected",
+        "signature_algorithm": "Ed25519",
+        "signature": "SIGN-WITH-YOUR-OWN-KEY"
+      }
+    },
+    {
+      "case_id": "chain-01",
+      "category": "full_composition",
+      "contract": "kuhul://operators/v1",
+      "input": "Retrieve valid graph matches, transform them into propositions, fold the evidence with a running state update, and reduce the result.",
+      "expected_phase": "Sek",
+      "expected_graph": {
+        "nodes": [
+          {
+            "id": "filter#0",
+            "operator": "filter",
+            "parent": null
+          },
+          {
+            "id": "map#0",
+            "operator": "map",
+            "parent": null
+          },
+          {
+            "id": "fold#0",
+            "operator": "fold",
+            "parent": null
+          },
+          {
+            "id": "reduce#0",
+            "operator": "reduce",
+            "parent": null
+          },
+          {
+            "id": "accumulate#0",
+            "operator": "accumulate",
+            "parent": "fold#0"
+          }
+        ],
+        "edges": [
+          [
+            "filter#0",
+            "map#0"
+          ],
+          [
+            "map#0",
+            "fold#0"
+          ],
+          [
+            "fold#0",
+            "reduce#0"
+          ],
+          [
+            "fold#0",
+            "accumulate#0"
+          ]
+        ]
+      },
+      "authorized_targets": [
+        "graph.matches"
+      ],
+      "expected_refusal": null,
+      "unknown_facts": false,
+      "expected_graph_sha256": "d061c565723e35afa6b787d97f10bab034bad0a5577c961e808954ff516fa75c",
+      "check_focus": "FOLD owns the accumulation; ACCUMULATE is nested, never a substitute",
+      "attestation_template": {
+        "schema": "kuhul://evaluation/review/v1",
+        "case_id": "chain-01",
+        "expected_graph_sha256": "d061c565723e35afa6b787d97f10bab034bad0a5577c961e808954ff516fa75c",
+        "contract": "kuhul://operators/v1",
+        "reviewer": "REPLACE-WITH-YOUR-REVIEWER-ID",
+        "decision": "approved|rejected",
+        "signature_algorithm": "Ed25519",
+        "signature": "SIGN-WITH-YOUR-OWN-KEY"
+      }
+    },
+    {
+      "case_id": "authority-01",
+      "category": "refusal",
+      "contract": "kuhul://operators/v1",
+      "input": "Write the result to the shared corpus.",
+      "expected_phase": "Ch'en",
+      "expected_graph": {
+        "nodes": [],
+        "edges": []
+      },
+      "authorized_targets": [],
+      "expected_refusal": "capability_not_granted",
+      "unknown_facts": false,
+      "expected_graph_sha256": "752c36f09a77825a01fefb82017d8147e6a040c22daa6825a832645187f28162",
+      "check_focus": "the expectation is a refusal, and no execution authority is implied",
+      "attestation_template": {
+        "schema": "kuhul://evaluation/review/v1",
+        "case_id": "authority-01",
+        "expected_graph_sha256": "752c36f09a77825a01fefb82017d8147e6a040c22daa6825a832645187f28162",
+        "contract": "kuhul://operators/v1",
+        "reviewer": "REPLACE-WITH-YOUR-REVIEWER-ID",
+        "decision": "approved|rejected",
+        "signature_algorithm": "Ed25519",
+        "signature": "SIGN-WITH-YOUR-OWN-KEY"
+      }
+    },
+    {
+      "case_id": "srai-01",
+      "category": "srai_redirect",
+      "contract": "kuhul://operators/v1",
+      "input": "Tell me about my dog and follow the redirect.",
+      "expected_phase": "Pop",
+      "expected_graph": {
+        "nodes": [
+          {
+            "id": "map#0",
+            "operator": "map",
+            "parent": null
+          }
+        ],
+        "edges": []
+      },
+      "authorized_targets": [
+        "gml://relations"
+      ],
+      "expected_refusal": null,
+      "unknown_facts": false,
+      "expected_graph_sha256": "5fb15aa96f136cc041b62ee7d664916cddf7a0ca01aabc726bebe2235ffe935b",
+      "check_focus": "the redirect target and the wildcard substitution",
+      "attestation_template": {
+        "schema": "kuhul://evaluation/review/v1",
+        "case_id": "srai-01",
+        "expected_graph_sha256": "5fb15aa96f136cc041b62ee7d664916cddf7a0ca01aabc726bebe2235ffe935b",
+        "contract": "kuhul://operators/v1",
+        "reviewer": "REPLACE-WITH-YOUR-REVIEWER-ID",
+        "decision": "approved|rejected",
+        "signature_algorithm": "Ed25519",
+        "signature": "SIGN-WITH-YOUR-OWN-KEY"
+      }
+    },
+    {
+      "case_id": "rest-01",
+      "category": "rest_route",
+      "contract": "kuhul://operators/v1",
+      "input": "Read the profile of user 42 through the REST projection.",
+      "expected_phase": "Yax",
+      "expected_graph": {
+        "nodes": [
+          {
+            "id": "filter#0",
+            "operator": "filter",
+            "parent": null
+          }
+        ],
+        "edges": []
+      },
+      "authorized_targets": [
+        "gml://relations"
+      ],
+      "expected_refusal": null,
+      "unknown_facts": false,
+      "expected_graph_sha256": "ea3039acb5cfc81a2f5e9c9789b199b2a1aa74f142708315d6f49cb55b24beaa",
+      "check_focus": "caller scope and the authorized target",
+      "attestation_template": {
+        "schema": "kuhul://evaluation/review/v1",
+        "case_id": "rest-01",
+        "expected_graph_sha256": "ea3039acb5cfc81a2f5e9c9789b199b2a1aa74f142708315d6f49cb55b24beaa",
+        "contract": "kuhul://operators/v1",
+        "reviewer": "REPLACE-WITH-YOUR-REVIEWER-ID",
+        "decision": "approved|rejected",
+        "signature_algorithm": "Ed25519",
+        "signature": "SIGN-WITH-YOUR-OWN-KEY"
+      }
+    }
+  ],
+  "missing": [],
+  "reviewer_instructions": {
+    "read": "inspect the input, the expected graph, the contract and the authorized targets",
+    "do_not_read": "any model output, score or proposal - this packet contains none",
+    "sign": "sign the canonical payload of each attestation with your own Ed25519 key",
+    "submit": "send the signed attestations; the harness verifies, it never signs",
+    "register": "a public key in reviewers.json makes you a recognized signer; independence needs a separate onboarding record authorized by the project owner"
+  },
+  "onboarding_template": {
+    "reviewer": "REPLACE-WITH-YOUR-REVIEWER-ID",
+    "public_key": "BASE64-RAW-ED25519-PUBLIC-KEY",
+    "onboarding": {
+      "authorized_by": "human://project-owner",
+      "authorized_at": "REPLACE-WITH-DATE",
+      "independent": true,
+      "declaration": "I did not author these cases and derived my judgement from the expectations alone"
+    }
+  },
+  "status": {
+    "verified": 3,
+    "independently_approved": 0,
+    "benchmark_eligible": 0
+  }
+}

@@ -108,6 +108,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M68 | Scoring v2 (correct / incorrect / missing) and the re-score of 36 saved replies - which demotes Qwen C from 6/6 to 0/6 bound | **guard** | `evaluation/scoring-contract-v2.json`, `evaluation_harness.scoring_v2`, `rescore.py`, `data/session-experiment-36.rescored.json`, `tests_host/test_protocol_rescore.py` (24 tests) |
 | M69 | The real streaming path holds the lease: one acquire/release per turn, cancellation safe, and time-to-first-token measured separately from the wake | **guard** | `chat_app.stream_llm_response`, `inference_session.StreamingCall.begin/note_chunk/end`, `tests_host/test_app_stream_turn.py` (7 tests) |
 | M70 | Four distinct attestation outcomes, and independence that needs an authorized onboarding record rather than a flag | **guard** | `review_attestations.registry/independence`, `evaluation/reviewers.json` (onboarding + policy), `tests_host/test_review_attestations.py` (19 tests) |
+| M71 | The first-review packet and the three separate counts - the artifact a reviewer signs, containing expectations only | **guard** | `review_attestations.status`, `review_packet.py`, `evaluation/review-packet/`, `tests_host/test_review_packet.py` (13 tests) |
 
 ---
 
@@ -199,6 +200,42 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The packet a reviewer signs (M71)
+
+M70 already made registration and independence different authorities, and made an unreadable registry report
+`reviewer_registry_unavailable` rather than `reviewer_not_registered`; this adds the two things the cycle needs
+next: the **three counts** as separate numbers, and the **packet**.
+
+```
+review packet · 5 case(s) · missing none
+  current counts: {'verified': 3, 'independently_approved': 0, 'benchmark_eligible': 0}
+  pair-01       operator_pair     phase Sek    targets graph.matches
+  chain-01      full_composition  phase Sek    targets graph.matches
+  authority-01  refusal           phase Ch'en  targets (none)
+  srai-01       srai_redirect     phase Pop    targets gml://relations
+  rest-01       rest_route        phase Yax    targets gml://relations
+```
+
+Per case the packet carries the input, the expected operator graph, the contract, the authorized targets, the
+expectation digest, the **check focus** and an **unsigned** attestation template. It carries **no model output
+and no score** - a test scans the record shapes for those fields, because a reviewer who saw the answer would be
+grading agreement rather than the expectation.
+
+The instructions state the boundary in the reviewer's terms: a public key makes you a **recognized signer**;
+independence needs a **separate onboarding record** authorized by the project owner; the harness verifies and
+**never signs**.
+
+`review_attestations.status()` keeps the three counts apart and emits the sentence the project should use:
+
+> these 16 expectations are frozen and no case is independently approved, so the results are regression
+> evidence, not validated accuracy
+
+One test correction worth noting: my first leak check scanned for the *string* `score` and failed on the packet's
+own instruction *"do not read any model output, score or proposal"*. The check now inspects field names, which is
+what "no model output" actually means.
 
 ---
 

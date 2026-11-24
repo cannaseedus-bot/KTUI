@@ -232,3 +232,37 @@ def summary(report: dict) -> str:
     else:
         lines.append("  independently reviewed: none - no registered reviewer is marked independent")
     return "\n".join(lines)
+
+def status(corpus: dict, *, attestation_path: Path | None = None,
+           registry_record: dict | None = None) -> dict:
+    """The three counts the review cycle needs, kept apart because they mean different things."""
+    registry_record = registry_record or registry()
+    checked = check(corpus, load(attestation_path), registry_record)
+    frozen = [case["id"] for case in corpus.get("cases") or []
+              if case.get("review_status") == "frozen"]
+    approved = set(checked["independently_reviewed_cases"])
+    rejected = set(checked.get("rejected") or [])
+    eligible = [case_id for case_id in frozen if case_id in approved and case_id not in rejected]
+    return dict(schema="kuhul://evaluation/review-status/v1",
+                registry_available=bool(registry_record.get("available")),
+                verified_attestations=checked["verified"],
+                independently_approved_cases=sorted(approved),
+                benchmark_eligible_cases=eligible,
+                frozen_cases=len(frozen),
+                counts=dict(verified=checked["verified"],
+                            independently_approved=len(approved),
+                            benchmark_eligible=len(eligible)),
+                verdicts=checked["verdicts"],
+                statement=_statement(len(approved), len(frozen)),
+                authority="declaration_only", execution=False)
+
+
+def _statement(approved: int, frozen: int) -> str:
+    if approved == 0:
+        return (f"these {frozen} expectations are frozen and no case is independently approved, so the "
+                f"results are regression evidence, not validated accuracy")
+    if approved < frozen:
+        return (f"{approved} of {frozen} expectations are independently approved; only those are "
+                f"benchmark-eligible")
+    return f"all {frozen} expectations are independently approved"
+
