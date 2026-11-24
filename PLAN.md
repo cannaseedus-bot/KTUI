@@ -92,6 +92,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M52 | One versioned operator contract (`kuhul://operators/v1`) rendered into the prompt and enforced by the validator; the clean two-condition protocol | **guard** | `data/operators.json`, `plan_graph.contract`, `contract_experiment.py`, `data/contract-experiment.json`, `tests_host/test_contract_experiment.py` (11 tests) |
 | M53 | The contract as a session template: rules-only vs rules+examples, measured on Qwen | **guard** | `data/session-profiles.json`, `session_profile.py`, `data/session-experiment.json`, `tests_host/test_session_profile.py` (13 tests) |
 | M54 | Lease-wrapped inference: one startup per cold model, the lease always returns, cold starts measured apart | **guard** | `inference_session.py`, `model_lifecycle.py`, `tests_host/test_inference_session.py` (12 tests) |
+| M55 | Corpus format v2 frozen: expectation digests, reviewed provenance, and 16 cases across 11 categories; independent review still missing | **guard** | `evaluation/cases.jsonl`, `evaluation/reviewers.json`, `evaluation/manifest.json`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (19 tests) |
 
 ---
 
@@ -183,6 +184,41 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The evaluation format is frozen (M55)
+
+`kuhul-eval-corpus/2` adds what the review asked for, and one honest zero:
+
+| field | what it does |
+|---|---|
+| `expected_graph_sha256` | digest of the canonical `expect` JSON - a silent edit becomes a mismatch |
+| `contract` | `kuhul://operators/v1`, the contract the expectation was frozen against |
+| `review.method` / `review.reviewer` | provenance, checked against `reviewers.json` rather than believed |
+| `format_frozen_at` | the format itself is dated, so an older benchmark keeps its meaning |
+
+**Provenance is verified, not asserted.** A case claiming `method: "independent"` is refused unless its
+reviewer is registered as independent; an unregistered reviewer is refused outright; and the manifest's
+`independent_reviews` must equal what the registry can actually support.
+
+```
+16 cases · 11 categories · 16 frozen · 16 eligible for regression · 0 independently reviewed
+```
+
+**The zero is the point.** Every case was reviewed by `agent://session-author`, registered as an author. So
+the corpus can regress the system today, and it **cannot** yet produce the headline accuracy number - which
+is exactly the state the review described as "get the eight frozen cases independently reviewed before
+treating them as an accuracy benchmark".
+
+New categories, each sourced from a guard that already existed rather than invented by the model under test:
+`srai_redirect`, `rest_route`, `phase_traversal`, `operator_containment` (two cases, including one where
+`accumulate` must be nested rather than substituted), `runtime_introspection`, plus the existing
+`operator_pair`, `full_composition`, `phase_selection`, `uri_binding`, `unknown_facts` and `refusal`.
+
+Three guards prove the format holds: a tampered expectation is a `digest` problem, an independent claim
+without an independent reviewer is a `review` problem, and an unregistered reviewer is refused with the
+reason.
 
 ---
 
@@ -1765,7 +1801,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 472 tests, OK (M3-M54) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 478 tests, OK (M3-M55) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

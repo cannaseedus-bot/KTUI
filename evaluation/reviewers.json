@@ -1,0 +1,11 @@
+{
+  "schema": "kuhul-eval-reviewers/1",
+  "note": "Provenance is checked against this registry: a case claiming method=independent is refused unless its reviewer is listed here as independent, and only an independent review counts toward the headline benchmark.",
+  "reviewers": {
+    "agent://session-author": {
+      "role": "author",
+      "independent": false,
+      "note": "wrote these cases; an author review is not independent"
+    }
+  }
+}

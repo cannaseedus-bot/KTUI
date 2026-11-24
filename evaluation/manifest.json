@@ -1,16 +1,22 @@
 {
-  "schema": "kuhul-eval-corpus/1",
+  "schema": "kuhul-eval-corpus/2",
   "authority": "declaration_only",
-  "version": "1.0.0",
-  "cases": 12,
-  "frozen": 8,
-  "reviewed": 2,
-  "draft": 2,
+  "version": "2.0.0",
+  "format_frozen_at": "2026-11-24",
+  "cases": 16,
+  "frozen": 16,
+  "reviewed": 0,
+  "draft": 0,
   "categories": [
-    "authority",
     "full_composition",
+    "operator_containment",
     "operator_pair",
     "phase_selection",
+    "phase_traversal",
+    "refusal",
+    "rest_route",
+    "runtime_introspection",
+    "srai_redirect",
     "unknown_facts",
     "uri_binding"
   ],
@@ -18,18 +24,29 @@
     "pair-01",
     "pair-02",
     "chain-01",
+    "containment-01",
     "phase-01",
+    "phase-02",
     "authority-01",
     "authority-02",
     "unknown-01",
-    "uri-01"
+    "unknown-02",
+    "uri-01",
+    "uri-02",
+    "srai-01",
+    "rest-01",
+    "introspect-01",
+    "containment-02"
   ],
+  "independent_reviews": 0,
   "case_file": "cases.jsonl",
   "graph_file": "expected-graphs.gml",
+  "reviewer_file": "reviewers.json",
+  "contract": "kuhul://operators/v1",
   "rules": {
-    "headline_benchmark": "only review_status=frozen cases count",
+    "headline_benchmark": "frozen cases whose expectation digest matches and whose review verifies",
+    "author_review_is_not_enough": "a case reviewed only by its author is eligible for regression, not for the headline accuracy number",
     "isolation": "this corpus must not be loaded by the chat app or the retrieval index; expected answers stay out of the live learning corpus",
-    "unknown_facts": "a case with unknown_facts=true must refuse rather than invent evidence"
-  },
-  "frozen_at": "2026-11-24T06:34:32Z"
+    "digest": "expected_graph_sha256 covers the canonical JSON of expect, so a silent edit is a mismatch"
+  }
 }

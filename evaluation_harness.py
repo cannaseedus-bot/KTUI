@@ -18,6 +18,7 @@ Scoring separates what a plan got right, because they are different failures:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -30,9 +31,43 @@ for _candidate in (str(HOST_ROOT / "kuhul-phase-engine-v0.1.0" / "core"), str(HO
 import plan_graph  # noqa: E402
 
 CORPUS = HOST_ROOT / "evaluation"
-SCHEMA = "kuhul-eval-corpus/1"
+SCHEMA = "kuhul-eval-corpus/2"
 RESULTS = CORPUS / "results"
 ISOLATION = ("chat_app", "knowledge.py", "corpus.py", "aiml_graph.py")
+
+
+def digest(expect: dict) -> str:
+    """A stable digest over the expected graph, so a silent edit shows up as a mismatch."""
+    canonical = json.dumps(expect or {}, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def reviewers(folder: Path | None = None) -> dict:
+    folder = Path(folder or CORPUS)
+    try:
+        record = json.loads((folder / "reviewers.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return dict(ok=False, by_id={}, problems=[dict(code="reviewers", detail=str(error))])
+    return dict(ok=True, by_id=record.get("reviewers") or {}, problems=[])
+
+
+def verify_review(case: dict, registry: dict) -> dict:
+    """A review counts only if the reviewer is registered and the method matches its role."""
+    review = case.get("review") or {}
+    reviewer = str(review.get("reviewer") or "")
+    method = str(review.get("method") or "")
+    entry = (registry.get("by_id") or {}).get(reviewer)
+    if entry is None:
+        return dict(ok=False, method=method, reviewer=reviewer, independent=False,
+                    reason=f"reviewer {reviewer!r} is not registered in reviewers.json")
+    if method == "independent" and not entry.get("independent"):
+        return dict(ok=False, method=method, reviewer=reviewer, independent=False,
+                    reason=f"{reviewer!r} is registered as {entry.get('role')!r}, not independent")
+    if method not in ("author", "independent"):
+        return dict(ok=False, method=method, reviewer=reviewer, independent=False,
+                    reason=f"unknown review method {method!r}")
+    return dict(ok=True, method=method, reviewer=reviewer,
+                independent=bool(entry.get("independent")) and method == "independent")
 
 
 def load(folder: Path | None = None) -> dict:
@@ -48,6 +83,8 @@ def load(folder: Path | None = None) -> dict:
         problems.append(dict(code="schema", detail=f"expected {SCHEMA}"))
     if manifest.get("authority") != "declaration_only":
         problems.append(dict(code="authority", detail="a corpus is declaration_only"))
+    registry = reviewers(folder)
+    problems.extend(registry.get("problems") or [])
     cases: list[dict] = []
     seen: set[str] = set()
     for line_number, line in enumerate((folder / manifest.get("case_file", "cases.jsonl"))
@@ -77,6 +114,16 @@ def load(folder: Path | None = None) -> dict:
         for key in ("nodes", "edges"):
             if not isinstance(graph.get(key), list):
                 problems.append(dict(code="graph", detail=f"{identifier}: no {key}"))
+        recorded = case.get("expected_graph_sha256")
+        if recorded != digest(expect):
+            problems.append(dict(code="digest", detail=f"{identifier}: expectation changed since it "
+                                                       "was frozen"))
+        if case.get("contract") != manifest.get("contract"):
+            problems.append(dict(code="contract", detail=f"{identifier}: {case.get('contract')!r}"))
+        review = verify_review(case, registry)
+        if not review["ok"]:
+            problems.append(dict(code="review", detail=f"{identifier}: {review['reason']}"))
+        case["_review"] = review
         cases.append(case)
     if manifest.get("cases") != len(cases):
         problems.append(dict(code="count",
@@ -85,9 +132,16 @@ def load(folder: Path | None = None) -> dict:
     if manifest.get("frozen_ids") != frozen:
         problems.append(dict(code="frozen_ids",
                              detail="manifest frozen_ids do not match the frozen cases in the file"))
+    independent = [case["id"] for case in cases if case["_review"]["independent"]]
+    if manifest.get("independent_reviews") != len(independent):
+        problems.append(dict(code="independent_reviews",
+                             detail=f"manifest says {manifest.get('independent_reviews')}, "
+                                    f"registry supports {len(independent)}"))
+    eligible = [case for case in cases if case["review_status"] == "frozen" and case["_review"]["ok"]]
     return dict(ok=not problems, problems=problems, cases=cases, manifest=manifest,
                 by_id={case["id"]: case for case in cases},
                 frozen=[case for case in cases if case["review_status"] == "frozen"],
+                eligible=eligible, independently_reviewed=independent,
                 authority="declaration_only")
 
 

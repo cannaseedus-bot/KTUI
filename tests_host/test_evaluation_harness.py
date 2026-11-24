@@ -9,7 +9,9 @@ Rules under test:
     the corpus is offline          nothing in the live path may load the expected answers
 """
 import json
+import shutil
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -46,8 +48,9 @@ class CorpusTests(unittest.TestCase):
 
     def test_the_corpus_validates(self):
         self.assertTrue(self.corpus["ok"], self.corpus["problems"])
-        self.assertEqual(len(self.corpus["cases"]), 12)
-        self.assertEqual(len(self.corpus["frozen"]), 8)
+        self.assertEqual(len(self.corpus["cases"]), 16)
+        self.assertEqual(len(self.corpus["frozen"]), 16)
+        self.assertEqual(self.corpus["manifest"]["schema"], "kuhul-eval-corpus/2")
 
     def test_every_case_declares_an_expectation(self):
         for case in self.corpus["cases"]:
@@ -62,9 +65,76 @@ class CorpusTests(unittest.TestCase):
         self.assertEqual(manifest["frozen"], len(self.corpus["frozen"]))
         self.assertEqual(manifest["frozen_ids"], [case["id"] for case in self.corpus["frozen"]])
 
+    def test_every_case_carries_a_digest_and_a_verified_review(self):
+        for case in self.corpus["cases"]:
+            self.assertEqual(len(case["expected_graph_sha256"]), 64, case["id"])
+            self.assertEqual(case["contract"], "kuhul://operators/v1", case["id"])
+            self.assertTrue(case["_review"]["ok"], case["id"])
+
+    def test_an_author_review_is_not_independent(self):
+        self.assertEqual(len(self.corpus["independently_reviewed"]), 0,
+                         "no independent review exists yet, and the corpus says so")
+        for case in self.corpus["cases"]:
+            self.assertFalse(case["_review"]["independent"], case["id"])
+
+    def test_the_new_categories_are_present(self):
+        categories = set(self.corpus["manifest"]["categories"])
+        for expected in ("srai_redirect", "rest_route", "phase_traversal",
+                         "operator_containment", "runtime_introspection", "refusal",
+                         "unknown_facts"):
+            self.assertIn(expected, categories)
+
     def test_the_corpus_is_offline(self):
         report = evaluation_harness.isolation()
         self.assertTrue(report["ok"], report["offenders"])
+
+    def test_a_tampered_expectation_is_a_digest_mismatch(self):
+        import shutil
+
+        folder = Path(tempfile.mkdtemp()) / "evaluation"
+        shutil.copytree(ROOT / "evaluation", folder)
+        lines = (folder / "cases.jsonl").read_text(encoding="utf-8").splitlines()
+        case = json.loads(lines[0])
+        # change the expectation itself; a one-edge graph reversed is unchanged, so mutate a node
+        case["expect"]["graph"]["nodes"][0]["operator"] = "fold"
+        lines[0] = json.dumps(case)
+        (folder / "cases.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        manifest = json.loads((folder / "manifest.json").read_text(encoding="utf-8"))
+        manifest["frozen_ids"] = [json.loads(line)["id"] for line in lines]
+        (folder / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+        report = evaluation_harness.load(folder)
+        self.assertFalse(report["ok"])
+        self.assertIn("digest", [problem["code"] for problem in report["problems"]])
+
+    def test_an_independent_claim_without_an_independent_reviewer_is_refused(self):
+        import shutil
+
+        folder = Path(tempfile.mkdtemp()) / "evaluation"
+        shutil.copytree(ROOT / "evaluation", folder)
+        lines = (folder / "cases.jsonl").read_text(encoding="utf-8").splitlines()
+        case = json.loads(lines[0])
+        case["review"]["method"] = "independent"     # the registered reviewer is an author
+        lines[0] = json.dumps(case)
+        (folder / "cases.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        report = evaluation_harness.load(folder)
+        self.assertFalse(report["ok"])
+        self.assertIn("review", [problem["code"] for problem in report["problems"]])
+
+    def test_an_unregistered_reviewer_is_refused(self):
+        import shutil
+
+        folder = Path(tempfile.mkdtemp()) / "evaluation"
+        shutil.copytree(ROOT / "evaluation", folder)
+        lines = (folder / "cases.jsonl").read_text(encoding="utf-8").splitlines()
+        case = json.loads(lines[0])
+        case["review"]["reviewer"] = "agent://stranger"
+        lines[0] = json.dumps(case)
+        (folder / "cases.jsonl").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        report = evaluation_harness.load(folder)
+        self.assertFalse(report["ok"])
+        review_problems = [problem for problem in report["problems"] if problem["code"] == "review"]
+        self.assertTrue(review_problems)
+        self.assertIn("not registered", review_problems[0]["detail"])
 
     def test_a_tampered_manifest_is_refused(self):
         import shutil
@@ -92,7 +162,7 @@ class ScoringTests(unittest.TestCase):
 
     def test_only_frozen_cases_count(self):
         result = evaluation_harness.evaluate("perfect", perfect(self.corpus), self.corpus)
-        self.assertEqual(result["cases"], 8)
+        self.assertEqual(result["cases"], len(self.corpus["frozen"]))
         for score in result["scores"]:
             self.assertEqual(score["review"], "frozen")
 
