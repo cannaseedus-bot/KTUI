@@ -99,6 +99,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M59 | 36 session cells: C's advantage survives repetition for Qwen and does not transfer to Gemma; the passes rest on omitted targets | **guard** | `session_profile.py`, `data/session-profiles.json` (disjoint examples), `data/session-experiment-36.json`, `tests_host/test_session_profile.py` (13 tests) |
 | M60 | The stream holds the lease: cancellation returns it, cold-start failure takes none, one lifecycle and a 30 s sweep in the app | **guard** | `inference_session.StreamingCall`, `chat_app.lease/sweep_idle`, `model_lifecycle.observed`, `tests_host/test_stream_lease.py` (10 tests) |
 | M61 | Signed review attestations: Ed25519 over the case digest and contract, verified against a registered public key - and still zero benchmark-eligible cases | **guard** | `review_attestations.py`, `evaluation/review-attestations.jsonl`, `evaluation/reviewers.json`, `tests_host/test_review_attestations.py` (12 tests) |
+| M62 | Stage 2 of the green screen: a generation counter skips the rebuild, the digest still gates the repaint | **guard** | `runtime_signals.py`, `chat_app.poll_runtime`, `model_lifecycle`/`evidence_record` bumps, `tests_host/test_runtime_signals.py` (8 tests) |
 
 ---
 
@@ -190,6 +191,32 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Stage 2: a generation gate (M62)
+
+The tick no longer walks the registries when nothing happened. Two levels, deliberately separate:
+
+```
+generation   did anything bump?          one integer compare; a match skips the whole rebuild
+digest       did the meaning change?     decides whether the widget repaints
+```
+
+Bumps come from the places that actually change state: `Lifecycle.ensure`, `acquire`, `release` and the idle
+stop each bump, and `evidence_record.append` bumps when a record is written. Measured in the app:
+
+```
+polls 2 · renders 1 · skips 1        two ticks, one registry walk
+after a lease bump -> rebuild, digest unchanged -> still renders 1
+```
+
+So a bump that changes nothing observable costs **one rebuild and zero repaints**, which is what makes a 2 s
+tick affordable; and a bump with a semantic change does both.
+
+The counter is a **hint, not a truth**: a missed bump costs one stale frame rather than a wrong one, and the
+digest remains the gate for repainting so a noisy bump (a record written, no structural change) cannot make
+the screen flicker. Nothing in this path wakes, leases or stops a model - it is a counter and a compare.
 
 ---
 
@@ -2016,7 +2043,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 516 tests, OK (M3-M61) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 524 tests, OK (M3-M62) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

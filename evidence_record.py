@@ -31,6 +31,7 @@ for _candidate in (str(PACKAGE / "core"), str(PACKAGE), str(HOST_ROOT)):
         sys.path.insert(0, _candidate)
 
 import ledger_plugin  # noqa: E402
+import runtime_signals  # noqa: E402
 import model_router  # noqa: E402
 import phase_routing  # noqa: E402
 
@@ -97,6 +98,7 @@ def append(record: dict, path: Path | None = None) -> dict:
     path = Path(path or LOG)
     chained = ledger_plugin.append({"kind": "inference-record", "payload": record}, path,
                                    verify_first=True)
+    runtime_signals.bump("evidence")
     return dict(record, evidence_sequence=chained["sequence"],
                 evidence_hash=chained["content_hash"])
 

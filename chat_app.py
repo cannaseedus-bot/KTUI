@@ -105,6 +105,10 @@ try:  # one long-lived lifecycle: leases for the streamed path, and the idle swe
 except ImportError:  # pragma: no cover
     model_lifecycle = None
     inference_session = None
+try:  # cheap staleness hint: the poll skips a rebuild when nothing bumped
+    import runtime_signals
+except ImportError:  # pragma: no cover
+    runtime_signals = None
 import math
 import tempfile
 import shlex
@@ -777,6 +781,9 @@ class ChatApp(App):
                       if inference_session is not None and self.lifecycle is not None else None)
         self.sweeps = 0
         self.last_sweep = None
+        # Stage 2: the generation this app last rebuilt at, so an idle tick costs one integer compare.
+        self.runtime_generation = None
+        self.runtime_skips = 0
         # A short local answer can offer depth: "would you like me to delve deeper?" remembers the
         # original question, so agreeing sends *that* to the model rather than the word "yes".
         self.pending_deep = None
@@ -1411,6 +1418,12 @@ class ChatApp(App):
         if runtime_tree is None:
             return
         self.runtime_polls += 1
+        if runtime_signals is not None:
+            generation = runtime_signals.generation()
+            if generation == self.runtime_generation:
+                self.runtime_skips += 1
+                return
+            self.runtime_generation = generation
         try:
             view = (model_lifecycle.observed(self.lifecycle)
                     if model_lifecycle is not None and self.lifecycle is not None else None)

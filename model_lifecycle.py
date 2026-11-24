@@ -29,6 +29,7 @@ for _candidate in (str(PACKAGE / "core"), str(PACKAGE), str(HOST_ROOT)):
 
 import model_router  # noqa: E402
 import runtime_servers  # noqa: E402
+import runtime_signals  # noqa: E402
 
 SCHEMA = "kuhul-model-lifecycle/1"
 STATES = ("hot", "warm", "cold", "unknown")
@@ -141,6 +142,7 @@ class Lifecycle:
         if entry is None:
             raise LifecycleError(f"{name!r} is not a registered model")
         self.leases[name] = self.leases.get(name, 0) + 1
+        runtime_signals.bump(f"lease:{name}")
         self.last_used[name] = _host_call(self.host, "clock")
         return dict(model=name, leases=self.leases[name], state=self.state_of(name))
 
@@ -149,6 +151,7 @@ class Lifecycle:
             raise LifecycleError(f"{name!r} has no active lease")
         self.leases[name] -= 1
         self.last_used[name] = _host_call(self.host, "clock")
+        runtime_signals.bump(f"release:{name}")
         return dict(model=name, leases=self.leases[name])
 
     def state_of(self, name: str) -> str:
@@ -164,6 +167,7 @@ class Lifecycle:
         if _listening(port, self.host):
             return dict(schema=SCHEMA, model=name, state="hot", started=False, port=port,
                         note="already serving; nothing was launched")
+        runtime_signals.bump(f"launch:{name}")
         launched = _host_call(self.host, "launch", name, entry["launch"])
         # Startup is wall-clock time, not the injected idle clock: waiting on a fake clock that never
         # advances would spin forever, and a real launch takes real seconds.
@@ -201,6 +205,7 @@ class Lifecycle:
             outcome = _host_call(self.host, "stop", name,
                                  dict(alias=entry["launch"]["alias"], port=record["port"]))
             self.owned.pop(name, None)
+            runtime_signals.bump(f"stop:{name}")
             stopped.append(dict(model=name, reason="idle", idle_seconds=int(idle),
                                 result=outcome))
         return dict(schema=SCHEMA, stopped=stopped, kept=kept, owned=sorted(self.owned))
