@@ -200,5 +200,111 @@ class PollGateTests(unittest.TestCase):
         self.assertEqual(skips, 0)
 
 
+class CommittedChangeTests(unittest.TestCase):
+    """The generation reflects committed observed changes - not method calls, and not intentions."""
+
+    def test_a_failed_start_does_not_announce_readiness(self):
+        import json
+
+        record = json.loads((ROOT / "kuhul-phase-engine-v0.1.0" / "data" / "models.json")
+                            .read_text(encoding="utf-8"))
+        record["models"]["planner"]["startup_timeout_seconds"] = 1
+        folder = Path(tempfile.mkdtemp()) / "models.json"
+        folder.write_text(json.dumps(record), encoding="utf-8")
+        runtime_signals.reset("failed")
+        host = FakeHost()                       # never opens the port
+        host.launch = lambda name, spec: dict(pid=1)
+        lifecycle = model_lifecycle.Lifecycle(model_lifecycle.load(folder), host=host)
+        before = runtime_signals.generation()
+        outcome = lifecycle.ensure("planner")
+        after = runtime_signals.generation()
+        self.assertTrue(outcome.get("timeout"))
+        self.assertEqual(after, before + 1, "exactly one bump, and it is the failure")
+        self.assertIn("launch_failed", runtime_signals.state()["reason"])
+        self.assertNotEqual(lifecycle.state_of("planner"), "hot",
+                            "a failed start must not read as hot")
+
+    def test_a_successful_start_bumps_once_after_readiness(self):
+        runtime_signals.reset("ready")
+        lifecycle = model_lifecycle.Lifecycle(model_lifecycle.load(), host=FakeHost())
+        before = runtime_signals.generation()
+        lifecycle.ensure("planner")
+        self.assertEqual(runtime_signals.generation(), before + 1)
+        self.assertIn("ready", runtime_signals.state()["reason"])
+        self.assertEqual(lifecycle.state_of("planner"), "hot")
+
+    def test_an_idle_shutdown_is_a_committed_change(self):
+        runtime_signals.reset("shutdown")
+        host = FakeHost()
+        declaration = model_lifecycle.load()
+        lifecycle = model_lifecycle.Lifecycle(declaration, host=host)
+        lifecycle.ensure("worker")
+        host.now += declaration["by_name"]["worker"]["idle_timeout_seconds"] + 5
+        before = runtime_signals.generation()
+        sweep = lifecycle.release_idle()
+        self.assertEqual(len(sweep["stopped"]), 1)
+        self.assertGreater(runtime_signals.generation(), before)
+        self.assertTrue(runtime_signals.state()["reason"].startswith("stop:"))
+        self.assertEqual(lifecycle.state_of("worker"), "cold")
+
+
+class ReconciliationTests(unittest.TestCase):
+    """A counter in one process cannot see another process's edits, so a slow rebuild stays."""
+
+    def test_the_poll_reconciles_every_n_ticks(self):
+        import asyncio
+
+        import chat_app
+        import runtime_tree
+
+        runtime_signals.reset("reconcile")
+        builds = []
+        original = runtime_tree.watch
+
+        def counted(**kwargs):
+            builds.append(1)
+            return original(**kwargs)
+
+        async def drive():
+            import session_log
+            session_log.SESSIONS_DIR = Path(tempfile.mkdtemp())
+            app = chat_app.ChatApp()
+            runtime_tree.watch = counted
+            try:
+                async with app.run_test(size=(120, 50)) as pilot:
+                    await pilot.pause()
+                    for _ in range(chat_app.RECONCILE_EVERY * 2):
+                        app.poll_runtime()
+                    return app.runtime_polls, app.runtime_skips, app.runtime_reconciles
+            finally:
+                runtime_tree.watch = original
+        polls, skips, reconciles = asyncio.run(drive())
+        expected_builds = 1 + (polls - 1) // chat_app.RECONCILE_EVERY
+        self.assertEqual(len(builds), expected_builds, "one initial build plus one per reconcile")
+        self.assertEqual(reconciles, (polls - 1) // chat_app.RECONCILE_EVERY)
+        self.assertEqual(skips, polls - len(builds))
+
+    def test_a_reconcile_without_a_change_still_does_not_repaint(self):
+        import asyncio
+
+        import chat_app
+        import runtime_tree
+
+        runtime_signals.reset("quiet")
+
+        async def drive():
+            import session_log
+            session_log.SESSIONS_DIR = Path(tempfile.mkdtemp())
+            app = chat_app.ChatApp()
+            async with app.run_test(size=(120, 50)) as pilot:
+                await pilot.pause()
+                for _ in range(chat_app.RECONCILE_EVERY + 2):
+                    app.poll_runtime()
+                return app.runtime_renders, app.runtime_reconciles
+        renders, reconciles = asyncio.run(drive())
+        self.assertGreaterEqual(reconciles, 1)
+        self.assertEqual(renders, 1, "the digest, not the counter, decides a repaint")
+
+
 if __name__ == "__main__":
     unittest.main()

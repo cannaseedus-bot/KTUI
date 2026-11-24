@@ -167,18 +167,21 @@ class Lifecycle:
         if _listening(port, self.host):
             return dict(schema=SCHEMA, model=name, state="hot", started=False, port=port,
                         note="already serving; nothing was launched")
-        runtime_signals.bump(f"launch:{name}")
         launched = _host_call(self.host, "launch", name, entry["launch"])
         # Startup is wall-clock time, not the injected idle clock: waiting on a fake clock that never
         # advances would spin forever, and a real launch takes real seconds.
         deadline = time.monotonic() + entry["startup_timeout_seconds"]
         while time.monotonic() < deadline:
             if _listening(port, self.host):
+                # Bump only once readiness is confirmed: a launch that never opened its port must not
+                # announce a visible state change.
+                runtime_signals.bump(f"ready:{name}")
                 self.owned[name] = dict(pid=launched.get("pid"), port=port,
                                         started_at=_host_call(self.host, "clock"))
                 return dict(schema=SCHEMA, model=name, state="hot", started=True, port=port,
                             pid=launched.get("pid"))
             time.sleep(0.25)
+        runtime_signals.bump(f"launch_failed:{name}")
         return dict(schema=SCHEMA, model=name, state="cold", started=True, port=port,
                     pid=launched.get("pid"), timeout=True,
                     note="launched, but the port never opened; the process was left for inspection")

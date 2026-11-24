@@ -710,9 +710,14 @@ AFFIRMATIVE = re.compile(
     r"more|continue|absolutely|yes please|please do)\b", re.I)
 
 
+# A generation counter cannot see another process's edits, so re-read the registries every N ticks.
+RECONCILE_EVERY = 15
+
+COMMANDS = App.COMMANDS | {ChatCommands}
+
+
 class ChatApp(App):
     # The palette is the model switcher: system commands (screen, quit…) plus ChatCommands below.
-    COMMANDS = App.COMMANDS | {ChatCommands}
     CSS = """
     Screen { layout: vertical; width: 100%; height: 100%; overflow: hidden; }
     /* The mark is a title, not a poster: 128x85 source, 22x11 box (10 art rows). */
@@ -782,8 +787,11 @@ class ChatApp(App):
         self.sweeps = 0
         self.last_sweep = None
         # Stage 2: the generation this app last rebuilt at, so an idle tick costs one integer compare.
+        # A generation counter cannot see another process's edits, so a slow reconciliation rebuild stays.
         self.runtime_generation = None
         self.runtime_skips = 0
+        self.runtime_since_build = 0
+        self.runtime_reconciles = 0
         # A short local answer can offer depth: "would you like me to delve deeper?" remembers the
         # original question, so agreeing sends *that* to the model rather than the word "yes".
         self.pending_deep = None
@@ -1420,10 +1428,14 @@ class ChatApp(App):
         self.runtime_polls += 1
         if runtime_signals is not None:
             generation = runtime_signals.generation()
-            if generation == self.runtime_generation:
+            if generation == self.runtime_generation and self.runtime_since_build < RECONCILE_EVERY:
                 self.runtime_skips += 1
+                self.runtime_since_build += 1
                 return
+            if generation == self.runtime_generation:
+                self.runtime_reconciles += 1     # the fallback: re-read the registries anyway
             self.runtime_generation = generation
+        self.runtime_since_build = 0
         try:
             view = (model_lifecycle.observed(self.lifecycle)
                     if model_lifecycle is not None and self.lifecycle is not None else None)

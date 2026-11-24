@@ -100,6 +100,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M60 | The stream holds the lease: cancellation returns it, cold-start failure takes none, one lifecycle and a 30 s sweep in the app | **guard** | `inference_session.StreamingCall`, `chat_app.lease/sweep_idle`, `model_lifecycle.observed`, `tests_host/test_stream_lease.py` (10 tests) |
 | M61 | Signed review attestations: Ed25519 over the case digest and contract, verified against a registered public key - and still zero benchmark-eligible cases | **guard** | `review_attestations.py`, `evaluation/review-attestations.jsonl`, `evaluation/reviewers.json`, `tests_host/test_review_attestations.py` (12 tests) |
 | M62 | Stage 2 of the green screen: a generation counter skips the rebuild, the digest still gates the repaint | **guard** | `runtime_signals.py`, `chat_app.poll_runtime`, `model_lifecycle`/`evidence_record` bumps, `tests_host/test_runtime_signals.py` (8 tests) |
+| M63 | The generation counts committed changes only (readiness-gated, failures distinct), with a slow reconciliation rebuild for external edits | **guard** | `model_lifecycle.ensure` bump placement, `chat_app.RECONCILE_EVERY`, `tests_host/test_runtime_signals.py` (13 tests) |
 
 ---
 
@@ -191,6 +192,32 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## What the generation is allowed to announce (M63)
+
+The counter and the digest are not interchangeable, and neither is a method call a state change. Three
+refinements, each measured:
+
+| change | before | now |
+|---|---|---|
+| startup | bumped **before** the launcher ran, so a failed start announced a change as if it were ready | bumps **after** readiness; a failure bumps with `launch_failed`, and the projection still reads `cold` |
+| idle shutdown | already a committed change | bumped after the stop, reason `stop:<model>` |
+| external edits | invisible to a counter in one process | a reconciliation rebuild every `RECONCILE_EVERY = 15` ticks |
+
+Measured in the app, 20 ticks with no changes:
+
+```
+polls 20 · builds 2 · skips 18 · reconciles 1
+```
+
+Two builds for twenty ticks: the initial one and the reconciliation. The other eighteen cost one integer
+compare each. And a reconcile that finds nothing new still **repaints nothing** - the digest stays the gate
+for the widget, exactly as the review insisted.
+
+A failed start is the case worth keeping: the guard asserts one bump, its reason contains `launch_failed`, and
+`state_of()` is not `hot` - so the screen cannot show a model as running because someone asked it to wake.
 
 ---
 
@@ -2049,7 +2076,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 524 tests, OK (M3-M62) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 529 tests, OK (M3-M63) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
