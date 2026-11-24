@@ -85,8 +85,10 @@ def load(path: Path | None = None) -> dict:
 def default_launcher() -> dict:
     """Launch through task-engine.py, which resolves the model from the registry - not from a string."""
     def launch(name: str, spec: dict) -> dict:
+        # --keep-alive matters: task-engine otherwise exits after its health check and takes the server
+        # with it, which would make a later "stop" find nothing and look like a successful sweep.
         argv = [sys.executable, str(HOST_ROOT / "task-engine.py"), "launch",
-                "--model", spec["alias"], "--port", str(spec["port"])]
+                "--model", spec["alias"], "--port", str(spec["port"]), "--keep-alive"]
         if spec.get("no_think"):
             argv.append("--no-think")
         process = subprocess.Popen(argv, cwd=str(HOST_ROOT), stdout=subprocess.DEVNULL,
@@ -277,6 +279,16 @@ def backend_for_alias(declaration: dict, alias: str) -> str | None:
         if declared and (stem.startswith(declared) or declared.startswith(stem)):
             return name
     return None
+
+
+def diagnose_backend(declaration: dict, alias: str) -> dict:
+    """Whether this served model name maps to a lifecycle backend - and why not, when it does not."""
+    backend = backend_for_alias(declaration, alias)
+    if backend is not None:
+        return dict(matched=True, backend=backend, alias=str(alias or ""), reason=None)
+    return dict(matched=False, backend=None, alias=str(alias or ""),
+                reason=("no declared launch alias matches this model name, so the turn streams "
+                        "without a lifecycle lease (unmanaged_backend)"))
 
 
 def observed(lifecycle: "Lifecycle") -> dict:

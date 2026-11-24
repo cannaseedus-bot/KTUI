@@ -185,5 +185,53 @@ class LeaseTests(unittest.TestCase):
             lifecycle.release("worker")
 
 
+class BackendDiagnosisTests(unittest.TestCase):
+    """An unmatched model name must be reported, not silently streamed unmanaged."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.declaration = model_lifecycle.load()
+
+    def test_a_declared_alias_matches(self):
+        report = model_lifecycle.diagnose_backend(self.declaration, "gpt-oss-20b")
+        self.assertTrue(report["matched"])
+        self.assertEqual(report["backend"], "advisor")
+        self.assertIsNone(report["reason"])
+
+    def test_a_served_file_name_matches_its_alias(self):
+        report = model_lifecycle.diagnose_backend(
+            self.declaration, "C:/Users/canna/.models/gpt-oss-20b-MXFP4.gguf")
+        self.assertTrue(report["matched"], "llama-server reports its own file name")
+        self.assertEqual(report["backend"], "advisor")
+
+    def test_an_unknown_model_is_named_as_unmanaged(self):
+        report = model_lifecycle.diagnose_backend(self.declaration, "mystery-7b")
+        self.assertFalse(report["matched"])
+        self.assertIn("unmanaged_backend", report["reason"])
+
+
+class TransitionObservationTests(unittest.TestCase):
+    """The committed observation must show a stop the sweep performed, not one that happened by itself."""
+
+    def test_the_observation_recorded_an_idle_stop(self):
+        import json
+
+        artifact = ROOT / "kuhul-phase-engine-v0.1.0" / "data" / "lifecycle-transition.json"
+        if not artifact.is_file():
+            self.skipTest("no transition observation recorded yet")
+        report = json.loads(artifact.read_text(encoding="utf-8"))
+        self.assertTrue(report.get("ok"), report.get("refused"))
+        self.assertTrue(report.get("sweep_stopped_it"),
+                        "a cold state after the server exited by itself is not the sweep working")
+        self.assertFalse(report.get("already_stopped"))
+        stopped = [item for item in report["stopped"] if item.get("reason") == "idle"]
+        self.assertEqual(len(stopped), 1)
+        self.assertEqual(report["before_states"], "cold")
+        self.assertEqual(report["after_state"], "cold")
+        steps = {step["step"]: step for step in report["steps"]}
+        self.assertEqual(steps["sweep_while_leased"]["stopped"], [])
+        self.assertIn("leased", [item["reason"] for item in steps["sweep_while_leased"]["kept"]])
+
+
 if __name__ == "__main__":
     unittest.main()

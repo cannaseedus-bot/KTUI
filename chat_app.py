@@ -790,6 +790,9 @@ class ChatApp(App):
                       if inference_session is not None and self.lifecycle is not None else None)
         self.sweeps = 0
         self.last_sweep = None
+        # Turns that streamed without a lease because the served model name matched no declared alias.
+        self.unmanaged_streams = 0
+        self.last_unmanaged = None
         # Stage 2: the generation this app last rebuilt at, so an idle tick costs one integer compare.
         # A generation counter cannot see another process's edits, so a slow reconciliation rebuild stays.
         self.runtime_generation = None
@@ -2454,6 +2457,11 @@ class ChatApp(App):
         turn = None
         if inference_session is not None and self.waker is not None and self.lifecycle is not None:
             backend = model_lifecycle.backend_for_alias(self.lifecycle.declaration, self.model_name)
+            if backend is None:
+                # Not silent: an unmanaged turn is recorded, even though the stream still proceeds.
+                self.unmanaged_streams += 1
+                self.last_unmanaged = model_lifecycle.diagnose_backend(
+                    self.lifecycle.declaration, self.model_name)
             if backend is not None:
                 turn = inference_session.StreamingCall(
                     self.waker, backend, self.messages, None,

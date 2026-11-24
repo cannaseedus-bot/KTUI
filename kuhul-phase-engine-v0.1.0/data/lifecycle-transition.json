@@ -1,0 +1,107 @@
+{
+  "schema": "kuhul://lifecycle/transition-observation/v1",
+  "ok": true,
+  "sweep_stopped_it": true,
+  "already_stopped": false,
+  "refused": null,
+  "alias": "gemma-3-1b",
+  "port": 9042,
+  "idle_seconds": 8,
+  "wake_ms": 516,
+  "stop_ms": 125,
+  "stopped": [
+    {
+      "model": "worker",
+      "reason": "idle",
+      "idle_seconds": 9,
+      "result": {
+        "port": 9042,
+        "stopped": true,
+        "pids": [
+          22952
+        ],
+        "stopped_pids": [
+          22952
+        ],
+        "errors": []
+      }
+    }
+  ],
+  "before_states": "cold",
+  "after_state": "cold",
+  "steps": [
+    {
+      "step": "before",
+      "at_ms": 31,
+      "state": "cold",
+      "listening": []
+    },
+    {
+      "step": "wake",
+      "at_ms": 547,
+      "state": "hot",
+      "started": true,
+      "wake_ms": 516,
+      "listening": [
+        22952
+      ]
+    },
+    {
+      "step": "lease",
+      "at_ms": 547,
+      "leases": 1
+    },
+    {
+      "step": "sweep_while_leased",
+      "at_ms": 547,
+      "stopped": [],
+      "kept": [
+        {
+          "model": "worker",
+          "reason": "leased"
+        }
+      ],
+      "state": "hot"
+    },
+    {
+      "step": "release",
+      "at_ms": 547,
+      "leases": 0
+    },
+    {
+      "step": "sweep_after_idle",
+      "at_ms": 9687,
+      "idle_ms": 9015,
+      "stop_ms": 125,
+      "stopped": [
+        {
+          "model": "worker",
+          "reason": "idle",
+          "idle_seconds": 9,
+          "result": {
+            "port": 9042,
+            "stopped": true,
+            "pids": [
+              22952
+            ],
+            "stopped_pids": [
+              22952
+            ],
+            "errors": []
+          }
+        }
+      ],
+      "kept": [],
+      "owned": []
+    },
+    {
+      "step": "after",
+      "at_ms": 9687,
+      "state": "cold",
+      "listening": []
+    }
+  ],
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "one real observation: a lifecycle-owned server woken, leased, released and stopped by the sweep after its idle budget"
+}
