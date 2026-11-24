@@ -117,6 +117,51 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+## The evidence gate now proves what its name says (M72)
+
+The regression behind this: `evidence_satisfied: true` was reported while the capture had executed **only the
+package suite**. The gate now declares its suites in `evidence-suites.json` and demands, per suite: executed,
+passed, counted (at least its minimum), at the same tested commit, with a clean tree.
+
+```
+evidence · SATISFIED
+  package       139 tests · ok · exit 0
+  harness        14 tests · ok · exit 0
+  host_guards   655 tests · ok · exit 0
+  every required suite executed and passed at the tested commit
+  (merge_authorized stays false: the gate never authorizes a merge)
+```
+
+Every failing term is named: `suite_not_executed`, `suite_failed`, `suite_incomplete`, `stale_evidence`,
+`dirty_tree`, `no_tested_commit`. Two defects in the gate itself were found by using it: `_git("rev-parse HEAD")`
+passed one argument so no commit was recorded (and the gate said `no_tested_commit` instead of passing quietly);
+and the gate's own guard hardcoded a suite count, so raising the manifest minimum made the guard fail inside the
+suite it measures - the expected counts now derive from the manifest.
+
+---
+
+## Phase observations (host)
+
+Four event families, never inferred from one another: `phase_enter`/`phase_exit` (the host entered or exited an
+instrumented phase), `proposal_generated`, `proposal_validated`, `execution_admitted`.
+
+**The rule is enforced:** a model returning `{"phase": "Sek"}` is not evidence that Sek executed. `observe()`
+refuses to fill in phases that "should" have run, an empty trace reads `no_observations`, and
+`execution_admitted` cannot be produced by the validator helpers at all.
+
+One host path is instrumented: the phase chain's own resolution. It emits `Pop` enter/exit only when a request id
+is supplied, so a call outside a turn records nothing:
+
+```
+turn 1e18a4bbc3b0 - phase trace - exited - Pop - 2 event(s) - sequence 2
+```
+
+`complete` and `failed` are separate: a resolution that raises exits with `ok: false` and the trace is complete
+while `failed` is true. Conflating them would let a failed phase look like a missing one. Wo, Yax, Sek, Ch'en and
+Xul are **not** instrumented and stay declarations on the screen.
+
+---
+
 ## Host gate evidence (F14 / M2)
 
 Two independent forms, as required — named test cases, then runtime health. Artifacts:
