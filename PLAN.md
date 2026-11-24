@@ -50,6 +50,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M11 | Independent, restorable backups whose restore is verified | **guard** | `backup.py`, `tests_host/test_backup.py::M11…` |
 | M12 | User memory: AIML proposes, host admits, JSONL records, GML projects | **guard** | `user_memory.py`, `memory.gml`, `memory.aiml`, `tests_host/test_memory.py::M12…` |
 | M13 | AIML bundle consumed as declarations: resolved proposals, zero authority | **guard** | `aiml_host.py`, `functions.py` (`aiml_bundle_validate`, `aiml_propose`), `tests_host/test_aiml_bundle_host.py::M13…` |
+| M14 | The daemon introduces itself (not ALICE), lists its models and its mark; the mark is downsized | **guard** | `identity.aiml`, `chat_app.py` (`identity_text`), `logo.png`, `tests_host/test_identity_logo.py::M14…` |
 
 ---
 
@@ -141,6 +142,32 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Identity and mark (M14)
+
+Asked who it is, the host answers as itself and names what it can reach. The bank only routes
+(`WHO ARE YOU`, `ARE YOU ALICE`, … -> `IDENTITY`); the host renders the name, the phase cycle, the
+model list with tiers and the default marked, the advisors, and the mark - all read from the running
+configuration, so the answer cannot drift from what is loaded.
+
+```
+I am a **Micronaut Daemon Bot** - a local, six-phase terminal agent. Not ALICE: the ALICE corpus is
+vendored data I can learn patterns from, not who I am.
+Phases: Pop → Wo → Yax → Sek → Ch'en → Xul ...
+Serving: gpt-oss-20b via llama-server · no mode set
+Models I can talk to (fastest → deepest, * marks the default): ...
+My mark (the header animates this vector): <20x20 art>
+```
+
+`ARE YOU ALICE` deliberately resolves to the same introduction: the corpus is a knowledge source, not
+an identity. The daemon admits `IDENTITY` as local text in Ch'en, so the routing stays uniform.
+
+**The mark was too big.** Three things were downsized, because the box - not the file - is what fills
+the header: `logo.png` 256x171 -> 128x85 (58 KB -> 16 KB), the `#welcome-logo` box 32x16 -> 22x11, and
+`LogoArt`'s art grid 30x30 -> 20x20 (10 rows). The guard asserts the box size rather than the pixel
+size, since shrinking the PNG alone would not have changed the header.
 
 ---
 
@@ -281,7 +308,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 45 tests, OK (M3-M13: guards, ledger 11, backup 5, memory 9, bundle 10)
+host guards    : 51 tests, OK (M3-M14: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 

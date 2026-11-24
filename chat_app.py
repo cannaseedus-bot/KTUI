@@ -462,10 +462,10 @@ class LogoArt(Static):
     """Display logo.png as nearest-neighbor terminal half-block pixels."""
 
     DEFAULT_CSS = """
-    LogoArt { width: 32; height: 16; content-align: center middle; }
+    LogoArt { width: 22; height: 11; content-align: center middle; }
     """
 
-    def __init__(self, *, cols: int = 30, rows: int = 30, **kwargs) -> None:
+    def __init__(self, *, cols: int = 20, rows: int = 20, **kwargs) -> None:
         super().__init__("", markup=False, **kwargs)
         self.cols = cols
         self.rows = rows
@@ -578,8 +578,9 @@ class ChatApp(App):
     COMMANDS = App.COMMANDS | {ChatCommands}
     CSS = """
     Screen { layout: vertical; width: 100%; height: 100%; overflow: hidden; }
-    #welcome-logo-row { width: 100%; height: 16; min-height: 16; max-height: 16; align: center middle; }
-    #welcome-logo { width: 32; height: 16; min-height: 16; max-height: 16; }
+    /* The mark is a title, not a poster: 128x85 source, 22x11 box (10 art rows). */
+    #welcome-logo-row { width: 100%; height: 11; min-height: 11; max-height: 11; align: center middle; }
+    #welcome-logo { width: 22; height: 11; min-height: 11; max-height: 11; }
     #main { height: 1fr; min-height: 0; width: 100%; }
     #chat-view { width: 2fr; height: 1fr; min-height: 0; padding: 1 2; background: $surface; }
     #task-panel { width: 1fr; height: 1fr; min-height: 0; border: round $secondary; padding: 0 1; }
@@ -763,6 +764,9 @@ class ChatApp(App):
         memory_bank = APP_ROOT / "memory.aiml"
         if memory_bank.is_file():
             kernel.learn(str(memory_bank))
+        identity = APP_ROOT / "identity.aiml"
+        if identity.is_file():
+            kernel.learn(str(identity))
         override = APP_ROOT / "_override.aiml"
         if override.is_file():
             kernel.learn(str(override))
@@ -943,6 +947,42 @@ class ChatApp(App):
             return f"Recorded `{subject}.{predicate}` = **{value}** for **{self.user_id}** (`{record['event_id']}`)."
         return f"unknown memory operation `{verb}`"
 
+    def identity_text(self) -> str:
+        """Who this is: the daemon, its phases, the models it can reach, and its mark."""
+        models = []
+        for alias in ordered_models():
+            path_for_alias = model_path_for(alias)
+            size = f"{path_for_alias.stat().st_size / (1024 ** 3):.2f} GB" if path_for_alias.is_file() else "missing"
+            mark = "*" if alias == DEFAULT_MODEL_ALIAS else " "
+            models.append(f"  {mark}{alias:<16} {tier_for(alias):<10} {size}")
+        advisors = ", ".join(
+            f"{provider.value}{'' if PROVIDER_CONFIGS[provider]['api_key'] else ' (no key)'}"
+            for provider in ADVISOR_ENV)
+        # The mark, drawn the same way the header draws it (logo.png at 20x20 -> 10 art rows).
+        mark = ""
+        if png_logo is not None:
+            try:
+                mark = png_logo.load_default().render(20, 20).plain
+            except Exception:
+                mark = ""
+        lines = [
+            "I am a **Micronaut Daemon Bot** — a local, six-phase terminal agent. Not ALICE: the ALICE",
+            "corpus is vendored data I can learn patterns from, not who I am.",
+            "",
+            "Phases: Pop → Wo → Yax → Sek → Ch'en → Xul — every turn runs all six, and `/daemon`",
+            "shows the trace of the last one.",
+            f"Serving: **{self.model_label()}** via {self.current_provider.value}"
+            + (f" · mode {self.mode}" if self.mode else " · no mode set"),
+            "",
+            "Models I can talk to (fastest → deepest, * marks the default):",
+            *models,
+            "",
+            f"Advisors, if you want a second opinion: {advisors}",
+        ]
+        if mark:
+            lines += ["", "My mark (the header animates this vector):", "```", mark, "```"]
+        return "\n".join(lines)
+
     def memory_summary(self) -> str:
         if user_memory is None:
             return "The memory module is unavailable."
@@ -1048,6 +1088,8 @@ class ChatApp(App):
             return "plan", self.plan_answer(turn.answer)
         if turn.kind in {"memory", "memquery"}:
             return turn.kind, self.execute_memory(turn.kind, turn.answer)
+        if turn.kind == "identity":
+            return "aiml", self.identity_text()
         return "aiml", turn.answer
 
     def _local_answer_direct(self, text: str) -> tuple[str, str] | None:

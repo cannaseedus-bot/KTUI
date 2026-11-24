@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Identity for the AIML/SRAI layer.
+
+  These patterns answer with `IDENTITY`, a directive the host renders once the daemon admits it. The
+  bank itself holds no name, no model list and no mark: those come from the running host, so the
+  answer cannot drift from what is actually loaded.
+
+  In particular this is not ALICE. The vendored corpus is data the kernel can learn from; it is not
+  who this is, and asking "are you ALICE" gets the same introduction as "who are you".
+-->
+<aiml version="2.0">
+
+  <category><pattern>WHO ARE YOU</pattern><template>IDENTITY</template></category>
+  <category><pattern>WHAT ARE YOU</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHAT IS YOUR NAME</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHATS YOUR NAME</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHAT SHOULD I CALL YOU</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>INTRODUCE YOURSELF</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>TELL ME ABOUT YOURSELF</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHO AM I TALKING TO</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>DESCRIBE YOURSELF</pattern><template><srai>WHO ARE YOU</srai></template></category>
+
+  <category><pattern>ARE YOU ALICE</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>ARE YOU AIML</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>ARE YOU A BOT</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>ARE YOU HUMAN</pattern><template><srai>WHO ARE YOU</srai></template></category>
+
+  <category><pattern>WHAT MODELS CAN YOU TALK TO</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHICH MODELS CAN YOU USE</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHAT MODELS DO YOU HAVE</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>SHOW ME YOUR LOGO</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>SHOW ME YOUR MARK</pattern><template><srai>WHO ARE YOU</srai></template></category>
+
+</aiml>

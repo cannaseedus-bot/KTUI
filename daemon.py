@@ -275,6 +275,8 @@ class Daemon:
         elif selected.upper().startswith("TOOL "):
             verb, _, argument = selected[5:].partition(" ")
             proposal = ("tool", verb.strip().lower(), argument.strip())
+        elif selected.strip().upper() == "IDENTITY":
+            proposal = ("identity", "", "")
         elif selected.upper().startswith("MEMORY "):
             proposal = ("memory", selected[len("MEMORY "):].strip(), "")
         elif selected.upper().startswith("MEMQUERY "):
@@ -308,6 +310,8 @@ class Daemon:
             admitted, why = self.admit_plan(payload)
         elif kind in {"memory", "memquery"}:
             admitted, why = self.admit_memory(kind, payload)
+        elif kind == "identity":
+            admitted, why = True, "local identity text, rendered by the host"
         else:
             admitted, why = True, "plain AIML answer"
         record("Ch'en", ("admitted: " if admitted else "refused: ") + why)
