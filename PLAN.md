@@ -75,6 +75,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M36 | Operation proposals: a six-field prediction the host validates, converts and still does not admit | **guard** | `proposal.py`, `tests_host/test_proposal.py` (14 tests) |
 | M37 | `kuhul-rest/v1`: a declarative route manifest and a read-only adapter with four guards | **guard** | `rest_adapter.py`, `data/rest-routes.json`, `micronaut_server.py`, `tests_host/test_rest.py` (15 tests) |
 | M38 | Per-request identity and scope: the transport authenticates, an engine-wide grant cannot widen a caller | **guard** | `rest_adapter.py` (`identity_for_token`, `_authorize`), `data/identities.json`, `tests_host/test_rest.py::M38…` (22 tests total) |
+| M39 | Decision closure under unknown probabilities: UNKNOWN is never 0.5, and an action collapses without a fact collapsing | **guard** | `decision.py`, `tests_host/test_decision.py` (15 tests) |
 
 ---
 
@@ -166,6 +167,36 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Decision closure (M39)
+
+The review's numbering calls this M34; here it is M39 because M34/M35 were the routing guards. The two
+invariants are enforced, not documented:
+
+| invariant | how it is held |
+|---|---|
+| `UNKNOWN(P(b)) != 0.5` | a missing probability stays `None`; `expected_utility()` returns `None` for any action with one, and the `expected_utility` policy **refuses** with `probabilities_unknown` instead of substituting a prior or falling back to another policy |
+| `Xul(Action) !=> Xul(Fact)` | `close_action()` sets `action_collapsed: true` and `fact_collapsed: false`; `close_fact()` requires its own `PASS`/`FAIL` verdict, and a test proves `"UNKNOWN"` is refused |
+
+The review's table, exactly:
+
+```
+query : +8 (unknown), -2 (unknown)     worst case -2
+skip  :  0 (deterministic)             worst case  0
+
+policy=minimax         -> selected: skip · worst_case {query: -2, skip: 0} · action_collapsed True
+policy=expected_utility-> refused: probabilities_unknown · selected None · action_collapsed False
+```
+
+Policies are typed rather than blended: `expected_utility` needs every probability of every action (and
+they must sum to 1), `minimax`/`maximin` need only utilities - which is precisely why it can decide while
+the probabilities stay unresolved. Ties are broken **by name** and reported, so a choice is reproducible
+rather than insertion-order dependent.
+
+A decision is a proposal: `authority: "proposal"`, `execution: false`, `mutation: false`. `action_collapsed:
+true` means a choice was selected - not that anything ran.
 
 ---
 
@@ -1131,7 +1162,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 269 tests, OK (M3-M38) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 284 tests, OK (M3-M39) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
