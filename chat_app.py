@@ -1224,13 +1224,28 @@ class ChatApp(App):
         if compose is None:
             return "the composition module is unavailable"
         subject = (argument or "").strip() or "pet"
-        result = compose.paragraph(self.user_id, f"tell me about my {subject}")
+        result = compose.paragraph(self.user_id, f"tell me about my {subject}", request_id=getattr(self, "request_id", None))
         if not result["ok"]:
             reasons = "; ".join(problem["detail"]
                                for problem in result["verification"]["problems"][:3])
-            return (f"I cannot compose that yet: {reasons or result['plan'].get('reason')}. "
-                    "Nothing was invented to fill the gap.")
-        return compose.summary(result)
+            summary_text = (f"I cannot compose that yet: {reasons or result['plan'].get('reason')}. "
+                            "Nothing was invented to fill the gap.")
+        else:
+            summary_text = compose.summary(result)
+        # Xul closes the turn either way: a refusal to compose is still an emitted answer, and the trace says
+        # whether the closure was a success.
+        if phase_events is not None:
+            request_id = getattr(self, "request_id", None)
+            try:
+                phase_events.emit(request_id, "phase_enter", phase="Xul", source="host",
+                                  detail={"operation": "compose.summary", "ok": bool(result.get("ok"))})
+                phase_events.emit(request_id, "phase_exit", phase="Xul", source="host",
+                                  detail={"operation": "compose.summary", "ok": bool(result.get("ok")),
+                                          "outcome": ("ok" if result.get("ok") else "failed"),
+                                          "emitted": len(summary_text)})
+            except Exception:
+                pass
+        return summary_text
 
     def action_compose(self, argument: str = "") -> None:
         self.say_system(self.execute_compose(argument))

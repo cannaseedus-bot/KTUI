@@ -117,15 +117,52 @@ def score(relation: dict, query: str, *, total_events: int, settings: dict) -> f
     return round(settings["weight_lexical"] * lexical + settings["weight_recency"] * recency, 3)
 
 
-def retrieve(user: str, query: str, settings: dict) -> list[dict]:
-    """Ranked relations above the declared threshold, capped by the declared maximum."""
-    rows = relations(user)
-    total = max(1, len(user_memory.events(user)))
-    scored = [dict(relation, score=score(relation, query, total_events=total, settings=settings))
-              for relation in rows]
-    kept = [row for row in scored if row["score"] >= settings["min_score"]]
-    kept.sort(key=lambda row: (-row["score"], row["predicate"]))
-    return kept[: int(settings["max_candidates"])]
+def _observe_phase(event: str, phase: str, request_id: str | None, **detail) -> None:
+    """Any phase, same rule: nothing emitted without a request id, and never at the cost of the work itself."""
+    if not request_id:
+        return
+    try:
+        import phase_events
+        phase_events.emit(request_id, event, phase=phase, source="host", detail=detail or None)
+    except Exception:
+        return
+
+
+def _observe(event: str, request_id: str | None, **detail) -> None:
+    """Emit a Yax observation only when a request id was supplied: retrieval that was not asked for is not a phase."""
+    if not request_id:
+        return
+    try:
+        import phase_events
+        phase_events.emit(request_id, event, phase="Yax", source="host", detail=detail or None)
+    except Exception:
+        return
+
+
+def retrieve(user: str, query: str, settings: dict, *, request_id: str | None = None) -> list[dict]:
+    """Ranked relations above the declared threshold, capped by the declared maximum.
+
+    This is the Yax handler: authorized retrieval of the user's own relations, ranked by the declared weights and
+    threshold. When a request id is supplied the host records that it ran, and how many candidates survived.
+    """
+    _observe("phase_enter", request_id, operation="compose.retrieve", source="gml://relations",
+             user=str(user))
+    try:
+        rows = relations(user)
+        total = max(1, len(user_memory.events(user)))
+        scored = [dict(relation, score=score(relation, query, total_events=total, settings=settings))
+                  for relation in rows]
+        kept = [row for row in scored if row["score"] >= settings["min_score"]]
+        kept.sort(key=lambda row: (-row["score"], row["predicate"]))
+        result = kept[: int(settings["max_candidates"])]
+    except BaseException as error:
+        _observe("phase_exit", request_id, operation="compose.retrieve", ok=False,
+                 outcome=("cancelled" if isinstance(error, (KeyboardInterrupt, GeneratorExit)) else "failed"),
+                 error=type(error).__name__)
+        raise
+    _observe("phase_exit", request_id, operation="compose.retrieve", ok=True, outcome="ok",
+             considered=len(rows) if "rows" in dir() else None, kept=len(result))
+    return result
 
 
 # -- composition -----------------------------------------------------------------------------------
@@ -202,13 +239,25 @@ def verify(plan: dict, relations_kept: list[dict], *, user: str) -> dict:
                              subjects=sorted(subjects), relations=len(relations_kept)))
 
 
-def paragraph(user: str, query: str, *, folder: Path = CONTRACTS) -> dict:
+def paragraph(user: str, query: str, *, folder: Path = CONTRACTS,
+              request_id: str | None = None) -> dict:
     """Retrieve, compose and verify. Returns the plan and the verification alongside the prose."""
     contract = load(folder)
     settings = contract["settings"]
-    kept = retrieve(user, query, settings)
+    kept = retrieve(user, query, settings, request_id=request_id)
+
+    # Sek: the fold of retrieved candidates into a sentence, over the composition contract.
+    _observe_phase("phase_enter", "Sek", request_id, operation="compose.fold", candidates=len(kept))
     plan = compose(kept, settings)
+    _observe_phase("phase_exit", "Sek", request_id, operation="compose.fold", ok=True, outcome="ok",
+                   candidates=len(kept), attributes=len(plan.get("paragraph") or ""))
+
+    # Ch'en: the contract check on what Sek produced - unsupported attributes fail, supersession warns.
+    _observe_phase("phase_enter", "Ch'en", request_id, operation="compose.verify")
     report = verify(plan, kept, user=user)
+    _observe_phase("phase_exit", "Ch'en", request_id, operation="compose.verify", ok=bool(report["ok"]),
+                   outcome=("ok" if report["ok"] else "failed"),
+                   problems=len(report.get("problems") or []))
     return dict(ok=report["ok"], paragraph=plan.get("paragraph", "") if report["ok"] else "",
                 plan=plan, verification=report, relations=kept, contract=contract)
 

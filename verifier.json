@@ -20,7 +20,7 @@
   "files": {
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
-    "PLAN.md": "f9da91155c6656f3ae2fe210e7e8a5d42c95ffc3a0997230acc97437ec2900f4",
+    "PLAN.md": "8d1b36b3158f18488dfaa33a74f216da4205e062a35aa179a7b697c090ade368",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -101,10 +101,10 @@
     "bound_scoring.py": "04d6b7b0204c1c72298ca277bd7bd1632409bf5be43efe9d723b358506a8feb7",
     "ce_experiment.py": "cbbc320db174cabee733bd59849fd361728d2ecf38c5615b17dffe108e111764",
     "ce_protocol.py": "6dc7eaa627548cc68b89de7edb5e376dbed4d201df3215d7c80e63f88fba4dbf",
-    "chat_app.py": "57a9aaa9d82d72d74cb44d38fcb9b3b8d59dd62daeb675c5c45172eaa342cc18",
+    "chat_app.py": "7aa32c4b59fc777b9fbdd6a90572d45e11b0c5fca3b88c37b045c7170a89a208",
     "codex.aiml": "447e2af5c8bbf84344a4b23d7f700da737f5176e88a16145e51ec982afe4973e",
     "compose.aiml": "2eaeb48a02ef318d825f789c2326b094b00788834a0b6ab17cc2734dbf072321",
-    "compose.py": "fce3a2b87bdeaeebe38cbd4f37f3e1266fccf619211e578879fbf36efbbcef95",
+    "compose.py": "da6612a7e3195d13a31c52206e42ee40cf63b75a44bf2d89f60a8af4d91c483c",
     "condition_experiment.py": "e7639ab4626b1a4ff7f5a73c97404306c96029e521c3d1bf57e341551cb52d2b",
     "contract_experiment.py": "c7b515229370d032526a9c408a1b9cb0f6fff8a63c0d6495a8522de693b2ed67",
     "corpus.py": "f497a992f19f690481c7be1592d09d7e63a601e2e357c2b4dc1b68294aa10702",
@@ -122,8 +122,8 @@
     "evaluation/scoring-contract.json": "40ccd709ebbb83ffa649d3d867f232ba0494ed33e77f13904565bfef97473968",
     "evaluation/task-sessions.json": "eb902d19a8b552bcf6e8a8114ce6d0f2f8ffcddcbd2fa8ca0bd4e14bf899fb19",
     "evaluation_harness.py": "df294a6e450ad009d5f0bb3547307e899d7ab059939443385fde4379a5d7d787",
-    "evidence-suites.json": "df73b2e90c70926b311a9127f89dccfe2b009aacdd3f5434c450fc567a2c70f8",
-    "evidence_gate.py": "29b34547e8570fb90324f373322ebf8ce94628b090165ba99a7b052c7e27901c",
+    "evidence-suites.json": "6bbae0ca422be708e4d4d3dae138390e5170b28f595de426ca916242c2f996b4",
+    "evidence_gate.py": "cf1f5273ec87f0f75a01512882db6cf8c66c3d9f305fc3b7c354ce798e40d5e4",
     "evidence_record.py": "7f0142a220bdac6d6a3757ae57ef67ca710aa3d0dfe38eaf53ef31281e97b6dc",
     "functions.py": "55aac70a851903f795c32046a270d6429828ab1aa9941a066c51e3a028f7c116",
     "gitops.aiml": "5c7bd595daf5dee7f9aeed76d2b34c540da59a4c4e09155ded86672c598b39ea",
@@ -419,16 +419,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "ac00039f35863f770070999786cd1002ed5b5fd6dc44801fce6fc1ca86098898",
+  "hash": "8a47a899177e93ce9e967b1953e7f225dce2f0f26842bb420cebf3257c674d7f",
   "locked": true,
-  "note": "working-tree lock; verify refuses uncommitted source",
+  "note": "lock for the compose phase trace (Yax, Sek, Ch'en, Xul)",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
     "count": 400,
-    "hash": "205b599a66b4d401e40afdac668c7ba375dab451dee5bb518397b134a2386d5a",
-    "updated_at": "2026-11-24T21:01:28Z"
+    "hash": "ac00039f35863f770070999786cd1002ed5b5fd6dc44801fce6fc1ca86098898",
+    "updated_at": "2026-11-24T21:06:20Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T21:06:20Z"
+  "updated_at": "2026-11-24T21:20:38Z"
 }
