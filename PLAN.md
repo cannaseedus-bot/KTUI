@@ -89,6 +89,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M49 | The frozen evaluation corpus: reviewed expectations, nodes scored apart from edges, headline restricted to frozen cases | **guard** | `evaluation/`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (13 tests) |
 | M50 | `runtime://green-screen/v1`: one read-only tree over the registries, bound to the UI, answering 'why this model' | **guard** | `runtime_tree.py`, `chat_app /runtime`, `tests_host/test_runtime_tree.py` (13 tests) |
 | M51 | Three instruction conditions on one frozen graph validator - and the system-prompt confound that changed the answer | **guard** | `condition_experiment.py`, `data/condition-experiment.json`, `data/condition-stability.json`, `tests_host/test_condition_experiment.py` (12 tests) |
+| M52 | One versioned operator contract (`kuhul://operators/v1`) rendered into the prompt and enforced by the validator; the clean two-condition protocol | **guard** | `data/operators.json`, `plan_graph.contract`, `contract_experiment.py`, `data/contract-experiment.json`, `tests_host/test_contract_experiment.py` (11 tests) |
 
 ---
 
@@ -180,6 +181,56 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## One contract, two conditions, and what the table really says (M52)
+
+The operator contract is a **declaration**, not a prompt written per model:
+
+```
+kuhul://operators/v1
+  operators          filter/select · map/transform · fold/stateful_aggregation
+                     · accumulate/fold_internal_update · reduce/finalize
+  execution_order    filter -> map -> fold -> reduce
+  containment        fold contains accumulate
+  require            fold before reduce
+  forbid             accumulate replaces fold · extra operators · missing operators
+  authority_must_be  proposal
+```
+
+`plan_graph.contract()` validates it against the grammar (a contract whose order contradicts `CANONICAL` is
+refused), and `render_contract_prompt()` builds the model-facing fragment **from the same file** - change the
+declaration and the prompt changes with it. That is the review's "one canonical contract -> model
+instruction -> deterministic validation" with no second handwritten copy.
+
+The protocol is clean by construction: one system prompt recorded in the result, the baseline suffix frozen
+above the results, three repeats per cell, exact graph equivalence as the only success criterion.
+
+**Measured (3 repeats per cell):**
+
+| model | baseline | contract |
+|---|---|---|
+| worker gemma-1B | **3/3 complete** | 0/3 complete |
+| planner qwen-1.7B | 0/3 complete | 0/3 complete |
+
+**And the operator graphs were exact in all four cells.** The verdict was `exact` everywhere; `complete`
+also requires the expected phase and only the case's allowed targets. Three causes, all recorded in the
+artifact's `diagnosis`:
+
+1. the contract prints operators in upper case (`FILTER`) and the models echoed that case - the validator
+   lower-cases, so the verdict stayed exact, but a stricter consumer would have refused it;
+2. the planner emitted a `Wo` step inside a `Sek` plan, which fails the phase expectation even when the
+   operators are right;
+3. targets varied between runs and conditions, and `complete` checks every claimed target.
+
+So the honest conclusion is narrower than "the contract fixed it": **the contract condition produced exact
+operator graphs in all three repeats for both models, and lost `complete` on phase and targets.** The first
+column of this table measures graph equivalence; the second half of `complete` measures binding - and that
+is where the next fix belongs, not in the prompt.
+
+One harness gap this exposed: `reply_head` is 240 characters, so a cell cannot be fully re-scored without
+another model call. The next run keeps the full reply.
 
 ---
 
@@ -1639,7 +1690,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 436 tests, OK (M3-M51) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 447 tests, OK (M3-M52) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

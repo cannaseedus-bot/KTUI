@@ -21,6 +21,9 @@ operator set right and the connections wrong, which is precisely what the 1B mod
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 CANONICAL = ("filter", "map", "fold", "reduce")
 NESTED = {"accumulate": "fold"}
 OPERATORS = ("filter", "map", "fold", "accumulate", "reduce")
@@ -159,3 +162,54 @@ def parse_sequence(text: str) -> dict | None:
         if isinstance(parsed, list) and all(isinstance(item, str) for item in parsed):
             return dict(phase="Sek", operators=parsed, authority="proposal")
     return None
+
+# -- the versioned operator contract: one declaration for the prompt and the validator ----------------
+CONTRACT_FILE = Path(__file__).resolve().parent / "kuhul-phase-engine-v0.1.0" / "data" / "operators.json"
+
+
+def contract(path: Path | None = None) -> dict:
+    """Load `kuhul://operators/v1`. The prompt fragment and the validator both come from here."""
+    path = Path(path or CONTRACT_FILE)
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return dict(ok=False, problems=[dict(code="unreadable", detail=str(error))], record={})
+    problems: list[dict] = []
+    if record.get("schema") != "kuhul://operators/v1":
+        problems.append(dict(code="schema", detail=f"expected kuhul://operators/v1"))
+    if record.get("authority") != "declaration_only":
+        problems.append(dict(code="authority", detail="the operator contract is declaration_only"))
+    if list(record.get("execution_order") or []) != list(CANONICAL):
+        problems.append(dict(code="execution_order",
+                             detail=f"expected {list(CANONICAL)}"))
+    if (record.get("containment") or {}) != NESTED:
+        problems.append(dict(code="containment", detail=f"expected {NESTED}"))
+    for operator in record.get("operators") or {}:
+        if operator not in OPERATORS:
+            problems.append(dict(code="operator", detail=f"unregistered operator {operator!r}"))
+    return dict(ok=not problems, problems=problems, record=record,
+                uri=record.get("uri"), version=record.get("version"))
+
+
+def render_contract_prompt(record: dict) -> str:
+    """The model-facing fragment, derived from the declaration rather than written by hand."""
+    operators = record.get("operators") or {}
+    order = " -> ".join(name.upper() for name in record.get("execution_order") or CANONICAL)
+    containment = ", ".join(f"{parent.upper()} contains {child.upper()}"
+                            for child, parent in (record.get("containment") or NESTED).items())
+    lines = ["K'UHUL OPERATOR CONTRACT (" + str(record.get("uri") or "kuhul://operators/v1") + ")",
+             "", "Meaning:"]
+    for name in record.get("execution_order") or CANONICAL:
+        entry = operators.get(name) or {}
+        lines.append(f"  {name.upper()} — {entry.get('role', '')}: {entry.get('description', '')}")
+    for child, parent in (record.get("containment") or NESTED).items():
+        entry = operators.get(child) or {}
+        lines.append(f"  {child.upper()} — {entry.get('role', '')}: {entry.get('description', '')}")
+    lines += ["", f"Execution order: {order}", f"Containment: {containment}", "Requirements:"]
+    lines += [f"  {rule}" for rule in record.get("require") or []]
+    lines.append("Forbidden:")
+    lines += [f"  {rule}" for rule in record.get("forbid") or []]
+    lines += ["", "Return only the declared proposal structure.",
+              f'Authority must be "{record.get("authority_must_be", "proposal")}".']
+    return "\n".join(lines)
+

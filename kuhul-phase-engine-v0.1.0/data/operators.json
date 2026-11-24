@@ -1,0 +1,62 @@
+{
+  "schema": "kuhul://operators/v1",
+  "version": "1",
+  "uri": "kuhul://operators/v1",
+  "authority": "declaration_only",
+  "operators": {
+    "filter": {
+      "role": "select",
+      "description": "selects matching items"
+    },
+    "map": {
+      "role": "transform",
+      "description": "transforms selected items"
+    },
+    "fold": {
+      "role": "stateful_aggregation",
+      "description": "owns the accumulation state"
+    },
+    "accumulate": {
+      "role": "fold_internal_update",
+      "description": "nested inside fold"
+    },
+    "reduce": {
+      "role": "finalize",
+      "description": "consumes the completed fold result"
+    }
+  },
+  "execution_order": [
+    "filter",
+    "map",
+    "fold",
+    "reduce"
+  ],
+  "containment": {
+    "accumulate": "fold"
+  },
+  "require": [
+    "fold before reduce"
+  ],
+  "forbid": [
+    "accumulate replaces fold",
+    "extra operators",
+    "missing operators"
+  ],
+  "authority_must_be": "proposal",
+  "equivalent_forms": [
+    [
+      "filter",
+      "map",
+      "fold",
+      "reduce"
+    ],
+    [
+      "filter",
+      "map",
+      "fold",
+      "accumulate",
+      "reduce"
+    ]
+  ],
+  "note": "One declaration for the prompt and the validator: the fragment the model receives is rendered from this file, and plan_graph rejects what contradicts it."
+}

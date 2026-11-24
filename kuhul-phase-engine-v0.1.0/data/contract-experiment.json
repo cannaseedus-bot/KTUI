@@ -1,0 +1,301 @@
+{
+  "schema": "kuhul-contract-experiment/1",
+  "case": "chain-01",
+  "repeats": 3,
+  "system_prompt": "You translate instructions into K'UHUL operator plans. Reply with a JSON array and NOTHING else - no prose, no explanation, no code fence. Each element has exactly these keys: phase (one of Pop, Wo, Yax, Sek, Ch'en, Xul), operator (one of filter, map, fold, accumulate, reduce), target (a reference like \"graph.matches\" or \"gml://relations\"), binding (a string, required for filter and map), next (the next operator or phase, or null), authority (the string \"proposal\"). Every plan uses phase \"Sek\".",
+  "baseline_frozen": {
+    "case": "chain-01",
+    "suffix": "",
+    "note": "kept unchanged"
+  },
+  "conditions": {
+    "baseline": {
+      "note": "the original ambiguous instruction, unchanged",
+      "contract_uri": null
+    },
+    "contract": {
+      "note": "the same instruction plus kuhul://operators/v1, rendered from the declaration",
+      "contract_uri": "kuhul://operators/v1"
+    }
+  },
+  "started_at": "2026-11-24T07:00:35Z",
+  "results": {
+    "worker": {
+      "baseline": {
+        "repeats": 3,
+        "complete": 3,
+        "rate": 1.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 237,
+            "latency_ms": 13891,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"grap"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 237,
+            "latency_ms": 11671,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"grap"
+          },
+          {
+            "run": 2,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 237,
+            "latency_ms": 11282,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"grap"
+          }
+        ]
+      },
+      "contract": {
+        "repeats": 3,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 229,
+            "latency_ms": 12484,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\""
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 229,
+            "latency_ms": 12156,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\""
+          },
+          {
+            "run": 2,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 229,
+            "latency_ms": 12844,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\""
+          }
+        ]
+      }
+    },
+    "planner": {
+      "baseline": {
+        "repeats": 3,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 201,
+            "latency_ms": 24703,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\","
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 201,
+            "latency_ms": 17219,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\","
+          },
+          {
+            "run": 2,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 201,
+            "latency_ms": 18968,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\","
+          }
+        ]
+      },
+      "contract": {
+        "repeats": 3,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 202,
+            "latency_ms": 20188,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"proposition"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 201,
+            "latency_ms": 16265,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"proposition"
+          },
+          {
+            "run": 2,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 201,
+            "latency_ms": 16219,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"proposition"
+          }
+        ]
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "one frozen case, repeated per cell, identical system prompt in both conditions; exact graph equivalence is the only success criterion",
+  "diagnosis": {
+    "observed": "the operator graphs were exact in every cell, while 'complete' was true only for worker/baseline; the difference is not the operator graph",
+    "causes": [
+      "the contract text prints operators in upper case (FILTER), and models echoed that case; the validator lower-cases before comparing, so verdict stayed exact",
+      "per-step phase varies: the planner emitted a 'Wo' step inside the plan, which fails the case's phase expectation even with the right operators",
+      "targets vary between runs and conditions; 'complete' requires every claimed target to match the case's allowed list"
+    ],
+    "reading": "verdict measures node/edge equivalence only; complete also measures phase and targets. Both are reported because a plan can be structurally right and still bind the wrong node - but the table must show both numbers, not one",
+    "next": "re-run with the reply text kept in full (reply_head is 240 chars) so a cell can be re-scored without another model call, and normalise operator case in the prompt fragment"
+  }
+}
