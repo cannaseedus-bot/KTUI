@@ -76,6 +76,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M37 | `kuhul-rest/v1`: a declarative route manifest and a read-only adapter with four guards | **guard** | `rest_adapter.py`, `data/rest-routes.json`, `micronaut_server.py`, `tests_host/test_rest.py` (15 tests) |
 | M38 | Per-request identity and scope: the transport authenticates, an engine-wide grant cannot widen a caller | **guard** | `rest_adapter.py` (`identity_for_token`, `_authorize`), `data/identities.json`, `tests_host/test_rest.py::M38…` (22 tests total) |
 | M39 | Decision closure under unknown probabilities: UNKNOWN is never 0.5, and an action collapses without a fact collapsing | **guard** | `decision.py`, `tests_host/test_decision.py` (15 tests) |
+| M40 | Micronaut registry: typed agents and typed edges, with structural / routing / authority reported separately | **guard** | `micronaut_registry.py`, `data/micronauts.json`, `data/micronaut-edges.json`, `tests_host/test_micronaut_registry.py` (16 tests) |
 
 ---
 
@@ -167,6 +168,40 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Micronaut registry (M40)
+
+The registry the review asked for: one typed lookup over what was scattered, plus the **typed edges** that
+make a hand-off a declaration rather than an assumption.
+
+```
+micronaut registry · 5 agent(s) · 6 declared edge(s) · 4 schema(s)
+  micronaut://v1/aiml       pattern_recognition    utterance/v1  -> candidates/v1
+  micronaut://v1/relations  graph_reasoning        candidates/v1 -> proposition/v1
+  micronaut://v1/memory     user_memory            candidates/v1 -> proposition/v1
+  micronaut://v1/eliza      conversational_fields  proposition/v1 -> utterance/v1
+  micronaut://v1/compose    composition            proposition/v1 -> answer/v1
+  (declaration_only · a declared edge is not an admission)
+```
+
+**Three guarantees, reported separately because each can fail alone:**
+
+| guarantee | when it holds | when it does not |
+|---|---|---|
+| structural | the payload's schema is produced by a registered agent | `schema_not_declared` |
+| routing | a declared edge accepts that schema (from the declared source) | `no_declared_edge` |
+| authority | the **caller** holds the edge's capability | `capability_not_granted`, with the denied edges listed |
+
+And `admitted` is **always false** - the fourth term of `SchemaCompatible ∧ EdgeDeclared ∧
+CapabilityAuthorized ∧ XCFEAdmitted` belongs to XCFE, not to this module.
+
+Consequences the guards pin down: a payload naming `{"$schema": ..., "target": "gml://users/42"}` routes
+nowhere (the target is inert; only declared edges count); `answer/v1` is structurally valid but unroutable
+because no edge consumes it; `proposition/v1` from `relations` is **ambiguous** (eliza or compose) and the
+first by `(source, target)` is selected with the rest listed; and an edge whose schemas disagree with its
+endpoints is refused at **load**, so the registry cannot describe a hand-off it could not perform.
 
 ---
 
@@ -1162,7 +1197,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 284 tests, OK (M3-M39) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 300 tests, OK (M3-M40) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

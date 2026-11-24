@@ -1,0 +1,61 @@
+{
+  "schema": "micronaut-schema/v1",
+  "authority": "declaration_only",
+  "micronauts": [
+    {
+      "uri": "micronaut://v1/aiml",
+      "role": "pattern_recognition",
+      "entry": "kuhul://phases/pop",
+      "input_schema": "kuhul://schema/utterance/v1",
+      "output_schema": "kuhul://schema/candidates/v1",
+      "dependencies": [],
+      "operators": ["filter", "map"],
+      "capabilities": ["graph.relations.read"],
+      "authority": "declaration_only"
+    },
+    {
+      "uri": "micronaut://v1/relations",
+      "role": "graph_reasoning",
+      "entry": "kuhul://phases/yax",
+      "input_schema": "kuhul://schema/candidates/v1",
+      "output_schema": "kuhul://schema/proposition/v1",
+      "dependencies": ["micronaut://v1/aiml"],
+      "operators": ["filter", "map", "fold", "accumulate", "reduce"],
+      "capabilities": ["graph.relations.read"],
+      "authority": "declaration_only"
+    },
+    {
+      "uri": "micronaut://v1/memory",
+      "role": "user_memory",
+      "entry": "kuhul://phases/wo",
+      "input_schema": "kuhul://schema/candidates/v1",
+      "output_schema": "kuhul://schema/proposition/v1",
+      "dependencies": [],
+      "operators": ["filter", "map", "fold"],
+      "capabilities": ["graph.relations.read"],
+      "authority": "declaration_only"
+    },
+    {
+      "uri": "micronaut://v1/eliza",
+      "role": "conversational_fields",
+      "entry": "kuhul://phases/wo",
+      "input_schema": "kuhul://schema/proposition/v1",
+      "output_schema": "kuhul://schema/utterance/v1",
+      "dependencies": ["micronaut://v1/memory"],
+      "operators": ["map", "reduce"],
+      "capabilities": ["graph.relations.read"],
+      "authority": "declaration_only"
+    },
+    {
+      "uri": "micronaut://v1/compose",
+      "role": "composition",
+      "entry": "kuhul://phases/sek",
+      "input_schema": "kuhul://schema/proposition/v1",
+      "output_schema": "kuhul://schema/answer/v1",
+      "dependencies": ["micronaut://v1/relations", "micronaut://v1/memory"],
+      "operators": ["fold", "accumulate", "reduce"],
+      "capabilities": ["graph.relations.read"],
+      "authority": "declaration_only"
+    }
+  ]
+}

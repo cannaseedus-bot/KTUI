@@ -1,0 +1,54 @@
+{
+  "schema": "micronaut-edge/v1",
+  "authority": "declaration_only",
+  "edges": [
+    {
+      "from": "micronaut://v1/aiml",
+      "to": "micronaut://v1/relations",
+      "output_schema_uri": "kuhul://schema/candidates/v1",
+      "input_schema_uri": "kuhul://schema/candidates/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
+    },
+    {
+      "from": "micronaut://v1/aiml",
+      "to": "micronaut://v1/memory",
+      "output_schema_uri": "kuhul://schema/candidates/v1",
+      "input_schema_uri": "kuhul://schema/candidates/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
+    },
+    {
+      "from": "micronaut://v1/relations",
+      "to": "micronaut://v1/eliza",
+      "output_schema_uri": "kuhul://schema/proposition/v1",
+      "input_schema_uri": "kuhul://schema/proposition/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
+    },
+    {
+      "from": "micronaut://v1/relations",
+      "to": "micronaut://v1/compose",
+      "output_schema_uri": "kuhul://schema/proposition/v1",
+      "input_schema_uri": "kuhul://schema/proposition/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
+    },
+    {
+      "from": "micronaut://v1/memory",
+      "to": "micronaut://v1/compose",
+      "output_schema_uri": "kuhul://schema/proposition/v1",
+      "input_schema_uri": "kuhul://schema/proposition/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
+    },
+    {
+      "from": "micronaut://v1/memory",
+      "to": "micronaut://v1/eliza",
+      "output_schema_uri": "kuhul://schema/proposition/v1",
+      "input_schema_uri": "kuhul://schema/proposition/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
+    }
+  ]
+}
