@@ -1,0 +1,16 @@
+{
+  "schema": "kuhul-phases/v1",
+  "phase": "Wo",
+  "uri": "kuhul://phases/wo",
+  "aiml": [
+    "../wo.aiml"
+  ],
+  "bindings": [
+    {
+      "pattern": "WHO IS *",
+      "srai": "WHAT IS {star:1}"
+    }
+  ],
+  "next": "kuhul://phases/yax",
+  "authority": "declaration_only"
+}

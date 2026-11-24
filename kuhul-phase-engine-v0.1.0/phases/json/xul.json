@@ -1,0 +1,11 @@
+{
+  "schema": "kuhul-phases/v1",
+  "phase": "Xul",
+  "uri": "kuhul://phases/xul",
+  "aiml": [
+    "../xul.aiml"
+  ],
+  "bindings": [],
+  "next": null,
+  "authority": "declaration_only"
+}

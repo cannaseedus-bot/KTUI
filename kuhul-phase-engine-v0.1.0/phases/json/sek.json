@@ -1,0 +1,17 @@
+{
+  "schema": "kuhul-phases/v1",
+  "phase": "Sek",
+  "uri": "kuhul://phases/sek",
+  "aiml": [
+    "../sek.aiml"
+  ],
+  "bindings": [
+    {
+      "pattern": "TELL ME ABOUT MY DOG",
+      "directive": "COMPOSE pet",
+      "capability": "graph.relations.read"
+    }
+  ],
+  "next": "kuhul://phases/chen",
+  "authority": "declaration_only"
+}

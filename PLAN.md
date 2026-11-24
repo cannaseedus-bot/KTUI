@@ -65,6 +65,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M26 | Retrieval and composition: the two contracts are consumed - rank relations, compose a verified paragraph | **guard** | `compose.py`, `compose.aiml`, `aiml_contracts/{retrieval,composition}.gml`, `tests_host/test_compose.py::M26…` |
 | M27 | EmbeddingGemma2 vector adapter verified against the real 99,524-row assets; similarity ranks, compatibility filters, XCFE admits | **guard** | `adapters/embeddinggemma2.py`, `tests/test_vector_adapter.py` (14 tests) |
 | M28 | K'UHUL program layer: the declared grammar parses, validates, serializes and traces (no execution) | **guard** | `core/program.py`, `tests/test_program.py` (15 tests) |
+| M29 | `kuhul-phases/v1` manifests: one JSON file per phase, chained by schema URI, regulated by a loader that executes nothing | **guard** | `core/phase_manifest.py`, `phases/json/*.json`, `tests/test_phase_manifest.py` (16 tests) |
 
 ---
 
@@ -156,6 +157,37 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Phase manifests (M29)
+
+A phase does not need a `.khl` program or a `.aiml` file to be useful. `phases/json/pop.json` …
+`xul.json` are `kuhul-phases/v1` manifests that carry pure AIML paths, AIML bindings, and a `next` URI:
+
+```
+python core/phase_manifest.py phases/json
+kuhul-phases/v1 chain: Pop -> Wo -> Yax -> Sek -> Ch'en -> Xul
+                       (6 manifest(s), 6 aiml file(s), 5 binding(s))
+```
+
+The format is regulated, and the regulation is the interesting part:
+
+| check | behaviour |
+|---|---|
+| schema id | must be `kuhul-phases/v1` |
+| phase | one of the six; `Chen` and `Ch'en` both accepted, canonicalized |
+| uri | if declared, must agree with the phase (`uri_mismatch` otherwise) |
+| `aiml` | a missing file is *reported*, never assumed to exist |
+| `bindings` | need a target; `{star:N}` may not exceed the pattern's wildcard count |
+| `next` | resolved by schema URI inside the manifest set; unknown schemes are errors |
+| chain | cycles, repeated phases and over-long chains are bounded failures that print the chain |
+
+Chaining is by URI (`kuhul://phases/wo`, `phases://`, or a bare `<name>.json`), so the order is data:
+edit one `next` and the chain changes, which is the property the six-phase cycle was supposed to have.
+
+The loader loads nothing into a kernel: `authority: declaration_only`, no `aiml` import, no subprocess.
+A guard asserts that, so a future "convenience" that starts executing from a manifest fails the suite.
 
 ---
 
@@ -799,7 +831,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 179 tests, OK (M3-M28) · package suite 112 tests (14 vector-adapter, 15 program)
+host guards    : 179 tests, OK (M3-M29) · package suite 129 tests (14 vector-adapter, 16 program, 16 phase-manifest)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

@@ -1,0 +1,16 @@
+{
+  "schema": "kuhul-phases/v1",
+  "phase": "Ch'en",
+  "uri": "kuhul://phases/chen",
+  "aiml": [
+    "../chen.aiml"
+  ],
+  "bindings": [
+    {
+      "pattern": "VERIFY *",
+      "directive": "VERIFY {star:1}"
+    }
+  ],
+  "next": "kuhul://phases/xul",
+  "authority": "declaration_only"
+}

@@ -1,0 +1,17 @@
+{
+  "schema": "kuhul-phases/v1",
+  "phase": "Yax",
+  "uri": "kuhul://phases/yax",
+  "aiml": [
+    "../yax.aiml"
+  ],
+  "bindings": [
+    {
+      "pattern": "WHAT IS *",
+      "directive": "QUERY {star:1}",
+      "capability": "graph.relations.read"
+    }
+  ],
+  "next": "kuhul://phases/sek",
+  "authority": "declaration_only"
+}

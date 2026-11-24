@@ -23,6 +23,53 @@ The 15% shipping-cost scenario uses an illustrative $10/unit base shipping cost 
 ## Integration boundary
 This package does **not** modify the user's repository or claim to conform to its actual `gml2` loader. The syntax and schema are a proposed extension. Before host integration, map these declarations to the installed registry, implement typed field contracts and cross-graph resolution, route AIML through the existing `aiml_bundle.py`, and keep XCFE admission and persistence authorization external to the graph. The JSONL file is illustrative observation data, not a user database.
 
+## kuhul-phases/v1 manifests (one JSON file per phase)
+
+A phase does not need a `.khl` program or a `.aiml` file to be useful: it can be a JSON manifest, and
+the six manifests can **chain by schema URI**.
+
+```json
+{
+  "schema": "kuhul-phases/v1",
+  "phase": "Sek",
+  "uri": "kuhul://phases/sek",
+  "aiml": ["../sek.aiml"],
+  "bindings": [
+    {"pattern": "TELL ME ABOUT MY DOG", "directive": "COMPOSE pet",
+     "capability": "graph.relations.read"}
+  ],
+  "next": "kuhul://phases/chen",
+  "authority": "declaration_only"
+}
+```
+
+`aiml` names pure AIML banks; `bindings` are AIML bindings - a pattern that redirects (`{"pattern":
+"WHO IS *", "srai": "WHAT IS {star:1}"}`) or that emits a host directive. `next` chains to the next
+phase by URI, resolved inside the manifest set: `kuhul://phases/<name>` -> `<dir>/<name>.json`.
+
+The loader (`core/phase_manifest.py`) regulates the format and nothing else:
+
+| check | behaviour |
+|---|---|
+| schema id | must be `kuhul-phases/v1` |
+| phase | must be one of the six (`Chen` and `Ch'en` both accepted) |
+| uri | if declared, it must agree with the phase |
+| `aiml` | a missing file is reported, never assumed |
+| `bindings` | needs a target; `{star:N}` may not exceed the pattern's wildcards |
+| `next` | followed by schema URI; unknown schemes are errors |
+| chain | cycles, repeated phases and over-long chains are bounded failures with the chain printed |
+
+Try it from the package directory:
+
+```powershell
+python core/phase_manifest.py phases/json
+# kuhul-phases/v1 chain: Pop -> Wo -> Yax -> Sek -> Ch'en -> Xul (6 manifest(s), 6 aiml file(s), 5 binding(s))
+```
+
+The manifests in `phases/json/` chain all six phases and point at the existing banks. Loading says what
+exists; it does not populate a kernel, execute an instruction or admit anything, and the report says
+`authority: declaration_only`.
+
 ## K'UHUL program layer (parse, validate, trace)
 
 `core/program.py` implements the grammar in `grammar/kuhul-grammar.ebnf`: declarations
