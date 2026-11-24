@@ -2,7 +2,7 @@
   "schema": "kuhul-session-profiles/v1",
   "authority": "declaration_only",
   "contract_uri": "kuhul://operators/v1",
-  "note": "Each profile is a complete chat template: the host supplies it with every request, because a running server does not persist chat history between calls. Examples use the same JSON shape the validator accepts, phase included - the review's sketches omit it.",
+  "note": "Each profile is a complete chat template: the host supplies it with every request, because a running server does not persist chat history between calls. Examples use the same JSON shape the validator accepts, phase included - the review's sketches omit it. M53 used near-duplicate examples; these are deliberately disjoint from the frozen cases.",
   "profiles": {
     "A_original": {
       "note": "the system prompt used before any contract work",
@@ -15,27 +15,27 @@
       "examples": []
     },
     "C_contract_examples": {
-      "note": "the short contract plus two demonstrations",
+      "note": "the short contract plus two demonstrations that do NOT match the graded cases - different wording and different operator sets - so a pass shows the rule applied, not an example reproduced",
       "system": "You are K'UHUL Planner-mu.\n\nProduce only valid JSON proposals. Never execute operations.\n\nOPERATORS:\n- FILTER selects matching values.\n- MAP transforms values.\n- FOLD aggregates values using an accumulator.\n- ACCUMULATE is an internal operation of FOLD, never a replacement for FOLD.\n- REDUCE consumes the completed FOLD result.\n\nEXECUTION ORDER:\nFILTER -> MAP -> FOLD -> REDUCE\n\nCONTAINMENT:\nFOLD contains ACCUMULATE.\n\nRULES:\n- Include only operations required by the task.\n- Never invent additional operators.\n- Preserve execution order.\n- Preserve parent-child relationships.\n- Use only declared bindings and targets.\n- Authority is always \"proposal\".\n- Return JSON only, without commentary.",
       "examples": [
         [
           {
             "role": "user",
-            "content": "Filter valid graph matches and map them to propositions."
+            "content": "Select only the entries that are still open."
           },
           {
             "role": "assistant",
-            "content": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\"\n  ],\n  \"authority\": \"proposal\"\n}"
+            "content": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\"\n  ],\n  \"authority\": \"proposal\"\n}"
           }
         ],
         [
           {
             "role": "user",
-            "content": "Filter matches, transform them, fold the evidence with a running update, then reduce the result."
+            "content": "Finalize the accumulated state into one answer."
           },
           {
             "role": "assistant",
-            "content": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}"
+            "content": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"fold\",\n    \"accumulate\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}"
           }
         ]
       ]

@@ -68,6 +68,14 @@ def load(path: Path | None = None) -> dict:
                 contract_uri=record.get("contract_uri"), note=record.get("note"))
 
 
+def profile_digest(profile: dict) -> str:
+    """A digest of the whole template, so a verdict can be reproduced from the profile alone."""
+    import hashlib
+    payload = json.dumps(dict(system=profile.get("system"), examples=profile.get("examples")),
+                         sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 def messages(profile: dict, task: str) -> list[dict]:
     """The complete message list for one request: system, demonstrations, then the task."""
     built: list[dict] = []
@@ -126,6 +134,11 @@ def run(model: str, corpus: dict, *, profiles: dict | None = None, repeats: int 
                     score = evaluation_harness.score_case(case, reply)
                     cells.append(dict(run=index, case=case_id, parsed=score["parsed"],
                                       verdict=score["verdict"], complete=score["complete"],
+                                      phase_ok=score.get("phase_ok"),
+                                      targets_ok=score.get("targets_ok"),
+                                      nodes_ok=score.get("nodes_ok"),
+                                      edges_ok=score.get("edges_ok"),
+                                      reply_text=(reply.get("text") or "")[:4000],
                                       proposed=score["proposed"],
                                       tokens=(score.get("tokens") or {}).get("total"),
                                       latency_ms=score.get("latency_ms"),
@@ -137,12 +150,16 @@ def run(model: str, corpus: dict, *, profiles: dict | None = None, repeats: int 
             completed = [cell for cell in cells if cell.get("complete")]
             results[name][case_id] = dict(
                 case=case_id, repeats=len(cells), complete=len(completed),
+                phase_ok=sum(1 for cell in cells if cell.get("phase_ok") is True),
+                targets_ok=sum(1 for cell in cells if cell.get("targets_ok") is True),
+                graph_ok=sum(1 for cell in cells if cell.get("verdict") == "exact"),
                 rate=(len(completed) / len(cells)) if cells else None,
                 verdicts=_histogram(cells), messages=len(messages(profile, case["input"])),
                 cells=cells)
     return dict(schema=EXPERIMENT, model=model, cases=list(CASES), repeats=int(repeats),
                 profiles={name: dict(note=profile.get("note"),
-                                     examples=len(profile.get("examples") or []))
+                                     examples=len(profile.get("examples") or []),
+                                     profile_sha256=profile_digest(profile))
                           for name, profile in profiles["profiles"].items()},
                 contract_uri=profiles.get("contract_uri"),
                 started_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),

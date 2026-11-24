@@ -96,6 +96,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M56 | The green screen reacts: a semantic digest, a 2 s poll, and a render only when the state moves | **guard** | `runtime_tree.watch`, `chat_app.poll_runtime`, `tests_host/test_runtime_reactive.py` (9 tests) |
 | M57 | The protocol experiment: 27 interleaved cells with recorded provenance - and evidence that condition C must not be promoted | **guard** | `contract_experiment.py`, `data/protocol-experiment*.json`, `data/regression-planner.json`, `tests_host/test_contract_experiment.py` (17 tests) |
 | M58 | Condition D: phase ownership plus registered targets, measured per check - and the finding that target binding, not phase, is the bottleneck | **guard** | `data/context-contract.json`, `plan_graph.context_contract`, `contract_experiment (condition D)`, `data/context-experiment.json`, `evaluation/development-cases.jsonl`, `tests_host/test_contract_experiment.py` (18 tests) |
+| M59 | 36 session cells: C's advantage survives repetition for Qwen and does not transfer to Gemma; the passes rest on omitted targets | **guard** | `session_profile.py`, `data/session-profiles.json` (disjoint examples), `data/session-experiment-36.json`, `tests_host/test_session_profile.py` (13 tests) |
 
 ---
 
@@ -187,6 +188,37 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## 36 session cells: survives repetition, does not transfer (M59)
+
+2 models × 3 profiles × 2 cases × 3 repeats, per-check scores recorded, full replies kept, profile digests
+in the report. The demonstrations in C were **rewritten to be disjoint** from the graded cases (different
+wording, different operator sets), because the M53 examples were near-duplicates and a pass could have been
+reproduction.
+
+| model | profile | pair-01 | chain-01 |
+|---|---|---|---|
+| planner qwen | A original | **3/3** complete (graph 3, targets 3) | 0/3 (graph 1, targets 0) |
+| planner qwen | B contract | 0/3 (graph 0, phase 0) | 0/3 (graph 3, targets 0) |
+| planner qwen | C examples | **3/3** complete (graph 3) | **3/3** complete (graph 3) |
+| worker gemma | A original | 0/3 (graph 0) | **3/3** complete (graph 3, targets 3) |
+| worker gemma | B contract | 0/3 (graph 0) | 0/3 (graph 3) |
+| worker gemma | C examples | 0/3 (graph 0) | 0/3 (graph 0) |
+
+**C's advantage survives repetition - for Qwen.** 3/3 on both cases, three repeats, with examples that do
+not match the graded tasks. So the earlier 2/2 was not four lucky calls.
+
+**It does not transfer to Gemma.** Under C, gemma produced **no exact graph in any of six cells**, and even
+lost `chain-01`, which it completes 3/3 under the plain baseline. The same envelope that helps the planner
+blocks the conversational worker - consistent with M58, where extra context cost gemma operators.
+
+**One nuance that must not be flattened:** the passes are not the same kind of pass. Qwen under C completes
+without claiming any target (`targets_ok` counts only claimed-and-correct), while Qwen under A and gemma on
+`chain-01` name the correct target. The scorer treats an omitted target as unmeasured rather than wrong, so
+"C completes" means *graph and phase right, target silent* - a weaker result than A's pair-01 pass, and the
+next place to tighten if the benchmark is to mean one thing.
 
 ---
 
@@ -1918,7 +1950,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 494 tests, OK (M3-M58) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 494 tests, OK (M3-M59) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

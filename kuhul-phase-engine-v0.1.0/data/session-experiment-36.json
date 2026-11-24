@@ -1,0 +1,991 @@
+{
+  "schema": "kuhul-session-experiment/2",
+  "cases": [
+    "pair-01",
+    "chain-01"
+  ],
+  "repeats": 3,
+  "started_at": "2026-11-24T07:55:21Z",
+  "provenance": {
+    "A_original": {
+      "profile_sha256": "f57edef4dfd7565e8ee6f27f75922d664b86166ff7aa0d0240f843b3fe471943",
+      "messages": 2,
+      "examples": 0
+    },
+    "B_contract": {
+      "profile_sha256": "91e524fbf055d6956e29fe2a580b6bd959826f11df72d65f0ee6515974965731",
+      "messages": 2,
+      "examples": 0
+    },
+    "C_contract_examples": {
+      "profile_sha256": "8ab15bb9a2138692ddab0f12cc35b89245287314a9c135155d16b55710fe8db9",
+      "messages": 6,
+      "examples": 2
+    }
+  },
+  "results": {
+    "planner": {
+      "A_original": {
+        "pair-01": {
+          "case": "pair-01",
+          "repeats": 3,
+          "complete": 3,
+          "phase_ok": 3,
+          "targets_ok": 3,
+          "graph_ok": 3,
+          "rate": 1.0,
+          "verdicts": {
+            "exact": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": true,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"transformed\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map"
+              ],
+              "tokens": 107,
+              "latency_ms": 10062,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": true,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"transformed\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map"
+              ],
+              "tokens": 107,
+              "latency_ms": 11813,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": true,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"transformed\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map"
+              ],
+              "tokens": 107,
+              "latency_ms": 10250,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        },
+        "chain-01": {
+          "case": "chain-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 1,
+          "rate": 0.0,
+          "verdicts": {
+            "exact": 1,
+            "missing_operators": 2
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": \"Xul\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Xul\",\n    \"operator\": \"reduce\",\n    \"target\": \"result\",\n    \"binding\": \"combine\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 201,
+              "latency_ms": 18766,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "missing_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"reduce\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"reduce\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold"
+              ],
+              "tokens": 153,
+              "latency_ms": 14000,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "missing_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"reduce\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"reduce\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold"
+              ],
+              "tokens": 153,
+              "latency_ms": 15593,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        }
+      },
+      "B_contract": {
+        "pair-01": {
+          "case": "pair-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 0,
+          "targets_ok": 0,
+          "graph_ok": 0,
+          "rate": 0.0,
+          "verdicts": {
+            "unparsed": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "pair-01",
+              "parsed": false,
+              "verdict": null,
+              "complete": false,
+              "phase_ok": null,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "{\n  \"proposal\": {\n    \"operator\": \"FILTER\",\n    \"targets\": [\n      {\n        \"name\": \"matches\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"subproposal\": {\n    \"operator\": \"MAP\",\n    \"targets\": [\n      {\n        \"name\": \"transformed\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"finalproposal\": {\n    \"operator\": \"FOLD\",\n    \"targets\": [\n      {\n        \"name\": \"folded\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"subfinalproposal\": {\n    \"operator\": \"REDUCE\",\n    \"targets\": [\n      {\n        \"name\": \"reduced\",\n        \"value\": \"valid\"\n      }\n    ]\n  }\n}",
+              "proposed": null,
+              "tokens": 171,
+              "latency_ms": 18172,
+              "finish_reason": "stop",
+              "errors": [
+                "unparseable"
+              ]
+            },
+            {
+              "run": 1,
+              "case": "pair-01",
+              "parsed": false,
+              "verdict": null,
+              "complete": false,
+              "phase_ok": null,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "{\n  \"proposal\": {\n    \"operator\": \"FILTER\",\n    \"targets\": [\n      {\n        \"name\": \"matches\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"subproposal\": {\n    \"operator\": \"MAP\",\n    \"targets\": [\n      {\n        \"name\": \"transformed\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"finalproposal\": {\n    \"operator\": \"FOLD\",\n    \"targets\": [\n      {\n        \"name\": \"folded\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"subfinalproposal\": {\n    \"operator\": \"REDUCE\",\n    \"targets\": [\n      {\n        \"name\": \"reduced\",\n        \"value\": \"valid\"\n      }\n    ]\n  }\n}",
+              "proposed": null,
+              "tokens": 171,
+              "latency_ms": 14406,
+              "finish_reason": "stop",
+              "errors": [
+                "unparseable"
+              ]
+            },
+            {
+              "run": 2,
+              "case": "pair-01",
+              "parsed": false,
+              "verdict": null,
+              "complete": false,
+              "phase_ok": null,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "{\n  \"proposal\": {\n    \"operator\": \"FILTER\",\n    \"targets\": [\n      {\n        \"name\": \"matches\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"subproposal\": {\n    \"operator\": \"MAP\",\n    \"targets\": [\n      {\n        \"name\": \"transformed\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"finalproposal\": {\n    \"operator\": \"FOLD\",\n    \"targets\": [\n      {\n        \"name\": \"folded\",\n        \"value\": \"valid\"\n      }\n    ]\n  },\n  \"subfinalproposal\": {\n    \"operator\": \"REDUCE\",\n    \"targets\": [\n      {\n        \"name\": \"reduced\",\n        \"value\": \"valid\"\n      }\n    ]\n  }\n}",
+              "proposed": null,
+              "tokens": 171,
+              "latency_ms": 15782,
+              "finish_reason": "stop",
+              "errors": [
+                "unparseable"
+              ]
+            }
+          ]
+        },
+        "chain-01": {
+          "case": "chain-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 3,
+          "rate": 0.0,
+          "verdicts": {
+            "exact": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"proposal\": {\n    \"name\": \"RETRIEVE_AND_PROCESS\",\n    \"steps\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"GRAPH_MATCHES\",\n        \"binding\": \"MATCHES\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"MATCHES\",\n        \"binding\": \"PROPOSITIONS\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"PROPOSITIONS\",\n        \"binding\": \"EVIDENCE\",\n        \"accumulator\": \"ACCUMULATE\"\n      },\n      {\n        \"operator\": \"REDUCE\",\n        \"target\": \"EVIDENCE\",\n        \"binding\": \"RESULT\"\n      }\n    ]\n  }\n}",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 155,
+              "latency_ms": 15062,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"proposal\": {\n    \"name\": \"RETRIEVE_AND_PROCESS\",\n    \"steps\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"GRAPH_MATCHES\",\n        \"binding\": \"MATCHES\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"MATCHES\",\n        \"binding\": \"PROPOSITIONS\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"PROPOSITIONS\",\n        \"binding\": \"EVIDENCE\",\n        \"accumulator\": \"ACCUMULATE\"\n      },\n      {\n        \"operator\": \"REDUCE\",\n        \"target\": \"EVIDENCE\",\n        \"binding\": \"RESULT\"\n      }\n    ]\n  }\n}",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 155,
+              "latency_ms": 17094,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"proposal\": {\n    \"name\": \"RETRIEVE_AND_PROCESS\",\n    \"steps\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"GRAPH_MATCHES\",\n        \"binding\": \"MATCHES\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"MATCHES\",\n        \"binding\": \"PROPOSITIONS\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"PROPOSITIONS\",\n        \"binding\": \"EVIDENCE\",\n        \"accumulator\": \"ACCUMULATE\"\n      },\n      {\n        \"operator\": \"REDUCE\",\n        \"target\": \"EVIDENCE\",\n        \"binding\": \"RESULT\"\n      }\n    ]\n  }\n}",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 155,
+              "latency_ms": 21516,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        }
+      },
+      "C_contract_examples": {
+        "pair-01": {
+          "case": "pair-01",
+          "repeats": 3,
+          "complete": 3,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 3,
+          "rate": 1.0,
+          "verdicts": {
+            "exact": 3
+          },
+          "messages": 6,
+          "cells": [
+            {
+              "run": 0,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "map"
+              ],
+              "tokens": 36,
+              "latency_ms": 10921,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "map"
+              ],
+              "tokens": 36,
+              "latency_ms": 3735,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "map"
+              ],
+              "tokens": 36,
+              "latency_ms": 2812,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        },
+        "chain-01": {
+          "case": "chain-01",
+          "repeats": 3,
+          "complete": 3,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 3,
+          "rate": 1.0,
+          "verdicts": {
+            "exact": 3
+          },
+          "messages": 6,
+          "cells": [
+            {
+              "run": 0,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\",\n    \"fold\",\n    \"accumulate\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 48,
+              "latency_ms": 4282,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\",\n    \"fold\",\n    \"accumulate\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 48,
+              "latency_ms": 3734,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\",\n    \"fold\",\n    \"accumulate\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 48,
+              "latency_ms": 4406,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        }
+      }
+    },
+    "worker": {
+      "A_original": {
+        "pair-01": {
+          "case": "pair-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 0,
+          "rate": 0.0,
+          "verdicts": {
+            "extra_operators": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"fold\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"filter\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "reduce",
+                "filter"
+              ],
+              "tokens": 247,
+              "latency_ms": 13516,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"fold\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"filter\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "reduce",
+                "filter"
+              ],
+              "tokens": 247,
+              "latency_ms": 13094,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"fold\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"filter\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"gml://relations\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "reduce",
+                "filter"
+              ],
+              "tokens": 247,
+              "latency_ms": 14125,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        },
+        "chain-01": {
+          "case": "chain-01",
+          "repeats": 3,
+          "complete": 3,
+          "phase_ok": 3,
+          "targets_ok": 3,
+          "graph_ok": 3,
+          "rate": 1.0,
+          "verdicts": {
+            "exact": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": true,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 237,
+              "latency_ms": 14125,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": true,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 237,
+              "latency_ms": 17390,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": true,
+              "phase_ok": true,
+              "targets_ok": true,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 237,
+              "latency_ms": 15063,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        }
+      },
+      "B_contract": {
+        "pair-01": {
+          "case": "pair-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 0,
+          "rate": 0.0,
+          "verdicts": {
+            "extra_operators": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n{\n  \"proposal\": {\n    \"name\": \"Product Inventory Analysis\",\n    \"description\": \"Analyze product inventory data to identify low-stock items and suggest replenishment strategies.\",\n    \"operations\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Select products with stock levels below a specified threshold.\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the total value of low-stock items.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the average stock value of low-stock items.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the number of low-stock items.\"\n      }\n    ]\n  }\n}\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "fold"
+              ],
+              "tokens": 228,
+              "latency_ms": 17500,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n{\n  \"proposal\": {\n    \"name\": \"Product Inventory Analysis\",\n    \"description\": \"Analyze product inventory data to identify low-stock items and suggest replenishment strategies.\",\n    \"operations\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Select products with stock levels below a specified threshold.\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the total value of low-stock items.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the average stock value of low-stock items.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the number of low-stock items.\"\n      }\n    ]\n  }\n}\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "fold"
+              ],
+              "tokens": 228,
+              "latency_ms": 14797,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n{\n  \"proposal\": {\n    \"name\": \"Product Inventory Analysis\",\n    \"description\": \"Analyze product inventory data to identify low-stock items and suggest replenishment strategies.\",\n    \"operations\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Select products with stock levels below a specified threshold.\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the total value of low-stock items.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the average stock value of low-stock items.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"low_stock_items\",\n        \"description\": \"Calculate the number of low-stock items.\"\n      }\n    ]\n  }\n}\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "fold"
+              ],
+              "tokens": 228,
+              "latency_ms": 13093,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        },
+        "chain-01": {
+          "case": "chain-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 3,
+          "rate": 0.0,
+          "verdicts": {
+            "exact": 3
+          },
+          "messages": 2,
+          "cells": [
+            {
+              "run": 0,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n{\n  \"proposal\": {\n    \"name\": \"Graph Match Proposal\",\n    \"description\": \"Retrieve valid graph matches, transform them into propositions, fold the evidence with a running state update, and reduce the result.\",\n    \"operations\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"graph_matches\",\n        \"description\": \"Select graph matches based on a specified criteria.\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Transform graph matches into a score based on their relevance.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Aggregate the scores into a single value representing the overall relevance.\"\n      },\n      {\n        \"operator\": \"reduce\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Reduce the final score to a single value representing the most relevant graph match.\"\n      }\n    ]\n  }\n}\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 234,
+              "latency_ms": 16016,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n{\n  \"proposal\": {\n    \"name\": \"Graph Match Proposal\",\n    \"description\": \"Retrieve valid graph matches, transform them into propositions, fold the evidence with a running state update, and reduce the result.\",\n    \"operations\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"graph_matches\",\n        \"description\": \"Select graph matches based on a specified criteria.\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Transform graph matches into a score based on their relevance.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Aggregate the scores into a single value representing the overall relevance.\"\n      },\n      {\n        \"operator\": \"reduce\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Reduce the final score to a single value representing the most relevant graph match.\"\n      }\n    ]\n  }\n}\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 234,
+              "latency_ms": 15031,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "exact",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": false,
+              "nodes_ok": true,
+              "edges_ok": true,
+              "reply_text": "```json\n{\n  \"proposal\": {\n    \"name\": \"Graph Match Proposal\",\n    \"description\": \"Retrieve valid graph matches, transform them into propositions, fold the evidence with a running state update, and reduce the result.\",\n    \"operations\": [\n      {\n        \"operator\": \"FILTER\",\n        \"target\": \"graph_matches\",\n        \"description\": \"Select graph matches based on a specified criteria.\"\n      },\n      {\n        \"operator\": \"MAP\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Transform graph matches into a score based on their relevance.\"\n      },\n      {\n        \"operator\": \"FOLD\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Aggregate the scores into a single value representing the overall relevance.\"\n      },\n      {\n        \"operator\": \"reduce\",\n        \"target\": \"proposition_scores\",\n        \"description\": \"Reduce the final score to a single value representing the most relevant graph match.\"\n      }\n    ]\n  }\n}\n```",
+              "proposed": [
+                "filter",
+                "map",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 234,
+              "latency_ms": 13781,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        }
+      },
+      "C_contract_examples": {
+        "pair-01": {
+          "case": "pair-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 0,
+          "rate": 0.0,
+          "verdicts": {
+            "extra_operators": 3
+          },
+          "messages": 6,
+          "cells": [
+            {
+              "run": 0,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 44,
+              "latency_ms": 4735,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 44,
+              "latency_ms": 2609,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "pair-01",
+              "parsed": true,
+              "verdict": "extra_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+              "proposed": [
+                "filter",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 44,
+              "latency_ms": 3125,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        },
+        "chain-01": {
+          "case": "chain-01",
+          "repeats": 3,
+          "complete": 0,
+          "phase_ok": 3,
+          "targets_ok": 0,
+          "graph_ok": 0,
+          "rate": 0.0,
+          "verdicts": {
+            "missing_operators": 3
+          },
+          "messages": 6,
+          "cells": [
+            {
+              "run": 0,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "missing_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}\n```",
+              "proposed": [
+                "filter",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 49,
+              "latency_ms": 3391,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 1,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "missing_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}\n```",
+              "proposed": [
+                "filter",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 49,
+              "latency_ms": 3265,
+              "finish_reason": "stop",
+              "errors": []
+            },
+            {
+              "run": 2,
+              "case": "chain-01",
+              "parsed": true,
+              "verdict": "missing_operators",
+              "complete": false,
+              "phase_ok": true,
+              "targets_ok": null,
+              "nodes_ok": false,
+              "edges_ok": false,
+              "reply_text": "```json\n{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}\n```",
+              "proposed": [
+                "filter",
+                "fold",
+                "reduce"
+              ],
+              "tokens": 49,
+              "latency_ms": 3266,
+              "finish_reason": "stop",
+              "errors": []
+            }
+          ]
+        }
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "2 models x 3 profiles x 2 cases x 3 repeats; examples in C are disjoint from the graded cases, so a pass shows the rule applied rather than an example reproduced"
+}
