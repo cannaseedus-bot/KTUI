@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Repository operations for the AIML/SRAI layer.
+
+  A pattern here proposes; it never commits. The daemon routes GITOP through the host's admission
+  boundary, which refuses repo writes unless `/allow git` was granted, and the host then runs the
+  operation and shows what git actually printed - including the error when it fails.
+
+    GITOP build           compile the tree and run the package suite (read-only, always allowed)
+    GITOP commit [msg]    stage everything and commit
+    GITOP push            push the current branch
+    GITOP sync [msg]      commit, then push
+-->
+<aiml version="2.0">
+
+  <category><pattern>BUILD IT</pattern><template>GITOP build</template></category>
+  <category><pattern>BUILD THE PROJECT</pattern><template><srai>BUILD IT</srai></template></category>
+  <category><pattern>BUILD THIS</pattern><template><srai>BUILD IT</srai></template></category>
+  <category><pattern>RUN THE BUILD</pattern><template><srai>BUILD IT</srai></template></category>
+  <category><pattern>COMPILE EVERYTHING</pattern><template><srai>BUILD IT</srai></template></category>
+
+  <category><pattern>COMMIT THIS</pattern><template>GITOP commit</template></category>
+  <category><pattern>COMMIT THE CHANGES</pattern><template><srai>COMMIT THIS</srai></template></category>
+  <category><pattern>COMMIT MY CHANGES</pattern><template><srai>COMMIT THIS</srai></template></category>
+  <category><pattern>MAKE A COMMIT</pattern><template><srai>COMMIT THIS</srai></template></category>
+  <category><pattern>COMMIT THIS AS *</pattern><template>GITOP commit <star/></template></category>
+
+  <category><pattern>PUSH IT</pattern><template>GITOP push</template></category>
+  <category><pattern>PUSH THIS</pattern><template><srai>PUSH IT</srai></template></category>
+  <category><pattern>PUSH THE BRANCH</pattern><template><srai>PUSH IT</srai></template></category>
+  <category><pattern>PUSH TO GITHUB</pattern><template><srai>PUSH IT</srai></template></category>
+
+  <category><pattern>COMMIT AND PUSH</pattern><template>GITOP sync</template></category>
+  <category><pattern>COMMIT THEN PUSH</pattern><template><srai>COMMIT AND PUSH</srai></template></category>
+  <category><pattern>SYNC THE REPO</pattern><template><srai>COMMIT AND PUSH</srai></template></category>
+  <category><pattern>COMMIT AND PUSH AS *</pattern><template>GITOP sync <star/></template></category>
+
+</aiml>

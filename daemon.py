@@ -192,6 +192,7 @@ class Daemon:
                  admit: Callable[[str, str], tuple[bool, str]],
                  admit_plan: Callable[[str], tuple[bool, str]],
                  admit_memory: Callable[[str, str], tuple[bool, str]] | None = None,
+                 admit_gitop: Callable[[str, str], tuple[bool, str]] | None = None,
                  mode_of: Callable[[], str] = lambda: "") -> None:
         self.kernel = kernel
         self.admit = admit
@@ -199,6 +200,8 @@ class Daemon:
         # Memory operations are proposals like everything else: memquery is read-only, a write needs
         # an explicit grant. Without a host callback nothing is admitted.
         self.admit_memory = admit_memory or (lambda kind, argument: (False, "memory is unavailable"))
+        # Repository writes are proposals too: the host decides, and `build` is the read-only one.
+        self.admit_gitop = admit_gitop or (lambda kind, argument: (False, "git operations are unavailable"))
         self.mode_of = mode_of
         self.map = VectorMap(banks)
         self.phases = phases.phase_order() or ("Pop", "Wo", "Yax", "Sek", "Ch'en", "Xul")
@@ -275,6 +278,8 @@ class Daemon:
         elif selected.upper().startswith("TOOL "):
             verb, _, argument = selected[5:].partition(" ")
             proposal = ("tool", verb.strip().lower(), argument.strip())
+        elif selected.upper().startswith("GITOP "):
+            proposal = ("gitop", selected[len("GITOP "):].strip(), "")
         elif selected.strip().upper() == "IDENTITY":
             proposal = ("identity", "", "")
         elif selected.upper().startswith("MEMORY "):
@@ -312,6 +317,8 @@ class Daemon:
             admitted, why = self.admit_plan(payload)
         elif kind in {"memory", "memquery"}:
             admitted, why = self.admit_memory(kind, payload)
+        elif kind == "gitop":
+            admitted, why = self.admit_gitop(kind, payload)
         elif kind == "identity":
             admitted, why = True, "local identity text, rendered by the host"
         else:

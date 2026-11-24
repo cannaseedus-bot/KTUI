@@ -63,6 +63,10 @@ try:  # append-only user memory: JSONL history, GML projection, writes behind a 
     import user_memory
 except ImportError:  # pragma: no cover
     user_memory = None
+try:  # commit / push / build, on command and behind a grant
+    import gitops
+except ImportError:  # pragma: no cover
+    gitops = None
 import math
 import tempfile
 import shlex
@@ -688,6 +692,8 @@ class ChatApp(App):
         # Memory is scoped to one identity, and writes are a grant like /allow.
         self.user_id = user_memory.DEFAULT_USER if user_memory else "local-user"
         self.memory_write = False
+        # Repo writes (add/commit/push) are a separate grant from file writes: /allow git.
+        self.git_write = False
         self.daemon = self.make_daemon()
 
     def make_daemon(self):
@@ -701,7 +707,8 @@ class ChatApp(App):
                   APP_ROOT / "aiml-en-us-foundation-alice" / "knumatic_learned.aiml"]
         return daemon.Daemon(kernel=self.kernel_reply, banks=[path for path in banks if path.is_file()],
                              admit=self.admit_verb, admit_plan=self.admit_plan,
-                             admit_memory=self.admit_memory, mode_of=lambda: self.mode)
+                             admit_memory=self.admit_memory, admit_gitop=self.admit_gitop,
+                             mode_of=lambda: self.mode)
 
     def kernel_reply(self, text: str) -> str:
         try:
@@ -833,6 +840,9 @@ class ChatApp(App):
         smalltalk = APP_ROOT / "smalltalk.aiml"
         if smalltalk.is_file():
             kernel.learn(str(smalltalk))
+        git_bank = APP_ROOT / "gitops.aiml"
+        if git_bank.is_file():
+            kernel.learn(str(git_bank))
         override = APP_ROOT / "_override.aiml"
         if override.is_file():
             kernel.learn(str(override))
@@ -985,6 +995,37 @@ class ChatApp(App):
             return False, "memory writes need `/allow memory` (or KNUMATIC_MEMORY_WRITE=1)"
         return True, "memory write granted"
 
+    def admit_gitop(self, kind: str, argument: str) -> tuple[bool, str]:
+        """Building reads; committing and pushing need the repo-write grant."""
+        if gitops is None:
+            return False, "the git operations module is unavailable"
+        verb = (argument or "").split(" ")[0].strip().lower()
+        if verb == "build":
+            return True, "build is read-only (compile + suite)"
+        if not self.git_write:
+            return False, f"repo writes need `/allow git` (asked to {verb or 'modify'} the repository)"
+        return True, f"repo write granted: {verb}"
+
+    def execute_gitop(self, argument: str) -> str:
+        """Run one admitted git operation and render exactly what ran and what came back."""
+        if gitops is None:
+            return "the git operations module is unavailable"
+        verb, _, rest = (argument or "").strip().partition(" ")
+        verb, rest = verb.strip().lower(), rest.strip()
+        root = sandbox.root
+        if verb == "build":
+            result = gitops.build(root)
+        elif verb == "commit":
+            result = gitops.commit(root, rest)
+        elif verb == "push":
+            result = gitops.push(root)
+        elif verb == "sync":
+            result = gitops.sync(root, rest)
+        else:
+            return f"unknown git operation `{verb}` - try commit, push, sync or build"
+        status = "**ok**" if result["ok"] else f"**failed** (exit {result.get('exit_code')})"
+        return f"{result['output']}\n\n{status}"
+
     def execute_memory(self, kind: str, argument: str) -> str:
         """Run an admitted memory operation and say what happened, with the event id."""
         if user_memory is None:
@@ -1012,6 +1053,22 @@ class ChatApp(App):
             record = user_memory.remember(user=self.user_id, subject=subject, predicate=predicate, value=value)
             return f"Recorded `{subject}.{predicate}` = **{value}** for **{self.user_id}** (`{record['event_id']}`)."
         return f"unknown memory operation `{verb}`"
+
+    def action_gitop(self, verb: str, argument: str = "") -> None:
+        admitted, why = self.admit_gitop("gitop", f"{verb} {argument}".strip())
+        if not admitted:
+            self.say_system(f"**Not authorized** - {why}. Nothing was changed.")
+            return
+        self.say_system(self.execute_gitop(f"{verb} {argument}".strip()))
+
+    def action_git_grant(self, argument: str = "") -> None:
+        word = (argument or "").strip().lower()
+        self.git_write = word not in {"off", "no", "read", "readonly", "read-only", "false"}
+        self.say_system(f"Repository writes (commit, push): "
+                        f"{'granted' if self.git_write else 'revoked'}.")
+
+    def action_build(self) -> None:
+        self.say_system(self.execute_gitop("build"))
 
     def identity_text(self) -> str:
         """Who this is: the daemon, its phases, the models it can reach, and its mark."""
@@ -1159,6 +1216,8 @@ class ChatApp(App):
         if turn.kind == "refused":
             # A refusal is an answer: the user is told what to fix, not handed to the model.
             return "refused", turn.answer
+        if turn.kind == "gitop":
+            return "gitop", self.execute_gitop(turn.answer)
         return "aiml", turn.answer
 
     def _local_answer_direct(self, text: str) -> tuple[str, str] | None:
@@ -1221,6 +1280,11 @@ class ChatApp(App):
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
+        commands["build"] = ("Build: compile the tree and run the package suite", self.action_build, "Read-only; no commit, no push")
+        commands["commit"] = ("Git: commit the working tree", partial(self.action_gitop, "commit"), "Needs `/allow git` first")
+        commands["push"] = ("Git: push the current branch", partial(self.action_gitop, "push"), "Needs `/allow git`; shows git's own error")
+        commands["sync"] = ("Git: commit then push", partial(self.action_gitop, "sync"), "Commit, then push; stops at the first failure")
+        commands["allow_git"] = ("Git: grant repo writes", partial(self.action_git_grant, "on"), "Enables commit and push until revoked")
         commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
         commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
         commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
@@ -1372,6 +1436,12 @@ class ChatApp(App):
             return
         if name in {"gml", "tensor"}:
             self.action_gml()
+            return
+        if name in {"build", "compile"}:
+            self.action_build()
+            return
+        if name in {"commit", "push", "sync"}:
+            self.action_gitop(name, argument or "")
             return
         if name in {"memory", "remembered"}:
             self.action_memory()
@@ -1832,6 +1902,7 @@ class ChatApp(App):
                 "memory": "Local memory (JSONL history)",
                 "memquery": "Local memory (GML projection)",
                 "plan": "Local plan (declarations only)",
+                "gitop": "Local git (real output, real errors)",
             }
             heading = headings.get(kind, "Local")
             if kind == "tool":

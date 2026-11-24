@@ -53,6 +53,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M14 | The daemon introduces itself (not ALICE), lists its models and its mark; the mark is downsized | **guard** | `identity.aiml`, `chat_app.py` (`identity_text`), `logo.png`, `tests_host/test_identity_logo.py::M14…` |
 | M15 | Routing honesty: refusals answer locally, every turn kind renders, model handoffs say why | **guard** | `daemon.py` (refused kind), `chat_app.py` (`routing_note`, headings), `tests_host/test_routing.py::M15…` |
 | M16 | Tool calls run for real; the fast path refuses instead of fabricating | **guard** | `chat_app.py` (`safe_math`, `fast_path_outcome`, utf-8 subprocess decode), `tests_host/test_tools.py::M16…` |
+| M17 | Commit, push and build on command, with git's own output or error; model tools stay read-only | **guard** | `gitops.py`, `gitops.aiml`, `chat_app.py` (`admit_gitop`), `tests_host/test_gitops.py::M17…` |
 
 ---
 
@@ -144,6 +145,42 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Repository operations (M17)
+
+The bot can build, commit and push on command - and shows what git said.
+
+```
+/build                  compile every tracked .py, then run the package suite   (read-only)
+/commit [message]       git add -A, then git commit                            (needs /allow git)
+/push                   push the current branch, authenticated first           (needs /allow git)
+/sync [message]         commit then push; stops at the first failure           (needs /allow git)
+/allow git [off]        the grant itself
+```
+
+The same phrasing works in natural language through `gitops.aiml`: *build it*, *commit this*,
+*commit this as <message>*, *push it*, *commit and push*, *sync the repo*. A pattern only proposes -
+the daemon routes `GITOP` through Ch'en, so a refused write is answered locally with `/allow git` and
+nothing is touched.
+
+**Honesty rules this module keeps:**
+
+- an operation returns what git printed, with its exit code - `**ok**` or `**failed** (exit 128)` -
+  and never claims success it did not have;
+- a clean tree reports *nothing to commit - the working tree is clean* instead of inventing a commit;
+- the default message, when none is given, is `checkpoint: N file(s) changed`, derived from the
+  working tree rather than guessed;
+- pushing tries the authenticated form first (the `gh` token, never printed) and falls back to plain
+  `git push`, reporting the **last** error when both fail;
+- **the model cannot do any of this**: the sandbox's git allowlist stays read-only, and a guard
+  asserts that `add`, `commit` and `push` are unreachable through `git_command`.
+
+One environment limit found while testing: pushing to a *local bare remote* makes git spawn `sh.exe`,
+which this file sandbox refuses (`CreateFileMapping`, Win32 error 5). The orchestration (auth attempt,
+fallback, error selection) is therefore unit-tested with an injected runner, while the failure path is
+integration-tested against real git.
 
 ---
 
@@ -361,7 +398,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 63 tests, OK (M3-M16: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8)
+host guards    : 73 tests, OK (M3-M17: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
