@@ -65,6 +65,8 @@ def score_bound(case: dict, reply: dict, binding_record: dict) -> dict:
                 conflict=bool(applied.get("conflict")),
                 binding_ok=bool(applied.get("ok")),
                 verdict=base.get("verdict"), phase_ok=base.get("phase_ok"),
+                refusal_ok=base.get("refusal_ok"), scored=bool(base.get("parsed")
+                                                             or base.get("refusal_ok") is not None),
                 parsed=base.get("parsed"), failed_requirements=base.get("failed_requirements"),
                 reply_text=(reply.get("text") or "")[:4000])
 

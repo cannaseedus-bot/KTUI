@@ -136,7 +136,9 @@ def _accounting(results: dict, planned_calls: int) -> dict:
     return dict(
         planned_calls=planned_calls, attempted_calls=len(cells),
         responses_received=sum(1 for cell in cells if cell["outcome"] == "reply"),
-        responses_scored=sum(1 for cell in cells if cell.get("verdict") is not None),
+        # a refusal case is scored without producing a verdict, so "scored" cannot be defined by verdict alone
+        responses_scored=sum(1 for cell in cells
+                             if cell.get("scored") is True or cell.get("verdict") is not None),
         transport_failures=sum(1 for cell in cells if cell["outcome"] != "reply"),
         outcomes={outcome: sum(1 for cell in cells if cell["outcome"] == outcome)
                   for outcome in sorted({cell["outcome"] for cell in cells})})
@@ -152,12 +154,12 @@ def _by_category(results: dict) -> dict:
             block["cells"] += 1
             block["transport_ok"] += int(cell["outcome"] == "reply")
             if cell["outcome"] == "reply":
+                refusal_case = str(cell.get("category")) in ("refusal", "unknown_facts")
+                if refusal_case:
+                    block["refusal_cases"] = block.get("refusal_cases", 0) + 1
+                    block["refusal_ok"] += int(cell.get("refusal_ok") is True)
                 block["graph"] += int(bool(cell.get("model_graph_exact")))
                 block["phase"] += int(cell.get("phase_ok") is True)
-                block["refusal_ok"] += int(cell.get("verdict") is not None
-                                            and cell.get("model_bound_complete") is not None
-                                            and bool(cell.get("runtime_bound_complete"))
-                                            and (cell.get("target_state") == "unbound"))
                 block["model_bound"] += int(bool(cell.get("model_bound_complete")))
                 block["runtime_bound"] += int(bool(cell.get("runtime_bound_complete")))
     return dict(sorted(categories.items()))
@@ -174,9 +176,11 @@ def summary(report: dict) -> str:
             block = blocks.get(condition) or {}
             if not block:
                 continue
+            refusal = (f" refusal {block['refusal_ok']}/{block['refusal_cases']}"
+                       if block.get("refusal_cases") else "")
             cells.append(f"{condition}: graph {block['graph']}/{block['cells']} "
                          f"phase {block['phase']} model-bound {block['model_bound']} "
-                         f"runtime-bound {block['runtime_bound']} transport {block['transport_ok']}")
+                         f"runtime-bound {block['runtime_bound']} transport {block['transport_ok']}{refusal}")
         lines.append(f"  {category:22} " + " | ".join(cells))
     return "\n".join(lines)
 
