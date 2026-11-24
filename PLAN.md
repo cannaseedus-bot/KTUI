@@ -117,6 +117,37 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+## Wo-owned binding, and a corrected cell count
+
+**A correction first.** The re-execution artifact holds **27 cells** (3 models x 3 conditions x 3 repeats), not
+30. I asserted 30 in `791a12e` instead of counting, and the rescore had already reported 21 scored plus 6 skipped
+- which is 27. The artifact now carries
+`accounting {planned_calls 27, attempted_calls 27, responses_received 21, responses_scored 21}` and a
+`correction` record naming the claim, the actual value, the cause and the rule: **count from the artifact, never
+from the plan**.
+
+**Wo now owns the binding**, with three outcomes that are never merged:
+
+| model output | runtime action | `binding_source` |
+|---|---|---|
+| correct target | accepted as the model's target proposal | `model` |
+| target omitted | Wo supplies the singleton allowlist entry | `wo_resolved` |
+| wrong target | rejected, both targets retained, plan left as written | `model` + `conflict: true` |
+
+A wrong target is **not** silently replaced - the plan keeps what the model wrote and the verdict says conflict,
+because rewriting it into a pass would hide a real model error. A family with several allowed targets does not
+guess, and an unbound family (refusals, unknown facts) binds nothing.
+
+`plan_evidence()` records `model_target`, `resolved_target` and `binding_source` together with `admitted: false`,
+so the two evaluations stay separate: **model correctness** (did it generate the authorized target?) and
+**runtime correctness** (did the host build a valid typed plan?). A Wo-resolved binding can improve the second
+without touching the first.
+
+The authorized target comes from `kuhul://targets/v1`, never from the corpus expectations; the corpus remains the
+scorer's answer key only.
+
+---
+
 ## Typed payloads and producer identity
 
 Three contained changes to the schema bus, and no new registry.
