@@ -689,6 +689,13 @@
         "after_signatures": []
       },
       {
+        "test_id": "test_program.ProgramGrammarTests.test_an_unknown_phase_name_is_rejected.test_an_unknown_phase_name_is_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
         "test_id": "test_program.ProgramGrammarTests.test_every_construct_parses.test_every_construct_parses",
         "before": "absent",
         "after": "passed",
@@ -696,7 +703,7 @@
         "after_signatures": []
       },
       {
-        "test_id": "test_program.ProgramGrammarTests.test_phase_order_is_checked.test_phase_order_is_checked",
+        "test_id": "test_program.ProgramGrammarTests.test_phases_are_used_as_needed.test_phases_are_used_as_needed",
         "before": "absent",
         "after": "passed",
         "before_signatures": [],
@@ -704,6 +711,13 @@
       },
       {
         "test_id": "test_program.ProgramGrammarTests.test_serialization_is_round_trip_stable.test_serialization_is_round_trip_stable",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_program.ProgramGrammarTests.test_strict_order_is_opt_in.test_strict_order_is_opt_in",
         "before": "absent",
         "after": "passed",
         "before_signatures": [],
@@ -746,13 +760,6 @@
       },
       {
         "test_id": "test_program.ProgramGrammarTests.test_unknown_opcode_and_arity_are_reported.test_unknown_opcode_and_arity_are_reported",
-        "before": "absent",
-        "after": "passed",
-        "before_signatures": [],
-        "after_signatures": []
-      },
-      {
-        "test_id": "test_program.ProgramGrammarTests.test_unknown_phase_is_rejected.test_unknown_phase_is_rejected",
         "before": "absent",
         "after": "passed",
         "before_signatures": [],
@@ -912,10 +919,10 @@
         "import phases; print(phases.base_health())"
       ],
       "exit_code": 0,
-      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 20:02\n",
+      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 20:11\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.156
+      "duration_seconds": 0.187
     },
     "extension_summary_before": {
       "command_line": [
@@ -938,12 +945,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.11
+      "duration_seconds": 0.141
     },
-    "captured_at": "2026-11-24T03:06:53.102512+00:00",
+    "captured_at": "2026-11-24T03:13:44.735222+00:00",
     "health_correlation": {
-      "suite_sha": "651f5ea214ea3419068d35dcd8dff15b9d11d49d",
-      "health_sha": "651f5ea214ea3419068d35dcd8dff15b9d11d49d",
+      "suite_sha": "399d8c9552e05414365fb82482f11d95102056be",
+      "health_sha": "399d8c9552e05414365fb82482f11d95102056be",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -952,7 +959,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 651f5ea214ea3419068d35dcd8dff15b9d11d49d"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 399d8c9552e05414365fb82482f11d95102056be"
       },
       {
         "code": "untracked_files",
@@ -1105,7 +1112,7 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "651f5ea214ea3419068d35dcd8dff15b9d11d49d",
+    "tested_commit": "399d8c9552e05414365fb82482f11d95102056be",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
