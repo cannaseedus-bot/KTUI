@@ -661,6 +661,118 @@
         "after_signatures": []
       },
       {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_binding_needs_a_target.test_a_binding_needs_a_target",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_capture_must_fit_the_pattern.test_a_capture_must_fit_the_pattern",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_chain_stops_at_next_null.test_a_chain_stops_at_next_null",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_cycle_is_a_bounded_failure.test_a_cycle_is_a_bounded_failure",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_directive_binding_is_accepted.test_a_directive_binding_is_accepted",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_missing_aiml_file_is_reported.test_a_missing_aiml_file_is_reported",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_repeated_phase_is_reported.test_a_repeated_phase_is_reported",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_a_valid_manifest_loads.test_a_valid_manifest_loads",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_an_unknown_chain_scheme_is_an_error.test_an_unknown_chain_scheme_is_an_error",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_an_unknown_phase_is_rejected.test_an_unknown_phase_is_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_discovery_lists_the_phases_in_order.test_discovery_lists_the_phases_in_order",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_discovery_reports_a_duplicate_phase.test_discovery_reports_a_duplicate_phase",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_loading_executes_nothing.test_loading_executes_nothing",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_the_schema_id_is_required.test_the_schema_id_is_required",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_the_shipped_chain_covers_all_six_phases.test_the_shipped_chain_covers_all_six_phases",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_manifest.PhaseManifestTests.test_the_uri_must_agree_with_the_phase.test_the_uri_must_agree_with_the_phase",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
         "test_id": "test_program.ProgramGrammarTests.test_a_bound_step_runs_and_a_failing_step_is_reported.test_a_bound_step_runs_and_a_failing_step_is_reported",
         "before": "absent",
         "after": "passed",
@@ -919,10 +1031,10 @@
         "import phases; print(phases.base_health())"
       ],
       "exit_code": 0,
-      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 20:11\n",
+      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 21:20\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.187
+      "duration_seconds": 0.219
     },
     "extension_summary_before": {
       "command_line": [
@@ -945,12 +1057,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.141
+      "duration_seconds": 0.203
     },
-    "captured_at": "2026-11-24T03:13:44.735222+00:00",
+    "captured_at": "2026-11-24T04:22:22.423638+00:00",
     "health_correlation": {
-      "suite_sha": "399d8c9552e05414365fb82482f11d95102056be",
-      "health_sha": "399d8c9552e05414365fb82482f11d95102056be",
+      "suite_sha": "dbcde62aceb807171e3a37bbd2ee795066dbc820",
+      "health_sha": "dbcde62aceb807171e3a37bbd2ee795066dbc820",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -959,7 +1071,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 399d8c9552e05414365fb82482f11d95102056be"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> dbcde62aceb807171e3a37bbd2ee795066dbc820"
       },
       {
         "code": "untracked_files",
@@ -1070,6 +1182,7 @@
           "test_merge_guards.TestF141M21.test_missing_schema_not_skipped.test_missing_schema_not_skipped",
           "test_merge_guards.TestF141M21.test_same_schema_reference_accepted.test_same_schema_reference_accepted",
           "test_merge_guards.TestMergeGuards.test_f14_other_schema_not_validated_by_tensor.test_f14_other_schema_not_validated_by_tensor",
+          "test_phase_manifest.PhaseManifestTests.test_the_schema_id_is_required.test_the_schema_id_is_required",
           "test_program.ProgramGrammarTests.test_the_lexer_keeps_glyph_references_and_skips_comments.test_the_lexer_keeps_glyph_references_and_skips_comments",
           "test_program.ProgramGrammarTests.test_unresolved_glyph_and_reference_are_reported.test_unresolved_glyph_and_reference_are_reported",
           "test_vector_adapter.VectorAdapterTests.test_contradictory_row_references_are_rejected.test_contradictory_row_references_are_rejected",
@@ -1082,7 +1195,7 @@
         "reasons": [
           {
             "code": "positive_guard_evidence",
-            "detail": "11 named M2 guard test(s) pass; no original failure was separately observable"
+            "detail": "13 named M2 guard test(s) pass; no original failure was separately observable"
           },
           {
             "code": "baseline_partial",
@@ -1106,13 +1219,15 @@
           "test_merge_guards.TestF141M21.test_repeatable_is_registry_declared.test_repeatable_is_registry_declared",
           "test_merge_guards.TestMergeGuards.test_m2_data_typo_rejected.test_m2_data_typo_rejected",
           "test_merge_guards.TestMergeGuards.test_m2_graph_typo_rejected.test_m2_graph_typo_rejected",
+          "test_phase_manifest.PhaseManifestTests.test_a_repeated_phase_is_reported.test_a_repeated_phase_is_reported",
+          "test_phase_manifest.PhaseManifestTests.test_discovery_reports_a_duplicate_phase.test_discovery_reports_a_duplicate_phase",
           "test_registry_v3.TestRegistryV3.test_rank_declared_value_enforced.test_rank_declared_value_enforced",
           "test_vector_adapter.VectorAdapterTests.test_duplicate_row_rejected.test_duplicate_row_rejected"
         ]
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "399d8c9552e05414365fb82482f11d95102056be",
+    "tested_commit": "dbcde62aceb807171e3a37bbd2ee795066dbc820",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
