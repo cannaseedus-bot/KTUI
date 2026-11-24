@@ -143,6 +143,44 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:model-turn-three-handlers -->
 <!-- milestone:micro-agent-bridge-declared-routes-only -->
 <!-- milestone:one-live-turn-uses-the-bridge -->
+<!-- milestone:mcp-read-only-handlers-exposed -->
+## MCP: the read-only handlers, exposed and nothing more
+
+`mcp_host.py` exposes the registered Micronaut handlers over the Model Context Protocol, speaking whichever SDK is
+installed (v2 `MCPServer` if present, v1 `FastMCP` otherwise - this environment has `mcp` 1.27.1, so v1).
+
+| surface | name | what it does |
+|---|---|---|
+| tool | `kuhul_list_handlers` | the registry, with each handler's **declared effect** |
+| tool | `kuhul_invoke_readonly` | invoke one **registered read-only** handler by URI |
+| tool | `kuhul_resolve_route` | resolve a declared AIML/SRAI route - resolution only |
+| resource | `kuhul://host/authority` | what the host refuses to do over MCP |
+| resource | `kuhul://runtime/tree` | the runtime projection |
+| resource | `kuhul://phases/last` | the most recent observed phase trace |
+
+Three rules, each guarded: **read-only only** (exposability comes from the typed binding's declared effect - all five
+registered handlers list as `read_only`), **declared only** (an unregistered URI is `handler_not_registered`, and a
+route resolves by spoken name through the SRAI chain while `model://planner` stays `route_not_declared`), and
+**declaration_only** (every result carries `admitted: false`; the authority resource states `execution: false` and
+`mutation: false`).
+
+Verified three ways, not one:
+
+```
+in-memory SDK client   list_tools, list_resources, read_resource, call_tool, bad payload as JSON
+direct functions       listing, refusal paths, a typed payload invoking micronaut://v1/aiml successfully
+live HTTP transport    POST /mcp initialize -> 200, serverInfo kuhul-ktui, protocolVersion 2024-11-05
+```
+
+Two host contracts found while wiring: `HandlerHost` takes `(identity, granted, policy)` and requires
+`host.admit(uri, payload)` before `invoke`, and the payload must carry the handler's declared `$schema` - an untyped
+`{"text": "hello"}` is refused with `payload_schema_mismatch`, which is the host being correct rather than a bug.
+
+**Not mounted inside `micronaut_server.py`**, because that file carries an uncommitted change I have not inspected.
+It runs standalone: `python mcp_host.py --transport streamable-http --port 8123`, or `--transport stdio`.
+
+---
+
 ## One live turn uses the bridge
 
 `ASK PLANNER` now travels the real dispatch path. Measured through `local_answer`:

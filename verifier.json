@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 410,
+  "count": 412,
   "covers": "tracked working tree; uncommitted edits are refused by verify()",
   "excludes": {
     "names": [
@@ -21,7 +21,7 @@
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
     "MICRO-AGENT-BRIDGE.md": "a530c33ceaf4f2b56600afd21f29931068b7b725f52183a74df34e3d92cb3e51",
-    "PLAN.md": "4231399fbb8f933af297a632726d9f9b931db969fb058775ea8748abf997c80a",
+    "PLAN.md": "67677dd22a3bbd08c80b91c6c1fa4318ca34cd1c45c559d511b53d1a49a021cd",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -319,6 +319,7 @@
     "lifecycle_transition.py": "c281aa1897f8b67b761a07ef42f384b45f8ebd804b0ec2736dddc72e2c0bdd75",
     "links.py": "bb2c5b4d13853a9552686520f802323672eebc581a79402c2e15e6051fb58af7",
     "logo.png": "7b02ed806f364ffa49fd2302ec91deda1902bdea958f44bddcce051d43fa6e5c",
+    "mcp_host.py": "e65e0cae1aad48c5155e3d1492afac31f38607723a7bd5f2a9f69ba6c150191d",
     "memory.aiml": "1d02d6da27be9d30fee2757e52c056c6185c2624566817e410aeff139b76c33a",
     "memory.gml": "cbf7c00cde77d15dbfdb1f5811a2a0e3fb89cb8221f78e61c15fb6dc2db7ddfe",
     "micro_agent_bridge.py": "58dab59891987b81facdb0b9d9304000bc62ee2ce3a0ab1183678d410fd04878",
@@ -390,6 +391,7 @@
     "tests_host/test_ledger.py": "0fb2def93fdae0552a86781e4c2fde2f8a77f15ad46c1e8f5ef05a8cd487023a",
     "tests_host/test_links.py": "230ecee6f3f2bd3b24bfeb62fd089f5bbe25460e34bbf69f55888546464382d2",
     "tests_host/test_live_capture.py": "985f9f19b00bd24980ea21f580d06283f5cdd893f2003eca56a68dcce91f9d32",
+    "tests_host/test_mcp_host.py": "91080fe51606447263b03a16f2b90446fb58f46e2eeb3f91b6d6b87f5dd15111",
     "tests_host/test_memory.py": "78f6b59ffcbb5ade5782a80a75b2456c53207ac979370e8fae7e78f4b5bb678b",
     "tests_host/test_micro_agent_bridge.py": "17efe0b1a1a53d526c1926ac4370ef613125600b3728f7d8cf86668240ab0158",
     "tests_host/test_micronaut_registry.py": "f0381289feea543d041346dbe753f14171f0afd64276b682fa858c93c35eee8a",
@@ -429,16 +431,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "7a16bb873955672d0662c0c9303a65d64b1f9839b2950e5d96e6295cde435a00",
+  "hash": "2c96aac852a279a87bea345d5cb4b5607f8dcc00d81e2a78a8930e941522d0b3",
   "locked": true,
-  "note": "lock for the MCP host (M92)",
+  "note": "re-lock after the PLAN section",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
     "count": 410,
-    "hash": "10aadec990e5e82b7154565043e5779865198f46a115e12ed8a786e6dd2037af",
-    "updated_at": "2026-11-24T22:50:42Z"
+    "hash": "7a16bb873955672d0662c0c9303a65d64b1f9839b2950e5d96e6295cde435a00",
+    "updated_at": "2026-11-24T23:06:00Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T23:06:00Z"
+  "updated_at": "2026-11-24T23:08:47Z"
 }
