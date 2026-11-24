@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 403,
+  "count": 406,
   "covers": "tracked working tree; uncommitted edits are refused by verify()",
   "excludes": {
     "names": [
@@ -20,7 +20,7 @@
   "files": {
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
-    "PLAN.md": "c8090ced662de0b0870f9e49c325ec8b9507b8d87df18510ac825f23459119ec",
+    "PLAN.md": "9beefdd787c4c3a0f3423e20ba03eb7e60600428c15850bb73b942ea7fefcc53",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -326,6 +326,7 @@
     "model_config.py": "01a0261a3a5cc532efea383fc3f11496daae473ae411aba81be92720140a0425",
     "model_lifecycle.py": "c88333f8c43c605c3518b84521d604a1ed1ddadae89d400df2ef6b31bb81f66d",
     "model_router.py": "f8684f668f62df7db851f7d1870663ac1ebc9489ca7da9da948437d09864a92b",
+    "model_turn.py": "e24d692fea910c0635f2ea8b4a627efefc891680c99a6e00f17a27d4d35b1f41",
     "mu.py": "cdd02551132d5d49607e89fb07218dfb0f5ed24b52354e7ce9d88f594b648064",
     "operators.py": "f7f094fcb1914be7a960c3ecbaef5e0e1a622015d4f06fa44a74505df3ee42bc",
     "pattern_dumper.py": "6408d26d1890f479f2bfafc72b7629960013baafc1248584e36f41522e189b8a",
@@ -391,6 +392,8 @@
     "tests_host/test_micronaut_registry.py": "f0381289feea543d041346dbe753f14171f0afd64276b682fa858c93c35eee8a",
     "tests_host/test_model_lifecycle.py": "9985b12bb76da3650a392823611b13c028ae727159648d8ad6bf311ae21135f2",
     "tests_host/test_model_router.py": "9163b560537653cc1cfb9e43e1cebd7b84c409a1744003bfae7ae39bbb66e50e",
+    "tests_host/test_model_turn.py": "a9fd0c6b0296575a9afdb9ff14c0aedb693d1299b7f2582bd2342a79120d822a",
+    "tests_host/test_model_turn_stream.py": "c537d00694e27e6338249fea11738fdf7b957c8bb623e1a18477ba3c2f79ae88",
     "tests_host/test_operators.py": "f9b21e55304bd8756583adb83ba6f14fba760d881e20fb4a7ecff26b84129033",
     "tests_host/test_phase_chain.py": "d8b78fc7a62d0069e8bf7a1afe79e081e072ab90026a3e71e7594679fa602c89",
     "tests_host/test_phase_events.py": "220ce808d05660afe29c9008c3296e3087a3ed325623cfe361e482268910e931",
@@ -422,16 +425,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "23913424960dc2df4576919e2b07c4da900552db2f4f288d1c9196b30a8ec439",
+  "hash": "07256e71cef061803562c45ef56b8f9af41958f372d7e77afc7c246246ae4c66",
   "locked": true,
-  "note": "lock for the model-turn lifecycle (M89)",
+  "note": "lock for the bridge inspection document",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
-    "count": 401,
-    "hash": "3119a0afde86b64a94c1d5d6000707e26b1ef6f5b0afcae6fffa40f14c9bbe57",
-    "updated_at": "2026-11-24T21:45:19Z"
+    "count": 403,
+    "hash": "23913424960dc2df4576919e2b07c4da900552db2f4f288d1c9196b30a8ec439",
+    "updated_at": "2026-11-24T21:55:49Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T21:55:49Z"
+  "updated_at": "2026-11-24T21:59:23Z"
 }
