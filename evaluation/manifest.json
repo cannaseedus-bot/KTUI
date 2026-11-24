@@ -1,0 +1,35 @@
+{
+  "schema": "kuhul-eval-corpus/1",
+  "authority": "declaration_only",
+  "version": "1.0.0",
+  "cases": 12,
+  "frozen": 8,
+  "reviewed": 2,
+  "draft": 2,
+  "categories": [
+    "authority",
+    "full_composition",
+    "operator_pair",
+    "phase_selection",
+    "unknown_facts",
+    "uri_binding"
+  ],
+  "frozen_ids": [
+    "pair-01",
+    "pair-02",
+    "chain-01",
+    "phase-01",
+    "authority-01",
+    "authority-02",
+    "unknown-01",
+    "uri-01"
+  ],
+  "case_file": "cases.jsonl",
+  "graph_file": "expected-graphs.gml",
+  "rules": {
+    "headline_benchmark": "only review_status=frozen cases count",
+    "isolation": "this corpus must not be loaded by the chat app or the retrieval index; expected answers stay out of the live learning corpus",
+    "unknown_facts": "a case with unknown_facts=true must refuse rather than invent evidence"
+  },
+  "frozen_at": "2026-11-24T06:34:32Z"
+}

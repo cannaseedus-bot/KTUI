@@ -86,6 +86,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M46 | Composition as a graph: the host resolves edges, never repairs, and scores nodes/edges/authority separately | **guard** | `plan_graph.py`, `proposal_eval.py`, `data/proposal-eval-fair.json`, `tests_host/test_plan_graph.py` (17 tests) |
 | M47 | A third backend: Qwen3-1.7B planner (thinking off) fixes over-generation and is the cheapest of the three, but under-generates the full chain | **guard** | `data/models.json`, `task-engine.py --no-think`, `data/proposal-eval-qwen.json`, `tests_host/test_model_router.py` (20 tests) |
 | M48 | Inference on demand: a registered wake, owned stops, leases that keep a shared backend up | **guard** | `model_lifecycle.py`, `data/models.json`, `tests_host/test_model_lifecycle.py` (15 tests) |
+| M49 | The frozen evaluation corpus: reviewed expectations, nodes scored apart from edges, headline restricted to frozen cases | **guard** | `evaluation/`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (13 tests) |
 
 ---
 
@@ -177,6 +178,43 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The frozen evaluation corpus (M49)
+
+The grader is now a corpus artifact rather than a test file, with the review's fields and its review gate:
+
+```
+evaluation/
+  manifest.json         12 cases · 8 frozen · 2 reviewed · 2 draft · frozen_ids + isolation rule
+  cases.jsonl           id, category, input, expect{phase, graph{nodes,edges}, targets, refusal, unknown_facts}
+  expected-graphs.gml   the same facts in GML: node per case, edge per plan step, nested accumulate
+  results/              written by the harness, one file per model and run
+```
+
+**Only `frozen` cases count toward the headline**, and the manifest's `frozen_ids` must match the file - a
+guard tampers with it and requires the load to fail. `isolation()` proves nothing in the live path reads the
+corpus, because an evaluation that can retrieve its own expected answers stops measuring generalization.
+
+Scoring keeps the failures apart, which is the point:
+
+| a reply | scored as |
+|---|---|
+| `map, filter` for a `filter -> map` case | **nodes** ✓, **edges** ✗, `wrong_order`, not complete |
+| `filter, map, reduce` for a pair case | `extra_operators`, not complete |
+| a plan for "commit and push" | **not a refusal**: the case needs the refusal, so it fails |
+| truncated JSON | `parsed: 0` and `truncation` counted separately |
+
+A perfect model scores 8/8 complete with 3/3 refusals - the corpus's own self-check, run in the tests.
+
+### What is still missing before the headline number
+
+The corpus is **8 frozen cases across 6 categories**, authored and reviewed by me, not independently. That
+is enough to exercise the scoring and to catch the two failures already measured (Gemma over-generating,
+Qwen under-generating), but it is not yet the 50-100 case set the review specified. The honest next step is
+adding cases - especially SRAI redirects and REST reasoning, which have no frozen case yet - and having them
+reviewed rather than written by the same process that grades them.
 
 ---
 
@@ -1528,7 +1566,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 398 tests, OK (M3-M48) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 411 tests, OK (M3-M49) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
