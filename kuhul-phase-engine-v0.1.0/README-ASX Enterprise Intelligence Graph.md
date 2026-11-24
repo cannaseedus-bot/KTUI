@@ -23,6 +23,34 @@ The 15% shipping-cost scenario uses an illustrative $10/unit base shipping cost 
 ## Integration boundary
 This package does **not** modify the user's repository or claim to conform to its actual `gml2` loader. The syntax and schema are a proposed extension. Before host integration, map these declarations to the installed registry, implement typed field contracts and cross-graph resolution, route AIML through the existing `aiml_bundle.py`, and keep XCFE admission and persistence authorization external to the graph. The JSONL file is illustrative observation data, not a user database.
 
+## K'UHUL program layer (parse, validate, trace)
+
+`core/program.py` implements the grammar in `grammar/kuhul-grammar.ebnf`: declarations
+(`glyph NAME = "…"`, `relation NAME = "…"`), instructions (`map`, `filter`, `fold`, `reduce`, `sync`,
+`emit`, `verify`, `dispatch`), phase blocks, lane blocks (`lane risk : Graph { … }`), bindings
+(`bind ⟁A -> B`) and `⟁glyph` references.
+
+```text
+glyph DATA = "enterprise:records"      # the grammar declares by identifier...
+lane risk : Graph { map(⟁DATA) }       # ...and references it with the glyph mark
+
+Pop { … }  Wo { … }  Yax { … }  Sek { … }  Chen { … }  Xul { … }
+
+Ch'en { verify("provenance,units,coverage,permissions") }    # Chen and Ch'en both parse
+```
+
+Validation is separate from parsing and covers what the parser cannot: the opcode vocabulary, argument
+arity, lane types, unresolved `⟁glyphs`, unknown references, and phase order (a program that opens
+`Xul` before `Pop` is reported, not silently reordered).
+
+**Nothing here executes.** `evaluate()` walks the program in phase order and records each step with its
+resolved arguments and its declared effect. A step whose implementation is not bound is recorded as
+`deferred` with the reason; a step that raises records the error. A trace carries
+`execution: false`, `mutation: false`, `authority: "host"`.
+
+The bracket dialect ships too - `graphs/shipping-impact.khl` parses through `parse_khl()` into the same
+AST, so the existing example is executable as a *structure* rather than unreadable text.
+
 ## EmbeddingGemma2 AIML vector adapter (read-only)
 
 `adapters/embeddinggemma2.py` loads existing EmbeddingGemma2 `.npy` arrays as memory maps, checks that the three lanes share one rank-2 float32 shape, and validates the JSONL bindings. It performs chunked cosine ranking and returns the associated AIML pattern/template record. It does not embed raw text, compile AIML, resolve SRAI, write to the enterprise graph, or grant XCFE admission.

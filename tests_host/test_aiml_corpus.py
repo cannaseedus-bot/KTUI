@@ -153,7 +153,9 @@ class M21CorpusPort(unittest.TestCase):
         modules = nodes_of(self.parsed, "module")
         documents = nodes_of(self.parsed, "document")
         self.assertEqual(len(registries), 4, [item["name"] for item in registries])
-        self.assertEqual(len(modules), 9, [item["name"] for item in modules])
+        self.assertEqual(len(modules), len(aiml_to_gml.core_modules()),
+                         "every core module must be projected")
+        self.assertGreaterEqual(len(modules), 9, [item["name"] for item in modules])
         self.assertEqual(len(documents), 17)
         aiml_registry = next(pairs for pairs in node_attributes(self.parsed, "registry")
                              if dict(pairs).get("name") == "aiml-registry.gml")

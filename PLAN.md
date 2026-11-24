@@ -64,6 +64,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M25 | AIML round-trip conformance: 131 real categories migrated, validated, and answering identically to python-aiml | **guard** | `aiml_graph.py`, `tests_host/test_aiml_roundtrip.py::M25…` |
 | M26 | Retrieval and composition: the two contracts are consumed - rank relations, compose a verified paragraph | **guard** | `compose.py`, `compose.aiml`, `aiml_contracts/{retrieval,composition}.gml`, `tests_host/test_compose.py::M26…` |
 | M27 | EmbeddingGemma2 vector adapter verified against the real 99,524-row assets; similarity ranks, compatibility filters, XCFE admits | **guard** | `adapters/embeddinggemma2.py`, `tests/test_vector_adapter.py` (14 tests) |
+| M28 | K'UHUL program layer: the declared grammar parses, validates, serializes and traces (no execution) | **guard** | `core/program.py`, `tests/test_program.py` (15 tests) |
 
 ---
 
@@ -155,6 +156,36 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## K'UHUL program layer (M28)
+
+The grammar in `grammar/kuhul-grammar.ebnf` is now implemented rather than documented:
+
+```
+glyph DATA = "enterprise:records"   relation RISK = "risk_shipping"
+lane risk : Graph { map(⟁DATA) filter(⟁DATA) bind ⟁DATA -> risk }
+Pop { … } Wo { … } Yax { … } Sek { … } Chen { … } Xul { … }
+```
+
+- **parse** covers every construct in the grammar: declarations, the eight opcodes, phase blocks, lane
+  blocks with the eight types, bindings and `⟁glyph` references. `Chen` and the corpus's `Ch'en` both
+  parse and canonicalize to `Ch'en`.
+- **validate** covers what parsing cannot: opcode vocabulary, argument arity per opcode, lane types,
+  unresolved glyphs, unknown references, and **phase order** - a program opening `Xul` before `Pop` is
+  reported rather than silently reordered.
+- **serialize** is round-trip stable (`parse(serialize(parse(x)))` equals `serialize(parse(x))`).
+- **trace, never execute**: `evaluate()` walks in phase order and records each step with its resolved
+  arguments and declared effect; an unbound opcode is `deferred` with the reason, a raising one records
+  its error, and the trace carries `execution: false · mutation: false · authority: host`.
+- the **bracket dialect** ships too: `graphs/shipping-impact.khl` parses into the same AST, so the
+  example the package already contained is now readable as a program instead of opaque text.
+
+Two bugs found by the guards: `validate` unioned a lane *dict* with a set (a `TypeError` the tests
+caught immediately), and the bracket reader treated the phase word as the opcode, so
+`[Yax resolve "…"]` produced zero instructions - the shipped example validated as an empty program
+until the reader was rewritten to group by phase.
 
 ---
 
@@ -766,7 +797,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 179 tests, OK (M3-M26): package suite 97 tests (incl. 14 vector-adapter tests)
+host guards    : 179 tests, OK (M3-M28) · package suite 112 tests (14 vector-adapter, 15 program)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
