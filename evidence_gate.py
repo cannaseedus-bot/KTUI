@@ -126,8 +126,25 @@ def verdict(results: dict, *, required: list[str], tested_commit: str | None,
                 authority="human", merge_authorized=False)
 
 
+def tree_state() -> dict:
+    """Whether the tracked tree is clean, measured rather than assumed. Gate artifacts are this run's own output."""
+    try:
+        completed = subprocess.run(["git", "status", "--porcelain", "-uno"], cwd=str(HOST_ROOT),
+                                   capture_output=True, text=True, encoding="utf-8",
+                                   errors="replace", timeout=60)
+    except (OSError, subprocess.SubprocessError) as error:
+        return dict(clean=False, dirty=[], error=f"{type(error).__name__}: {error}"[:120])
+    dirty = []
+    for line in completed.stdout.splitlines():
+        name = line[3:].strip() if len(line) > 3 else ""
+        if not name or name.startswith("host-gate-") or name == "evidence-gate.json":
+            continue
+        dirty.append(name)
+    return dict(clean=not dirty, dirty=sorted(dirty), error=None)
+
+
 def capture(*, output: Path | None = None, runner=None, head: str | None = None,
-            captured_clean: bool = True, manifest: dict | None = None) -> dict:
+            captured_clean: bool | None = None, manifest: dict | None = None) -> dict:
     """Run every required suite and write the artifact the evidence chain refers to."""
     manifest = manifest or load()
     if not manifest["ok"]:
@@ -135,8 +152,11 @@ def capture(*, output: Path | None = None, runner=None, head: str | None = None,
     results = {name: run_suite(name, entry, runner=runner)
                for name, entry in manifest["suites"].items() if entry.get("required")}
     head = head or _git("rev-parse", "HEAD")
+    state = tree_state()
+    if captured_clean is None:
+        captured_clean = state["clean"]
     record = dict(schema=SCHEMA, captured_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                  tested_commit=head, suites=results,
+                  tested_commit=head, suites=results, tree=state,
                   verdict=verdict(results, required=manifest["required"], tested_commit=head,
                                   head=head, captured_clean=captured_clean))
     if output is not None:
@@ -168,6 +188,8 @@ def summary(record: dict) -> str:
     for name, result in (record.get("suites") or {}).items():
         state = "ok" if result.get("ok") and result.get("exit_code") == 0 else "FAILED"
         lines.append(f"  {name:12} {result.get('tests'):4} tests · {state} · exit {result.get('exit_code')}")
+    for name in (record.get("tree") or {}).get("dirty", [])[:5]:
+        lines.append(f"  dirty: {name}")
     for problem in verdict_record["problems"]:
         lines.append(f"  ! {problem['code']}: {problem['detail']}")
     lines.append(f"  {verdict_record['statement']}")
@@ -180,9 +202,10 @@ def main(argv: list[str] | None = None) -> int:
 
     parser = argparse.ArgumentParser(description="Run every required suite and judge the evidence.")
     parser.add_argument("--out", default=str(HOST_ROOT / "evidence-gate.json"))
-    parser.add_argument("--clean", action="store_true", default=True)
+    parser.add_argument("--assume-clean", action="store_true",
+                        help="only for a fixture; the default measures the tree")
     args = parser.parse_args(argv)
-    record = capture(output=Path(args.out), captured_clean=True)
+    record = capture(output=Path(args.out))
     print(summary(record))
     print(f"written: {args.out}")
     return 0 if record.get("verdict", {}).get("evidence_satisfied") else 1

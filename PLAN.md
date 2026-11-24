@@ -112,9 +112,10 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M72 | Reconcile declared Micronauts, registration claims, route declarations, and observable host invocation without conflating proposals with execution | **done** | `micronaut_audit.py`, `data/micronauts/README-semantic-registry.md` |
 | M73 | Resolve Micronaut program references against maintained source or mark them unresolved; verify Graph Theory registration from host evidence | **done** | `micronaut_audit.py`, `data/micronauts/kuhul-micronaut-registry.json`, `data/micronauts/graph-theory-micronaut.v1.json` |
 | M74 | Document the distinct scope of the semantic catalog and generic route catalog; do not infer aliases or count both as implemented agents | **done** | `data/micronauts/README-semantic-registry.md`, `micronaut_audit.py` |
-| M75 | Bind declared UI/Graph Theory routes to concrete host handlers only where source and capability admission exist; capture invocation evidence separately | **open** | `data/manifest/css.manifest.json`, `data/alice/Bindings.aiml`, host dispatcher, `micronaut_audit.py` |
-| M76 | Add conformance guards for registry-status claims, local reference resolution, and UI dispatch status so inventory drift is caught | **done** | `tests_host/test_micronaut_host_handlers.py`, `micronaut_audit.py`, semantic registry and CSS manifest |
+| M75 | Bind remaining semantic/UI routes to concrete host handlers only where source and capability admission exist; capture invocation evidence separately | **open** | `data/manifest/css.manifest.json`, `data/alice/Bindings.aiml`, website dispatcher, `micronaut_audit.py` |
+| M76 | Add conformance guards for registry-status claims, local reference resolution, and UI dispatch status so inventory drift is caught | **done** | `tests_host/test_micronaut_host_handlers.py`, `tests_host/test_graph_theory_micronaut.py`, `micronaut_audit.py`, semantic registry and CSS manifest |
 | M77 | Bind and invoke all five generic phase-catalog handlers through typed host admission; preserve invocation receipts | **done** | `micronaut_host_handlers.py`, `micronaut_server.Engine.invoke_micronaut`, `tests_host/test_micronaut_host_handlers.py` |
+| M78 | Resolve Graph Theory references, bind its bounded read-only query handler, expose local HTTP query API, and guard invocation and authority | **done** | `micronaut/graph_executor.py`, `micronaut_host_handlers.py`, `micronaut_server.Engine.graph_query`, `/api/atomic/call`, `tests_host/test_graph_theory_micronaut.py` |
 
 ---
 
@@ -128,6 +129,28 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:keymaker-identities-not-authority -->
 <!-- milestone:local-profile-is-configuration-not-authority -->
 <!-- milestone:correctness-controlled-execution-and-evidence -->
+<!-- milestone:one-sha256-lock-and-a-measured-gate -->
+## One SHA-256 lock, and a gate that measures its own tree
+
+The whole hash story is now one file, as asked: `verifier.json` holds a SHA-256 over the tracked source, with
+`verifier.py build|verify|update`. No new cryptography, and the attestation ledger is recorded there as an optional
+plugin the lock does not depend on.
+
+Three things had to be made honest while building it:
+
+| problem | fix |
+|---|---|
+| hashing HEAD made the lock stale after **every** commit, including its own | it hashes the working tree; `verify()` refuses when tracked source is uncommitted, naming the files (`dirty_source`) |
+| a lock could certify an uncommitted edit lying on disk | the same refusal covers it - a lock cannot vouch for source it has not seen committed |
+| the evidence gate passed `captured_clean=True` unconditionally - a hardcoded "clean" in the thing whose job is to measure cleanliness | the gate now runs `git status --porcelain -uno`, ignores its own artifacts, and reports `dirty_tree` with the names |
+
+That last one is why this turn ends with **`evidence_satisfied: false`**: this checkout carries an uncommitted edit
+to `micronaut_server.py` that is not mine (88 added lines around `/api/atomic/call`), and the suites pass but the gate
+correctly refuses to certify a dirty tree. The file was left alone; committing or reverting it, then
+`python verifier.py update`, then a capture, is the whole remedy.
+
+---
+
 ## Correctness, controlled execution, and evidence-of-evidence
 
 The security story had been three stories at once. `SECURITY.md` now writes the threat model down - one user on one
@@ -3085,9 +3108,9 @@ Expected failure signatures and what they mean:
 
 **Symptom:** The semantic registry, phase-engine catalog, GML/AIML routes, and CSS bindings describe overlapping capabilities with different lifecycle meanings. A declaration or route was easy to read as proof of an executable handler.
 
-**Fix:** `micronaut_audit.py` inventories each source separately, checks declared edge endpoints and all local file/module references, and reports dispatch claims without promoting them to runtime evidence. The semantic-registry README now calls out its Graph Theory registration claim as a per-entry declaration that requires active-host confirmation; the generic five-agent catalog remains explicitly `declaration_only`. Vendor assets that moved under `data/` are recognized as relocated, while 17 program/module references remain unresolved in this checkout.
+**Fix:** `micronaut_audit.py` inventories each source separately, checks declared edge endpoints and all local file/module references, and reports dispatch claims without promoting them to runtime evidence. It lists exact host-handler binding status for all 13 semantic entries separately from the five generic phase handlers. One semantic entry, Graph Theory, has a host binding; static invocation count remains zero. Vendor assets that moved under `data/` are recognized as relocated. The current audit has 14 unresolved references across other semantic entries; Graph Theory's own program references resolve.
 
-**Verify:** `python micronaut_audit.py` from the `.aiml` root. It reports 13 semantic entries, five route-catalog entries, six declaration-only edges, four CSS bindings, one registered-capability claim, and 17 unresolved local program/module references. Inspect the JSON output for the per-entry details.
+**Verify:** `python micronaut_audit.py` from the `.aiml` root. It reports 13 semantic entries, five route-catalog entries, six declaration-only edges, four CSS bindings, and all unresolved local program/module references. Inspect the JSON output for per-entry details; static status is not runtime invocation evidence.
 
 **If erased:** Registration claims, missing source references, and non-invoked UI bindings can again be confused with handlers that actually ran.
 
@@ -3105,9 +3128,9 @@ Expected failure signatures and what they mean:
 
 **Symptom:** Declared program references could appear implemented when the corresponding modules were absent; a descriptor's `registered: true` could be mistaken for active-host evidence.
 
-**Fix:** The audit resolves each local source/grammar/contract reference against this maintained checkout, recognizes moved vendor assets, and lists unresolved references explicitly. It compares Graph Theory's declared entry points against actual host handler IDs; its current Python program refs remain unresolved and it has no registered host binding in this process. The descriptor's registration claim is therefore not promoted to runtime status.
+**Fix:** The audit resolves each local source/grammar/contract reference against this maintained checkout, recognizes moved vendor assets, and lists unresolved references explicitly. Graph Theory's Python module and entry point resolve to maintained source and a typed host binding. Its descriptor's registration claim remains distinct from invocation evidence; the audit never reports an invocation based on source inspection.
 
-**Verify:** `python micronaut_audit.py`; `python -B -m unittest tests_host.test_micronaut_host_handlers -v` checks unresolved Graph Theory refs and the absence of a Graph Theory host binding.
+**Verify:** `python micronaut_audit.py`; `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_graph_theory_micronaut -v` checks Graph Theory references, binding contract, and invocation separately.
 
 **If erased:** Missing program modules can be represented as registered merely because the JSON descriptor says so.
 
@@ -3115,9 +3138,9 @@ Expected failure signatures and what they mean:
 
 **Symptom:** The semantic Micronaut entries and CSS/AIML routes overlap with host capabilities, but they do not yet have matching handler bindings and XCFE admission.
 
-**State:** Open. The generic phase-engine catalog now has five typed read-only handlers, but these are a separate catalog. The Graph Theory UI route, ADVISOR, CFPC, CODEX, ELIZA, LEARNING, QUESTION_ENGINE and SNOBOL references remain unbound where their source or live host path is absent. Do not infer that the generic handlers satisfy M75.
+**State:** Open. Graph Theory now has a local read-only host handler and bounded HTTP query API. This does not connect the website UI/CSS route or establish production HTTP authentication/deployment. Other semantic/UI routes remain unbound where source or live host paths are absent. The five generic phase-engine handlers remain a separate catalog and do not satisfy M75.
 
-**Verify:** `python micronaut_audit.py`; inspect `phase_engine_registry.host_handler_bindings` separately from `graph_theory` and `css_binding_declarations`.
+**Verify:** `python micronaut_audit.py`; inspect `graph_theory`, `phase_engine_registry.host_handler_bindings`, and `css_binding_declarations` separately. GraphTheory's static `invocation_observed` remains false; runtime receipts are tested through its local HTTP handler.
 
 **If erased:** A safe generic handler binding can be misreported as live dispatch for unrelated UI or semantic agents.
 
@@ -3125,7 +3148,7 @@ Expected failure signatures and what they mean:
 
 **Symptom:** Static declarations could drift or overstate active handler invocation.
 
-**Fix:** Conformance tests require every phase-catalog declaration to have an exact input/output handler binding; they exercise each handler through declared transitions, reject missing capabilities, forged identity/authority, changed payloads, reused tickets, and unadmitted calls. The audit test keeps static invocation status unverified, Graph Theory unbound while its modules are missing, and CSS routes at their current non-invoked status.
+**Fix:** Conformance tests require every phase-catalog declaration to have an exact input/output handler binding; they exercise each handler through declared transitions, reject missing capabilities, forged identity/authority, changed payloads, reused tickets, and unadmitted calls. Graph Theory's separate test covers source resolution, bounded GML query behavior, host policy, HTTP dispatch and authority flags. Static audit still does not claim runtime invocation; CSS routes remain at their current non-invoked status.
 
 **Verify:** `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_micronaut_registry -v`.
 
@@ -3140,3 +3163,13 @@ Expected failure signatures and what they mean:
 **Verify:** `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_micronaut_registry -v`.
 
 **If erased:** The phase-engine registry again becomes a declaration-only display with no enforceable handler or invocation evidence.
+
+### M78 — Graph Theory local handler and query endpoint
+
+**Symptom:** Graph Theory declared source references but had no host handler, while its local query invocation was not reachable through an HTTP route.
+
+**Fix:** `micronaut/graph_executor.py` implements bounded, read-only inventory, stats, match, neighbors and path operations over allowlisted maintained GML. `GraphTheoryHost` binds the declared URI and typed schemas to that executor. The host supplies a read-only capability policy; successful calls return a separate invocation receipt. `micronaut_server.py` exposes `POST /api/atomic/call` for `graph-theory.query` and `graph-theory.match`, plus health reporting. Static audit resolves Graph Theory's references, detects its dispatch call site, and inventories host binding status for all 13 semantic entries without claiming invocation. This local API does not connect the website UI/CSS route, provide production deployment, or implement XCFE admission.
+
+**Verify:** `python -B -m unittest tests_host.test_graph_theory_micronaut tests_host.test_micronaut_host_handlers tests_host.test_micronaut_registry -q`; `python -B tools/query_micronaut_graphs.py stats --graph hypercube_q3`; `python -B micronaut_audit.py`.
+
+**If erased:** Graph Theory returns to a declaration with no registered handler or reachable local host endpoint, and the audit loses its per-entry distinction between semantic declarations, generic handlers, and actual invocation.
