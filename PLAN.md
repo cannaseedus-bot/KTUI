@@ -130,6 +130,43 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:local-profile-is-configuration-not-authority -->
 <!-- milestone:correctness-controlled-execution-and-evidence -->
 <!-- milestone:one-sha256-lock-and-a-measured-gate -->
+<!-- milestone:wo-classifies-a-live-turn -->
+## Wo classifies a live turn: six phases, in contract order
+
+A real host function with a typed contract and no model in the loop. `turn_classifier.classify` returns
+`task_family`, `target_family`, `allowed_targets`, `route_id`, `binding_source`, `candidate_families`, `status`
+and `reason`. A real compose turn now traces all six:
+
+| phase | handler | what it reports |
+|---|---|---|
+| Pop | `phase_routing.route` | the chain verdict |
+| Wo | `turn_classifier.classify` | compose · rule · target `graph.matches` · route `compose.paragraph` |
+| Yax | `compose.retrieve` | considered 1, kept 1 |
+| Sek | `compose.compose` | candidates 1, 66 chars |
+| Ch'en | `compose.verify` | 0 problems |
+| Xul | `compose.summary` | 104 chars emitted |
+
+Three rules the classifier keeps, each with a guard:
+
+- an **explicit command** (`/compose dog`) outranks a pattern rule and says so in `binding_source`;
+- **ambiguity binds nothing**: "what do you know about my dog" reads as `compose` **and** `memory_query`, so both
+  appear as candidates, `status` is `ambiguous`, and `allowed_targets` is empty;
+- a **constrained family publishes no choice**: `memory_query` maps to `uri_binding`, which allows two targets, so
+  no target is published and the reason says Wo does not pick one.
+
+Classification is an observation: `authority: declaration_only`, no capability is produced, and no answer changes
+because of it.
+
+One defect caught immediately: the first wiring classified before the chain, so the trace read `Wo -> Pop`. Pop
+recognises and Wo binds, so the call moved after the route verdict, and the guard compares the exact order rather
+than a set.
+
+Still pending, as the review says: the **model streaming path** produces no Sek/Ch'en/Xul observations. Those must
+wrap the real response processing, validation and emission - streaming completion is not verification, and a model
+that finishes streaming can still produce a refused result.
+
+---
+
 ## One SHA-256 lock, and a gate that measures its own tree
 
 The whole hash story is now one file, as asked: `verifier.json` holds a SHA-256 over the tracked source, with
