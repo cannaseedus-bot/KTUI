@@ -334,9 +334,8 @@ gml_validate   : col_a / assembled STRUCTURALLY_VALIDATED · category OUT_OF_SCO
 gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (plan only)
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
-host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 54 tests, OK (M3-M15: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 3)
+host guards    : 55 tests, OK (M3-M15: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 
