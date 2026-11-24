@@ -56,9 +56,11 @@ def availability(artifact: dict) -> dict:
     """Can this artifact be re-scored? Only if the full replies were kept."""
     replies = replies_of(artifact)
     full = [key for key, entry in replies.items() if entry["text"]]
-    return dict(total=len(replies), full=len(full),
-                rescoreable=bool(full) and len(full) == len(replies),
-                missing=len(replies) - len(full))
+    # Partial availability is reported, not fatal: an error cell has no reply to score, and that must not
+    # block re-scoring the cells that do.
+    return dict(total=len(replies), full=len(full), missing=len(replies) - len(full),
+                all_present=bool(full) and len(full) == len(replies),
+                rescoreable=bool(full))
 
 
 def rescore(artifact_path: Path, corpus: dict, *, write: bool = False) -> dict:
@@ -79,8 +81,12 @@ def rescore(artifact_path: Path, corpus: dict, *, write: bool = False) -> dict:
     case = corpus["by_id"].get(artifact.get("case"))
     if case is None:
         return dict(base, ok=False, refused="case_not_in_corpus", detail=str(artifact.get("case")))
-    scores = []
+    scores, skipped = [], []
     for (model, condition, run), entry in sorted(replies_of(artifact).items()):
+        if not entry["text"]:
+            skipped.append(dict(model=model, condition=condition, run=run,
+                                reason="no reply was stored (the call failed or was cancelled)"))
+            continue
         reply = dict(text=entry["text"], model=model, latency_ms=None, completion_tokens=None)
         score = evaluation_harness.score_case(case, reply)
         scores.append(dict(model=model, condition=condition, run=run,
@@ -90,7 +96,7 @@ def rescore(artifact_path: Path, corpus: dict, *, write: bool = False) -> dict:
                            edges_ok=score["edges_ok"], phase_ok=score.get("phase_ok"),
                            targets_ok=score.get("targets_ok"), errors=score["errors"]))
     derived = dict(base, ok=True, refused=None, case=artifact.get("case"), scores=scores,
-                   summary=_summary(scores))
+                   skipped=skipped, scored=len(scores), summary=_summary(scores))
     if write:
         out = DATA / f"{artifact_path.stem}.rescored.json"
         out.write_text(json.dumps(derived, indent=2) + "\n", encoding="utf-8")

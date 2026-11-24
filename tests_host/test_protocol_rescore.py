@@ -152,5 +152,28 @@ class ShippedArtifactTests(unittest.TestCase):
         self.assertTrue(report["summary"])
 
 
+class PartialArtifactTests(unittest.TestCase):
+    def test_a_failed_call_is_skipped_not_fatal(self):
+        record = dict(case="chain-01", results={"stub": {"baseline": {"cells": [
+            dict(run=0, reply_text=json.dumps(GOOD)),
+            dict(run=1, reply_text="", error="TimeoutError: too slow")]}}})
+        path = Path(tempfile.mkdtemp()) / "partial.json"
+        path.write_text(json.dumps(record), encoding="utf-8")
+        report = rescore.rescore(path, evaluation_harness.load())
+        self.assertTrue(report["ok"], report.get("refused"))
+        self.assertEqual(report["scored"], 1)
+        self.assertEqual(len(report["skipped"]), 1)
+        self.assertIn("failed or was cancelled", report["skipped"][0]["reason"])
+
+    def test_every_reply_missing_still_refuses(self):
+        record = dict(case="chain-01", results={"stub": {"baseline": {"cells": [
+            dict(run=0, reply_text="", error="TimeoutError")]}}})
+        path = Path(tempfile.mkdtemp()) / "empty.json"
+        path.write_text(json.dumps(record), encoding="utf-8")
+        report = rescore.rescore(path, evaluation_harness.load())
+        self.assertFalse(report["ok"])
+        self.assertEqual(report["refused"], "replies_unavailable")
+
+
 if __name__ == "__main__":
     unittest.main()

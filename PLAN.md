@@ -236,9 +236,34 @@ own after seeing the answer:
 That is the "don't promote C globally" decision written as a binding rather than a comment: C applies where
 it was measured to help, B everywhere else, and the fallback is the plain baseline.
 
-**In flight, not claimed:** the 27-cell re-execution with full replies and per-check cells is running as a
-labelled **new execution** (the old artifacts were unrescoreable). Its artifact is not part of this commit; if
-it completes it becomes the first protocol run that can be re-scored offline without new inference.
+**The re-execution completed** - a labelled new run, since the old artifacts were unrescoreable. It is
+**30 cells, not 27**, because the condition set now includes `contract_context`: 3 models × 3 conditions ×
+3 repeats. Per-check, with full replies kept:
+
+| model | condition | complete | graph | phase | targets | verdicts |
+|---|---|---|---|---|---|---|
+| worker | baseline | 0/3 | 0 | 3 | **3** | `missing_operators` ×3 |
+| worker | contract | 0/3 | **3** | 3 | 0 | `exact` ×3 |
+| worker | contract_context | 0/3 | 0 | 3 | 1 | `extra_operators` ×2, `missing_operators` ×1 |
+| planner | baseline | 0/3 | 3 | 3 | 0 | `exact` ×3 |
+| planner | contract | 0/3 | 3 | 3 | 0 | `exact` ×3 |
+| planner | contract_context | 0/3 | 3 | 3 | 0 | `exact` ×3 |
+| advisor | baseline | 0/3 | 3 | 3 | 0 | `exact` ×3 |
+| advisor | contract / contract_context | - | - | - | - | **6 calls produced no reply at all** |
+
+Three readings, and they are consistent with the earlier groups rather than replacing them:
+
+**Target binding blocks five of the seven scored groups** - the graph and phase are right and the target is
+not, which is M58's finding reproduced with three repeats and per-check cells.
+
+**The contract moves the failure rather than removing it.** For gemma it trades `missing_operators` (baseline)
+for `exact` graphs with no targets (contract) - a different failure, not a smaller one.
+
+**The long envelope still breaks the 20B completely**: six advisor calls with `contract` or
+`contract_context` returned nothing scorable, which is the M57 parsing result confirmed at three repeats.
+
+And the artifact is now **re-scoreable offline**: `rescore.py` scores 21 of 30 cells and lists the 6 missing
+replies as `skipped` with the reason, so a future scorer can re-derive every number without new inference.
 
 ---
 
