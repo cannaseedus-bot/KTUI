@@ -123,7 +123,7 @@
     "evaluation/scoring-contract.json": "40ccd709ebbb83ffa649d3d867f232ba0494ed33e77f13904565bfef97473968",
     "evaluation/task-sessions.json": "eb902d19a8b552bcf6e8a8114ce6d0f2f8ffcddcbd2fa8ca0bd4e14bf899fb19",
     "evaluation_harness.py": "df294a6e450ad009d5f0bb3547307e899d7ab059939443385fde4379a5d7d787",
-    "evidence-suites.json": "e0cb828d1345b409decb5643714977674678fab62d9bafc91a0e5f2e10270877",
+    "evidence-suites.json": "d260a9aadbc80b5256de7700818b86bbff25e778119854dfa91331c9bd5d45e4",
     "evidence_gate.py": "cf1f5273ec87f0f75a01512882db6cf8c66c3d9f305fc3b7c354ce798e40d5e4",
     "evidence_record.py": "7f0142a220bdac6d6a3757ae57ef67ca710aa3d0dfe38eaf53ef31281e97b6dc",
     "functions.py": "55aac70a851903f795c32046a270d6429828ab1aa9941a066c51e3a028f7c116",
@@ -429,16 +429,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "10aadec990e5e82b7154565043e5779865198f46a115e12ed8a786e6dd2037af",
+  "hash": "7a16bb873955672d0662c0c9303a65d64b1f9839b2950e5d96e6295cde435a00",
   "locked": true,
-  "note": "re-lock after the PLAN section",
+  "note": "lock for the MCP host (M92)",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
-    "count": 409,
-    "hash": "88b331525728091fc917c29791307fac51ce41e6cb8b3a9beccbe816f79c511f",
-    "updated_at": "2026-11-24T22:48:03Z"
+    "count": 410,
+    "hash": "10aadec990e5e82b7154565043e5779865198f46a115e12ed8a786e6dd2037af",
+    "updated_at": "2026-11-24T22:50:42Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T22:50:42Z"
+  "updated_at": "2026-11-24T23:06:00Z"
 }
