@@ -117,6 +117,39 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+## One observed idle transition
+
+Until now HOT -> COLD was a tested mechanism: the projection had only ever reported COLD from a fake host. This
+runs one real transition through the registered launcher on a spare port, and the artifact is the observation.
+
+```
+    31 ms  before             cold, no listener
+   547 ms  wake               hot, pid 22952, wake 516 ms
+   547 ms  lease              leases 1
+   547 ms  sweep_while_leased no stop, kept because leased
+   547 ms  release            leases 0
+  9687 ms  sweep_after_idle   stopped reason idle, pid 22952, stop_ms 125
+  9687 ms  after              cold, no listener
+```
+
+**Two defects found only by doing it for real:**
+
+1. The default launcher did not pass `--keep-alive`, so `task-engine` exited after its health check and took the
+   server with it. The first observation "succeeded" with reason `already_stopped` - which is the server dying,
+   not the sweep working. The launcher keeps it alive now, and the observation **refuses to count a stop the
+   sweep did not perform**: `ok` requires a reason of `idle`, and a guard reads the committed artifact to keep
+   that true.
+2. An unmatched model name streamed with **no lease and no record**. `diagnose_backend()` now names it
+   `unmanaged_backend`, and the app counts `unmanaged_streams` while keeping the last diagnosis.
+
+The sweep also behaves correctly under contention in the same run: a sweep while a lease is held keeps the
+backend (`leased`) and leaves it HOT.
+
+Also worth recording against an earlier note: the **evidence gate issue is repaired** (M72). `evidence-suites.json`
+requires package, harness and host guards, and this commit's evidence shows all three green at the tested SHA.
+
+---
+
 ## Three metrics, and the A/C/E/CE comparison
 
 `model_graph_exact`, `model_bound_complete` and `runtime_bound_complete` are scored separately so a host-supplied
