@@ -1,7 +1,7 @@
 {
   "schema": "kuhul://evidence/gate/v1",
-  "captured_at": "2026-11-24T20:03:23Z",
-  "tested_commit": "9a6c0faaf6793df7eadae86380dc33268060957b",
+  "captured_at": "2026-11-24T20:14:55Z",
+  "tested_commit": "14cafe67bc96abd68fc4ac67b517829a4c309742",
   "suites": {
     "package": {
       "suite": "package",
@@ -12,8 +12,8 @@
       "failed": false,
       "minimum_tests": 139,
       "enough_tests": true,
-      "duration_ms": 1516,
-      "output_tail": "KE POP PHASE ['phases\\\\pop.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS SEK PHASE ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THE SEK OF * ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THETA 3 ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT DOES THE SEK GLYPH MEAN ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n\n...........................................................................................................................................\n----------------------------------------------------------------------\nRan 139 tests in 0.861s\n\nOK\n"
+      "duration_ms": 1422,
+      "output_tail": "KE POP PHASE ['phases\\\\pop.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS SEK PHASE ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THE SEK OF * ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THETA 3 ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT DOES THE SEK GLYPH MEAN ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n\n...........................................................................................................................................\n----------------------------------------------------------------------\nRan 139 tests in 0.826s\n\nOK\n"
     },
     "harness": {
       "suite": "harness",
@@ -24,20 +24,20 @@
       "failed": false,
       "minimum_tests": 14,
       "enough_tests": true,
-      "duration_ms": 187,
-      "output_tail": "\n..............\n----------------------------------------------------------------------\nRan 14 tests in 0.003s\n\nOK\n"
+      "duration_ms": 172,
+      "output_tail": "\n..............\n----------------------------------------------------------------------\nRan 14 tests in 0.004s\n\nOK\n"
     },
     "host_guards": {
       "suite": "host_guards",
       "executed": true,
       "exit_code": 0,
-      "tests": 739,
+      "tests": 752,
       "ok": true,
       "failed": false,
-      "minimum_tests": 739,
+      "minimum_tests": 752,
       "enough_tests": true,
-      "duration_ms": 114766,
-      "output_tail": "RROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n.........PARSE ERROR: Unexpected text inside <random> element (line 3383, column 0)\nPARSE ERROR: Unexpected <category> tag (line 18, column 0)\nPARSE ERROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n........\n----------------------------------------------------------------------\nRan 739 tests in 109.513s\n\nOK\n"
+      "duration_ms": 116531,
+      "output_tail": "RROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n.........PARSE ERROR: Unexpected text inside <random> element (line 3383, column 0)\nPARSE ERROR: Unexpected <category> tag (line 18, column 0)\nPARSE ERROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n........\n----------------------------------------------------------------------\nRan 752 tests in 111.412s\n\nOK\n"
     }
   },
   "verdict": {
@@ -62,8 +62,8 @@
       "harness",
       "host_guards"
     ],
-    "tested_commit": "9a6c0faaf6793df7eadae86380dc33268060957b",
-    "head": "9a6c0faaf6793df7eadae86380dc33268060957b",
+    "tested_commit": "14cafe67bc96abd68fc4ac67b517829a4c309742",
+    "head": "14cafe67bc96abd68fc4ac67b517829a4c309742",
     "captured_clean": true,
     "problems": [],
     "evidence_satisfied": true,
