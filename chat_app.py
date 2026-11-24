@@ -63,14 +63,19 @@ try:  # append-only user memory: JSONL history, GML projection, writes behind a 
     import user_memory
 except ImportError:  # pragma: no cover
     user_memory = None
-try:  # commit / push / build, on command and behind a grant
+try:  # commit / push / build / clone, on command and behind a grant
     import gitops
 except ImportError:  # pragma: no cover
     gitops = None
+try:  # the reachable loopback endpoint: micronaut://v1/chat
+    import micronaut_server
+except ImportError:  # pragma: no cover
+    micronaut_server = None
 import math
 import tempfile
 import shlex
 import subprocess
+import threading
 import shutil
 import requests
 import webbrowser
@@ -714,6 +719,8 @@ class ChatApp(App):
         self.memory_write = False
         # Repo writes (add/commit/push) are a separate grant from file writes: /allow git.
         self.git_write = False
+        # The loopback endpoint, when the human starts one (/serve).
+        self.server = None
         self.daemon = self.make_daemon()
 
     def make_daemon(self):
@@ -1084,6 +1091,40 @@ class ChatApp(App):
             return f"Recorded `{subject}.{predicate}` = **{value}** for **{self.user_id}** (`{record['event_id']}`)."
         return f"unknown memory operation `{verb}`"
 
+    def action_serve(self, argument: str = "") -> None:
+        """Start or stop the loopback endpoint. External clients get local answers, nothing more."""
+        if micronaut_server is None:
+            self.say_system("the server module is unavailable")
+            return
+        word = (argument or "").strip().lower()
+        if word in {"off", "stop", "no"}:
+            if self.server is not None:
+                self.server.shutdown()
+                self.server.server_close()
+                self.server = None
+                self.say_system("Endpoint stopped.")
+            else:
+                self.say_system("No endpoint was running.")
+            return
+        if self.server is not None:
+            host, bound = self.server.server_address[:2]
+            self.say_system(f"Already serving at {micronaut_server.transport(bound)}")
+            return
+        port = int(word) if word.isdigit() else micronaut_server.DEFAULT_PORT
+        try:
+            engine = micronaut_server.Engine(app=self)
+            self.server = micronaut_server.serve(port, block=False, engine=engine)
+        except OSError as error:
+            self.say_system(f"**Could not bind port {port}:** {error}")
+            return
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        host, bound = self.server.server_address[:2]
+        self.say_system(
+            f"Serving on **{micronaut_server.transport(bound)}** (logical `{micronaut_server.uri()}`).\n\n"
+            "External clients get local answers only: no model calls, no memory writes, no git. "
+            "`/serve off` stops it."
+        )
+
     def action_clone(self, argument: str = "") -> None:
         """Clone an https repo into the workspace. It writes files, so it needs `/allow`."""
         if gitops is None:
@@ -1329,6 +1370,7 @@ class ChatApp(App):
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
+        commands["serve"] = ("Serve: loopback endpoint for micronaut://v1/chat", self.action_serve, "Local answers only; no model, no writes")
         commands["clone"] = ("Git: clone an https repo into the workspace", self.action_clone, "Writes files: needs `/allow` first")
         commands["build"] = ("Build: compile the tree and run the package suite", self.action_build, "Read-only; no commit, no push")
         commands["commit"] = ("Git: commit the working tree", partial(self.action_gitop, "commit"), "Needs `/allow git` first")
@@ -1486,6 +1528,9 @@ class ChatApp(App):
             return
         if name in {"gml", "tensor"}:
             self.action_gml()
+            return
+        if name == "serve":
+            self.action_serve(argument or "")
             return
         if name == "clone":
             self.action_clone(argument or "")
@@ -2078,6 +2123,27 @@ class ChatApp(App):
         except Exception as e:
             resp.update(f"**LLM Error:** {e}")
 
-if __name__ == "__main__":
+def _serve_cli():
+    """`python chat_app.py --serve 8756` runs the TUI and the loopback endpoint together."""
+    import sys as _sys
+
+    argv = list(_sys.argv)
+    port = micronaut_server.DEFAULT_PORT if micronaut_server else 8756
+    if "--serve" in argv:
+        index = argv.index("--serve")
+        argv.pop(index)
+        if index < len(argv) and argv[index].isdigit():
+            port = int(argv.pop(index))
+        _sys.argv = argv
     app = ChatApp()
+    if micronaut_server is not None:
+        engine = micronaut_server.Engine(app=app)
+        app.server = micronaut_server.serve(port, block=False, engine=engine)
+        threading.Thread(target=app.server.serve_forever, daemon=True).start()
+        host, bound = app.server.server_address[:2]
+        print(f"{micronaut_server.uri()} -> http://{host}:{bound}/v1/chat", flush=True)
     app.run()
+
+
+if __name__ == "__main__":
+    _serve_cli()

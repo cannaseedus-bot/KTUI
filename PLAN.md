@@ -55,6 +55,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M16 | Tool calls run for real; the fast path refuses instead of fabricating | **guard** | `chat_app.py` (`safe_math`, `fast_path_outcome`, utf-8 subprocess decode), `tests_host/test_tools.py::M16…` |
 | M17 | Commit, push and build on command, with git's own output or error; model tools stay read-only | **guard** | `gitops.py`, `gitops.aiml`, `chat_app.py` (`admit_gitop`), `tests_host/test_gitops.py::M17…` |
 | M18 | Clone a repo: https only, contained in the workspace, behind the write grant | **guard** | `gitops.py` (`clone`, `validate_remote`, `validate_destination`), `chat_app.py` (`clone_repo`), `tests_host/test_clone.py::M18…` |
+| M19 | Reachable endpoint: `micronaut://v1/chat` over loopback, local answers only | **guard** | `micronaut_server.py`, `chat_app.py` (`/serve`, `--serve`), `start.bat serve`, `tests_host/test_server.py::M19…` |
 
 ---
 
@@ -146,6 +147,42 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Reachable endpoint (M19)
+
+The daemon answers on a port. The scheme is logical - nothing resolves `micronaut://` - so the honest
+address is both:
+
+```
+micronaut://v1/chat   ==   http://127.0.0.1:8756/v1/chat
+
+POST /v1/chat   {"message": "who are you"}   -> {"kind": "aiml", "reply": "...", "phases": [...]}
+GET  /v1/health                               -> {"ok": true, "model": "...", "phases": [...]}
+GET  /v1/models                               -> {"models": [...], "default": "..."}
+GET  /v1/phases                               -> the six-phase trace of the last turn
+GET  /v1/identity                             -> the daemon's self-description
+```
+
+Start it with `/serve [port]` in the TUI, `python chat_app.py --serve 8756`, `python
+micronaut_server.py --port 8756`, or `start.bat serve [port]` (the bat's other modes leave the port
+closed). It binds **127.0.0.1 only**; binding elsewhere prints a warning rather than pretending it is
+safe.
+
+**A network client can only read.** The endpoint answers from the local pipeline - AIML banks, the
+six-phase daemon, memory reads, identity, git reads - and it never:
+
+- calls the model: an unanswerable message returns `{"kind": "deferred", "reply": null, "note": "no
+  local answer - the model is not invoked over the network"}`;
+- writes memory: `my dogs name is max` comes back `refused` with `/allow memory`, and the event count
+  is asserted unchanged;
+- commits, pushes, clones or writes files: `commit this` returns `refused` with `/allow git`, and
+  `/v1/health` reports `writes: false`.
+
+Protocol errors are real too: an empty or malformed body is `400`, an unknown path `404`, a
+non-GET/POST method `405`, and a body over 64 KB is `413`. Requests are serialised by one lock around
+the pipeline so two clients cannot interleave the daemon's `last_turn`.
 
 ---
 
@@ -428,7 +465,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 84 tests, OK (M3-M18: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11)
+host guards    : 94 tests, OK (M3-M19: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

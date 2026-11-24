@@ -31,6 +31,10 @@ if /i "%~1"=="advisor" set "MODE=advisor"
 if /i "%~1"=="pick" set "MODE=pick"
 if /i "%~1"=="default" set "MODE=default"
 if /i "%~1"=="keys" set "MODE=keys"
+set "SERVE="
+if /i "%~1"=="serve" set "SERVE=1"
+if defined SERVE if not "%~2"=="" set "SERVE_PORT=%~2"
+if defined SERVE if not defined SERVE_PORT set "SERVE_PORT=8756"
 
 where python >nul 2>&1 || goto :nopython
 
@@ -39,7 +43,7 @@ if /i "%MODE%"=="default" goto :set_default
 if /i "%MODE%"=="keys" goto :show_keys
 
 rem --- which model: the argument, else the menu (pick), else gpt-oss.toml's default ---------------
-set "MODEL=%~1"
+if not defined SERVE set "MODEL=%~1"
 if /i "%MODE%"=="pick" goto :pick_model
 if not defined MODEL for /f "usebackq delims=" %%M in (`python -c "import tomllib;print(tomllib.load(open('gpt-oss.toml','rb'))['server']['default_model'])" 2^>nul`) do set "MODEL=%%M"
 if not defined MODEL set "MODEL=gpt-oss-20b"
@@ -129,7 +133,12 @@ set "OWNED=0"
 echo [start] local model: %MODEL%
 echo [start] in the app: /models  /model alias  /advisor openai  /advisor deepseek  /local
 echo.
-python chat_app.py
+if defined SERVE (
+  echo [start] endpoint: micronaut://v1/chat  -^>  http://127.0.0.1:%SERVE_PORT%/v1/chat
+  python chat_app.py --serve %SERVE_PORT%
+) else (
+  python chat_app.py
+)
 echo.
 if "%OWNED%"=="1" (
     echo [start] chat closed. llama-server is still listening in its own window.
