@@ -767,6 +767,9 @@ class ChatApp(App):
         identity = APP_ROOT / "identity.aiml"
         if identity.is_file():
             kernel.learn(str(identity))
+        smalltalk = APP_ROOT / "smalltalk.aiml"
+        if smalltalk.is_file():
+            kernel.learn(str(smalltalk))
         override = APP_ROOT / "_override.aiml"
         if override.is_file():
             kernel.learn(str(override))
@@ -1781,7 +1784,9 @@ class ChatApp(App):
         if turn is None:
             return "No local match → delegating to the model."
         trace = dict(turn.phases)
-        why = trace.get("Ch'en") or trace.get("Yax") or "no local match"
+        why = (trace.get("Ch'en") or trace.get("Yax") or "").strip()
+        if not why or why == "nothing to admit":
+            why = "the AIML banks had no reply for that"
         return f"No local answer → delegating to the model ({why})."
 
     @work(exclusive=True)

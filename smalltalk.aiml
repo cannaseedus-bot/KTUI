@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Small talk, answered from the bank so a greeting costs nothing and needs no model.
+
+  These are deliberately short. Anything that needs state (models, memory, phases, workspace) is a
+  command in the host - `/models`, `/memory`, `/daemon`, `/workspace` - and this bank points there
+  rather than inventing an answer.
+-->
+<aiml version="2.0">
+
+  <category><pattern>HELLO</pattern><template>Hello. I am the local daemon bot - ask me about this repo, or type "who are you" for the full introduction.</template></category>
+  <category><pattern>HI</pattern><template><srai>HELLO</srai></template></category>
+  <category><pattern>HEY</pattern><template><srai>HELLO</srai></template></category>
+  <category><pattern>HI THERE</pattern><template><srai>HELLO</srai></template></category>
+  <category><pattern>HELLO THERE</pattern><template><srai>HELLO</srai></template></category>
+  <category><pattern>YO</pattern><template><srai>HELLO</srai></template></category>
+  <category><pattern>GOOD MORNING</pattern><template>Good morning. What are we looking at?</template></category>
+  <category><pattern>GOOD AFTERNOON</pattern><template>Good afternoon. What are we looking at?</template></category>
+  <category><pattern>GOOD EVENING</pattern><template>Good evening. What are we looking at?</template></category>
+
+  <category><pattern>HOW ARE YOU</pattern><template>Running fine: all six phases, local tools first. Ask "who are you" for the details.</template></category>
+  <category><pattern>HOW ARE YOU DOING</pattern><template><srai>HOW ARE YOU</srai></template></category>
+  <category><pattern>HOW IS IT GOING</pattern><template><srai>HOW ARE YOU</srai></template></category>
+  <category><pattern>HOW IS EVERYTHING</pattern><template><srai>HOW ARE YOU</srai></template></category>
+  <category><pattern>WHATS UP</pattern><template><srai>HOW ARE YOU</srai></template></category>
+
+  <category><pattern>THANKS</pattern><template>Any time.</template></category>
+  <category><pattern>THANK YOU</pattern><template><srai>THANKS</srai></template></category>
+  <category><pattern>CHEERS</pattern><template><srai>THANKS</srai></template></category>
+  <category><pattern>NICE TO MEET YOU</pattern><template>Likewise. What are we working on?</template></category>
+
+  <category><pattern>BYE</pattern><template>Goodbye - the session log keeps the conversation if you want to resume it.</template></category>
+  <category><pattern>GOODBYE</pattern><template><srai>BYE</srai></template></category>
+  <category><pattern>GOOD NIGHT</pattern><template><srai>BYE</srai></template></category>
+  <category><pattern>SEE YOU</pattern><template><srai>BYE</srai></template></category>
+
+  <category><pattern>WHAT CAN YOU DO</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHAT CAN YOU HELP ME WITH</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>WHAT ARE YOUR CAPABILITIES</pattern><template><srai>WHO ARE YOU</srai></template></category>
+  <category><pattern>HELP</pattern><template><srai>WHO ARE YOU</srai></template></category>
+
+  <category><pattern>OK</pattern><template>Understood.</template></category>
+  <category><pattern>OKAY</pattern><template><srai>OK</srai></template></category>
+  <category><pattern>YES</pattern><template>Good.</template></category>
+  <category><pattern>NO</pattern><template>Understood - nothing changed.</template></category>
+
+</aiml>

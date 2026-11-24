@@ -160,8 +160,13 @@ Reported symptom: *"chat is going straight to model first."* The ordering was al
    `KeyError` in the renderer; it is now a `.get(kind, "Local")` map covering every kind.
 
 Handoffs that remain are real ones, and they now say so: before streaming, the chat mounts
-`No local answer → delegating to the model (<phase reason>)`. A genuine no-match still reaches the
-model - the goal is to know which turns are which, not to answer everything locally.
+`No local answer → delegating to the model (<phase reason>)`, with "the AIML banks had no reply for
+that" when no proposal existed at all. A genuine no-match still reaches the model - the goal is to
+know which turns are which, not to answer everything locally.
+
+**Small talk is a bank, not a model call.** `smalltalk.aiml` answers greetings, thanks, goodbyes and
+"How can you help" locally; capability questions route to the identity answer. A greeting therefore
+costs no round trip and prints no routing notice.
 
 The guards drive the app end to end (type, press enter, assert a Response appears) rather than only
 calling `local_answer`, because the crash lived in the renderer, not in the router.

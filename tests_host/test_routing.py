@@ -62,6 +62,23 @@ class M15RoutingHonesty(unittest.TestCase):
             self.assertGreaterEqual(count, 2, f"{phrase} produced no prompt+response pair ({kinds})")
             self.assertIn("Response", kinds, f"{phrase} rendered no Response ({kinds})")
 
+    def test_greetings_are_answered_locally(self):
+        """A greeting must not cost a model round trip, and must not print a routing notice."""
+        async def ask():
+            session_log.SESSIONS_DIR = Path(tempfile.mkdtemp())
+            user_memory.EVENTS = Path(tempfile.mkdtemp()) / "user.events.jsonl"
+            app = chat_app.ChatApp()
+            async with app.run_test(size=(120, 46)) as pilot:
+                await pilot.pause()
+                return [(phrase, app.local_answer(phrase))
+                        for phrase in ("hello", "hi", "thanks", "bye", "how are you")]
+
+        for phrase, local in asyncio.run(ask()):
+            self.assertIsNotNone(local, f"{phrase!r} fell through to the model")
+            kind, body = local
+            self.assertEqual(kind, "aiml", f"{phrase!r} was not answered from the bank")
+            self.assertTrue(str(body).strip(), f"{phrase!r} produced an empty answer")
+
     def test_unknown_phrase_reaches_the_model_with_a_reason(self):
         async def check():
             session_log.SESSIONS_DIR = Path(tempfile.mkdtemp())
