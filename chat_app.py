@@ -109,6 +109,10 @@ try:  # cheap staleness hint: the poll skips a rebuild when nothing bumped
     import runtime_signals
 except ImportError:  # pragma: no cover
     runtime_signals = None
+try:  # observed phase events: what the host did, never what a model claimed
+    import phase_events
+except ImportError:  # pragma: no cover
+    phase_events = None
 import math
 import tempfile
 import shlex
@@ -1137,7 +1141,8 @@ class ChatApp(App):
             return None
         try:
             verdict = phase_routing.route(text, granted=self.granted_capabilities(),
-                                          context={"user": self.user_id})
+                                          context={"user": self.user_id},
+                                          request_id=getattr(self, "request_id", None))
         except Exception as error:  # a broken chain must not take the turn down
             self.last_routing = dict(action="fallback", reason=f"chain unavailable: {error}")
             return self.last_routing
@@ -1493,6 +1498,10 @@ class ChatApp(App):
         report = evidence_record.verify()
         self.say_system(f"Evidence log · {len(rows)} record(s) · chain "
                         f"{'verified' if report['ok'] else 'BROKEN'} · {evidence_record.LOG}")
+        if phase_events is not None:
+            trace = phase_events.observe(self.request_id or "")
+            self.say_system(phase_events.summary(trace) +
+                            ("" if trace.get("observed") else " · no phase events were observed"))
 
     def action_memory(self) -> None:
         self.say_system(self.memory_summary())

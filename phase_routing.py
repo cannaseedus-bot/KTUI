@@ -43,44 +43,68 @@ def capability_class(capability: str) -> str:
     return "read"
 
 
+def _observe(event: str, phase: str, request_id: str | None, **detail) -> None:
+    """Emit a phase observation only when a request id was supplied: nothing is fabricated."""
+    if not request_id:
+        return
+    try:
+        import phase_events
+        phase_events.emit(request_id, event, phase=phase, source="host",
+                          detail=detail or None)
+    except Exception:
+        return
+
+
 def directive_verb(directive: str) -> str:
     return str(directive or "").strip().split(" ", 1)[0].upper()
 
 
 def route(text: str, *, granted: set | None = None, context: dict | None = None,
-          folder: Path | None = None) -> dict:
-    """Resolve the chain and decide: chain, fallback or refuse - with the reason attached."""
+          folder: Path | None = None, request_id: str | None = None) -> dict:
+    """Resolve the chain and decide: chain, fallback or refuse - with the reason attached.
+
+    When a `request_id` is supplied the host records what it actually did: enter Pop, resolve, exit Pop.
+    Without one nothing is emitted, because an observation nobody asked for is an invention.
+    """
     granted = set(GRANTED_CAPABILITIES if granted is None else granted)
-    kwargs = dict(context=context or {})
-    if folder is not None:
-        kwargs["folder"] = folder
-    plan = phase_chain.resolve(text, **kwargs)
-    closure = plan.get("closure") or {}
-    required = list(closure.get("capabilities") or [])
-    missing = [capability for capability in required if capability not in granted]
-    verdict = dict(schema="kuhul.routing/1", input=str(text or ""), plan=plan,
-                   closure=closure.get("kind"), directive=closure.get("directive"),
-                   required=required, missing=missing, granted=sorted(granted),
-                   authority="declaration_only", execution=False, mutation=False)
+    _observe("phase_enter", "Pop", request_id, boundary="phase_chain")
+    ok = True
+    try:
+        kwargs = dict(context=context or {})
+        if folder is not None:
+            kwargs["folder"] = folder
+        plan = phase_chain.resolve(text, **kwargs)
+        closure = plan.get("closure") or {}
+        required = list(closure.get("capabilities") or [])
+        missing = [capability for capability in required if capability not in granted]
+        verdict = dict(schema="kuhul.routing/1", input=str(text or ""), plan=plan,
+                       closure=closure.get("kind"), directive=closure.get("directive"),
+                       required=required, missing=missing, granted=sorted(granted),
+                       authority="declaration_only", execution=False, mutation=False)
 
-    if closure.get("kind") == "none":
+        if closure.get("kind") == "none":
+            return dict(verdict, action="fallback",
+                        reason="no chain binding matched; the answer path handles it")
+
+        verb = directive_verb(closure.get("directive"))
+        execution_class = verb in EXECUTION_VERBS or any(capability_class(c) == "execution"
+                                                         for c in required)
+        if not missing:
+            return dict(verdict, action="chain",
+                        reason=("the plan is consistent with this session's grants; the host proceeds"
+                                if not execution_class else
+                                "the required grant is present for this exact scope; the host proceeds"))
+        if execution_class:
+            return dict(verdict, action="refuse",
+                        reason=(f"{verb or 'execution'} requires {', '.join(missing)}; no fallback runs an "
+                                "operation that a requires_grant declaration exists to block"))
         return dict(verdict, action="fallback",
-                    reason="no chain binding matched; the answer path handles it")
-
-    verb = directive_verb(closure.get("directive"))
-    execution_class = verb in EXECUTION_VERBS or any(capability_class(c) == "execution"
-                                                     for c in required)
-    if not missing:
-        return dict(verdict, action="chain",
-                    reason=("the plan is consistent with this session's grants; the host proceeds"
-                            if not execution_class else
-                            "the required grant is present for this exact scope; the host proceeds"))
-    if execution_class:
-        return dict(verdict, action="refuse",
-                    reason=(f"{verb or 'execution'} requires {', '.join(missing)}; no fallback runs an "
-                            "operation that a requires_grant declaration exists to block"))
-    return dict(verdict, action="fallback",
-                reason=f"read-only capability unavailable ({', '.join(missing)}); the answer path runs")
+                    reason=f"read-only capability unavailable ({', '.join(missing)}); the answer path runs")
+    except Exception:
+        ok = False
+        raise
+    finally:
+        _observe("phase_exit", "Pop", request_id, boundary="phase_chain", ok=ok)
 
 
 def summary(verdict: dict) -> str:

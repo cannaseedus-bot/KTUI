@@ -1,0 +1,145 @@
+"""M73: the smallest honest phase trace - host observations, four families, no inference.
+
+The rule under test: a model returning `{"phase": "Sek"}` is not evidence that Sek executed. Events come only
+from the host, only where something happened, and an incomplete trace stays incomplete.
+"""
+import sys
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+import phase_events  # noqa: E402
+import phase_routing  # noqa: E402
+
+
+class EventTests(unittest.TestCase):
+    def setUp(self):
+        phase_events.reset()
+
+    def test_an_event_carries_its_provenance(self):
+        record = phase_events.emit("turn-1", "phase_enter", phase="Sek")
+        self.assertEqual(record["schema"], "kuhul://phase-event/v1")
+        self.assertEqual(record["authority"], "observed")
+        self.assertEqual(record["source"], "host")
+        self.assertEqual(record["phase"], "Sek")
+        self.assertEqual(record["sequence"], 1)
+        self.assertIsInstance(record["monotonic"], float)
+
+    def test_an_unregistered_phase_is_refused(self):
+        with self.assertRaises(phase_events.EventError) as raised:
+            phase_events.emit("turn-1", "phase_enter", phase="Zap")
+        self.assertIn("Zap", str(raised.exception))
+
+    def test_an_unknown_event_family_is_refused(self):
+        with self.assertRaises(phase_events.EventError):
+            phase_events.emit("turn-1", "phase_teleported", phase="Sek")
+
+    def test_an_event_without_a_request_id_is_refused(self):
+        with self.assertRaises(phase_events.EventError):
+            phase_events.emit("", "phase_enter", phase="Sek")
+
+    def test_a_phase_cannot_exit_before_it_enters(self):
+        with self.assertRaises(phase_events.EventError):
+            phase_events.emit("turn-1", "phase_exit", phase="Sek")
+
+    def test_an_untrusted_source_is_refused(self):
+        with self.assertRaises(phase_events.EventError):
+            phase_events.emit("turn-1", "proposal_generated", source="model")
+
+    def test_the_four_families_stay_distinct(self):
+        phase_events.emit("turn-1", "phase_enter", phase="Sek")
+        phase_events.emit("turn-1", "proposal_generated", detail={"operators": 4})
+        phase_events.emit("turn-1", "proposal_validated", source="validator",
+                          detail={"verdict": "exact"})
+        phase_events.emit("turn-1", "phase_exit", phase="Sek", detail={"ok": True})
+        families = [record["event"] for record in phase_events.events("turn-1")]
+        self.assertEqual(families, ["phase_enter", "proposal_generated", "proposal_validated",
+                                    "phase_exit"])
+
+    def test_no_execution_event_is_emitted_by_these_helpers(self):
+        phase_events.emit("turn-1", "phase_enter", phase="Sek")
+        families = {record["event"] for record in phase_events.events("turn-1")}
+        self.assertNotIn("execution_admitted", families,
+                         "admission needs an explicit XCFE decision, not a validator verdict")
+
+
+class ObserveTests(unittest.TestCase):
+    def setUp(self):
+        phase_events.reset()
+
+    def test_an_empty_trace_is_unknown_not_complete(self):
+        view = phase_events.observe("turn-none")
+        self.assertFalse(view["observed"])
+        self.assertFalse(view["complete"])
+        self.assertEqual(view["state"], "no_observations")
+        self.assertIn("not empty by design", view["note"])
+
+    def test_an_open_phase_is_reported_active(self):
+        phase_events.emit("turn-1", "phase_enter", phase="Yax")
+        view = phase_events.observe("turn-1")
+        self.assertEqual(view["state"], "active")
+        self.assertEqual(view["active_phase"], "Yax")
+        self.assertFalse(view["complete"])
+
+    def test_a_failed_exit_is_reported_failed(self):
+        phase_events.emit("turn-1", "phase_enter", phase="Sek")
+        phase_events.emit("turn-1", "phase_exit", phase="Sek", detail={"ok": False})
+        view = phase_events.observe("turn-1")
+        self.assertEqual(view["state"], "failed")
+        self.assertIsNone(view["active_phase"])
+
+    def test_absent_phases_are_not_filled_in(self):
+        phase_events.emit("turn-1", "phase_enter", phase="Pop")
+        phase_events.emit("turn-1", "phase_exit", phase="Pop", detail={"ok": True})
+        view = phase_events.observe("turn-1")
+        self.assertEqual(view["phases"], ["Pop"])
+        self.assertNotIn("Sek", view["phases"])
+        self.assertNotIn("Ch'en", view["phases"])
+
+
+class HostPathTests(unittest.TestCase):
+    def setUp(self):
+        phase_events.reset()
+
+    def test_the_phase_chain_records_what_it_did(self):
+        verdict = phase_routing.route("tell me about my dog", request_id="turn-2")
+        self.assertIn(verdict["action"], ("chain", "fallback", "refuse"))
+        view = phase_events.observe("turn-2")
+        self.assertTrue(view["observed"])
+        self.assertEqual(view["phases"], ["Pop"])
+        self.assertTrue(view["complete"])
+        self.assertEqual(view["families"], ["phase_enter", "phase_exit"])
+
+    def test_a_call_without_a_request_id_records_nothing(self):
+        phase_routing.route("tell me about my dog")
+        self.assertEqual([record for record in phase_events.events("")], [])
+
+    def test_the_trace_names_the_host_as_the_source(self):
+        phase_routing.route("who are you", request_id="turn-3")
+        for record in phase_events.events("turn-3"):
+            self.assertEqual(record["source"], "host")
+            self.assertEqual(record["authority"], "observed")
+
+    def test_a_failing_resolution_exits_with_ok_false(self):
+        original = phase_routing.phase_chain.resolve
+
+        def broken(*args, **kwargs):
+            raise RuntimeError("the chain is unreadable")
+
+        phase_routing.phase_chain.resolve = broken
+        try:
+            with self.assertRaises(RuntimeError):
+                phase_routing.route("anything", request_id="turn-4")
+        finally:
+            phase_routing.phase_chain.resolve = original
+        view = phase_events.observe("turn-4")
+        self.assertEqual(view["state"], "failed")
+        self.assertTrue(view["failed"], "the phase failed and the trace records it")
+        # the trace is complete - the phase entered and exited - but it did not succeed
+        self.assertTrue(view["complete"])
+
+
+if __name__ == "__main__":
+    unittest.main()
