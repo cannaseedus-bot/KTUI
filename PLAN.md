@@ -54,6 +54,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M15 | Routing honesty: refusals answer locally, every turn kind renders, model handoffs say why | **guard** | `daemon.py` (refused kind), `chat_app.py` (`routing_note`, headings), `tests_host/test_routing.py::M15…` |
 | M16 | Tool calls run for real; the fast path refuses instead of fabricating | **guard** | `chat_app.py` (`safe_math`, `fast_path_outcome`, utf-8 subprocess decode), `tests_host/test_tools.py::M16…` |
 | M17 | Commit, push and build on command, with git's own output or error; model tools stay read-only | **guard** | `gitops.py`, `gitops.aiml`, `chat_app.py` (`admit_gitop`), `tests_host/test_gitops.py::M17…` |
+| M18 | Clone a repo: https only, contained in the workspace, behind the write grant | **guard** | `gitops.py` (`clone`, `validate_remote`, `validate_destination`), `chat_app.py` (`clone_repo`), `tests_host/test_clone.py::M18…` |
 
 ---
 
@@ -145,6 +146,35 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Cloning (M18)
+
+Cloning writes a directory tree into the workspace from the network, so it is the most constrained
+operation here. Three surfaces reach the same code and the same grant:
+
+```
+/clone <https url> [directory]        host command      needs `/allow`
+clone_repo(url, path, depth)          model tool        offered only when `/allow` is on
+GITOP clone                           AIML intent       asks for the url, then same path
+```
+
+**Refused before any network call:**
+
+- a scheme that is not `https` (`ssh://`, `git@host:…`, `file://`, `ext::…`);
+- a url that starts with `-` or carries `--upload-pack`, `;`, `&&`, `|`, backticks or `$(`, so a flag
+  or a command cannot be smuggled in as a remote;
+- a destination that escapes the workspace (`../`, an absolute path) or is a non-empty directory;
+- and `git clone` itself stays out of the sandbox's git allowlist, so `run_command` cannot reach it.
+
+The grant is the file-write one, not the repo-write one: cloning creates files rather than rewriting
+the current repository. Without it the message says exactly that and nothing is touched.
+
+**One AIML limitation, stated rather than worked around:** an AIML kernel splits input on sentence
+punctuation, so `https://github.com/x/y.git` arrives as `HTTPS` + fragments and a `CLONE *` pattern
+would capture nonsense. The bank therefore only recognises the intent (`clone a repo`) and the host
+asks for the url; the url goes through `/clone` or the model's `clone_repo`.
 
 ---
 
@@ -398,7 +428,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 73 tests, OK (M3-M17: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10)
+host guards    : 84 tests, OK (M3-M18: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

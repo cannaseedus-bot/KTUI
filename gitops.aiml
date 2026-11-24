@@ -35,4 +35,13 @@
   <category><pattern>SYNC THE REPO</pattern><template><srai>COMMIT AND PUSH</srai></template></category>
   <category><pattern>COMMIT AND PUSH AS *</pattern><template>GITOP sync <star/></template></category>
 
+  <!--
+    Cloning is a write into the workspace, granted by /allow. The AIML layer only notices the intent:
+    an AIML kernel splits input on sentence punctuation, so a url cannot survive a pattern - the host
+    asks for it and takes it through `/clone <https url> [dir]`, or the model's clone_repo tool.
+  -->
+  <category><pattern>CLONE A REPO</pattern><template>GITOP clone</template></category>
+  <category><pattern>CLONE REPO</pattern><template><srai>CLONE A REPO</srai></template></category>
+  <category><pattern>CLONE THE REPO</pattern><template><srai>CLONE A REPO</srai></template></category>
+  <category><pattern>GET ME THE REPO</pattern><template><srai>CLONE A REPO</srai></template></category>
 </aiml>

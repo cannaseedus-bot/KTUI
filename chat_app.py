@@ -281,6 +281,12 @@ class PatchFileArgs(BaseModel):
     find: str = Field(..., description="Exact text to replace, long enough to appear once")
     replace: str = Field("", description="Replacement text; empty string deletes the match")
     replace_all: bool = Field(False, description="Replace every occurrence instead of refusing ambiguity")
+class CloneArgs(BaseModel):
+    url: str = Field(..., description="https repository url to clone into the workspace")
+    path: str = Field("", description="Workspace-relative destination directory; empty derives it from the url")
+    depth: int = Field(1, description="Shallow clone depth (1 = only the tip)")
+
+
 class GmlValidateArgs(BaseModel):
     path: str = Field(..., description="Workspace-relative .gml document to validate against the tensor registry")
 class GmlAssembleArgs(BaseModel):
@@ -323,6 +329,20 @@ def execute_tool(name: str, args: dict) -> str:
             return sandbox.list_dir(args.get("path", "."))
         elif name == "read_file":
             return sandbox.read_file(args["path"])
+        elif name == "clone_repo":
+            # Creating a directory tree from the network is a write: the grant is checked here as well
+            # as in the tool list, because a model can name a tool it was not offered.
+            if gitops is None:
+                return "the git operations module is unavailable"
+            if not sandbox.allow_write:
+                return ("clone refused: the workspace is read-only "
+                        "(`/allow` grants writes, and this creates files)")
+            outcome = gitops.clone(str(args.get("url") or ""), args.get("path") or None,
+                                   root=sandbox.root, depth=args.get("depth") or 1)
+            if not outcome["ok"]:
+                return f"clone failed ({outcome.get('exit_code')}):\n{outcome['output']}"
+            return (f"cloned into {outcome['path']} ({outcome.get('branch')} @ {outcome.get('head')})\n"
+                    f"{outcome['output']}")
         elif name == "run_command":
             return sandbox.run_command(args["program"], args["args"])
         elif name == "git_command":
@@ -1002,6 +1022,10 @@ class ChatApp(App):
         verb = (argument or "").split(" ")[0].strip().lower()
         if verb == "build":
             return True, "build is read-only (compile + suite)"
+        if verb == "clone":
+            if not sandbox.allow_write:
+                return False, "cloning writes files into the workspace: `/allow` first"
+            return True, "clone into the workspace is granted"
         if not self.git_write:
             return False, f"repo writes need `/allow git` (asked to {verb or 'modify'} the repository)"
         return True, f"repo write granted: {verb}"
@@ -1013,7 +1037,13 @@ class ChatApp(App):
         verb, _, rest = (argument or "").strip().partition(" ")
         verb, rest = verb.strip().lower(), rest.strip()
         root = sandbox.root
-        if verb == "build":
+        if verb == "clone":
+            url, _, destination = rest.partition(" ")
+            if not url.strip():
+                return ("Give me the url: `/clone <https url> [directory]`, or ask the model to "
+                        "`clone_repo`. Nothing was changed.")
+            result = gitops.clone(url, destination.strip() or None, root=root)
+        elif verb == "build":
             result = gitops.build(root)
         elif verb == "commit":
             result = gitops.commit(root, rest)
@@ -1053,6 +1083,25 @@ class ChatApp(App):
             record = user_memory.remember(user=self.user_id, subject=subject, predicate=predicate, value=value)
             return f"Recorded `{subject}.{predicate}` = **{value}** for **{self.user_id}** (`{record['event_id']}`)."
         return f"unknown memory operation `{verb}`"
+
+    def action_clone(self, argument: str = "") -> None:
+        """Clone an https repo into the workspace. It writes files, so it needs `/allow`."""
+        if gitops is None:
+            self.say_system("the git operations module is unavailable")
+            return
+        if not sandbox.allow_write:
+            self.say_system("**Not authorized** - cloning writes files into the workspace. "
+                            "`/allow` first, then `/clone <https url> [dir]`. Nothing was changed.")
+            return
+        url, _, destination = (argument or "").strip().partition(" ")
+        outcome = gitops.clone(url, destination.strip() or None, root=sandbox.root)
+        if outcome["ok"]:
+            self.say_system(f"Cloned into **{outcome['path']}** ({outcome.get('branch')} @ "
+                            f"{outcome.get('head')}).\n\n{outcome['output']}")
+            self.refresh_workspace_bar()
+        else:
+            self.say_system(f"**Clone failed**{' (refused)' if outcome.get('refused') else ''}:\n\n"
+                            f"{outcome['output']}")
 
     def action_gitop(self, verb: str, argument: str = "") -> None:
         admitted, why = self.admit_gitop("gitop", f"{verb} {argument}".strip())
@@ -1280,6 +1329,7 @@ class ChatApp(App):
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
+        commands["clone"] = ("Git: clone an https repo into the workspace", self.action_clone, "Writes files: needs `/allow` first")
         commands["build"] = ("Build: compile the tree and run the package suite", self.action_build, "Read-only; no commit, no push")
         commands["commit"] = ("Git: commit the working tree", partial(self.action_gitop, "commit"), "Needs `/allow git` first")
         commands["push"] = ("Git: push the current branch", partial(self.action_gitop, "push"), "Needs `/allow git`; shows git's own error")
@@ -1436,6 +1486,9 @@ class ChatApp(App):
             return
         if name in {"gml", "tensor"}:
             self.action_gml()
+            return
+        if name == "clone":
+            self.action_clone(argument or "")
             return
         if name in {"build", "compile"}:
             self.action_build()
@@ -1949,6 +2002,7 @@ class ChatApp(App):
             # shown a tool that would only ever refuse.
             tools.append(pydantic_function_tool(WriteFileArgs))
             tools.append(pydantic_function_tool(PatchFileArgs))
+            tools.append(pydantic_function_tool(CloneArgs))
         if functions is not None and functions.get("gml_validate") is not None:
             # The K'UHUL base's own extension contract: read-only validation and a plan-only assembly.
             tools.append(pydantic_function_tool(GmlValidateArgs))

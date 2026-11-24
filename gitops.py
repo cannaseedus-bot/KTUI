@@ -144,3 +144,73 @@ def sync(root: Path = APP_ROOT, message: str = "", *, runner=run) -> dict:
                 commit=committed, push=pushed,
                 output=f"{committed['output']}\n\n{pushed['output']}",
                 command=pushed.get("command"), exit_code=pushed.get("exit_code"))
+
+
+# -- cloning ---------------------------------------------------------------------------------------
+ALLOWED_SCHEMES = ("https://",)
+FORBIDDEN_FRAGMENTS = ("ext::", "--upload-pack", "--receive-pack", "file://", "ssh://", "git@",
+                       ";", "&&", "|", "`", "$(", "\n", "\r")
+
+
+def validate_remote(url: str) -> dict:
+    """Only a plain https remote, with no flags and no shell metacharacters smuggled into it."""
+    url = (url or "").strip()
+    problems = []
+    if not url:
+        problems.append("no repository url given")
+    elif url.startswith("-"):
+        problems.append("a url may not start with '-' (would be read as a flag)")
+    elif not url.lower().startswith(ALLOWED_SCHEMES):
+        problems.append(f"only https:// remotes are allowed, got {url.split(':', 1)[0] or url!r}")
+    for fragment in FORBIDDEN_FRAGMENTS:
+        if fragment and fragment in url:
+            problems.append(f"refusing {fragment!r} in the url")
+    return dict(ok=not problems, url=url, problems=problems)
+
+
+def validate_destination(root: Path, url: str, destination: str | None) -> dict:
+    """The clone must land inside the workspace; escaping it is refused, not normalised away."""
+    root = Path(root).resolve()
+    name = (destination or "").strip() or url.rstrip("/").rsplit("/", 1)[-1].removesuffix(".git")
+    if not name:
+        return dict(ok=False, path="", problems=["could not derive a directory name from the url"])
+    if name.startswith("-"):
+        return dict(ok=False, path="", problems=[f"refusing destination {name!r}"])
+    target = (root / name).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return dict(ok=False, path=str(target),
+                    problems=[f"destination {name!r} escapes the workspace {root}"])
+    if target.exists() and (not target.is_dir() or any(target.iterdir())):
+        return dict(ok=False, path=str(target), problems=[f"{target} already exists and is not empty"])
+    return dict(ok=True, path=str(target), problems=[])
+
+
+def clone(url: str, destination: str | None = None, *, root: Path = APP_ROOT, depth: int = 1,
+          runner=run) -> dict:
+    """Clone an https repository into the workspace. Returns git's own output, or its own error."""
+    remote = validate_remote(url)
+    if not remote["ok"]:
+        return dict(ok=False, command=["git", "clone"], exit_code=None,
+                    output="refused: " + "; ".join(remote["problems"]), refused=True)
+    target = validate_destination(root, remote["url"], destination)
+    if not target["ok"]:
+        return dict(ok=False, command=["git", "clone"], exit_code=None,
+                    output="refused: " + "; ".join(target["problems"]), refused=True)
+    try:
+        depth = max(1, int(depth))
+    except (TypeError, ValueError):
+        depth = 1
+    result = runner(["git", "clone", "--depth", str(depth), "--", remote["url"], target["path"]],
+                    root, timeout=600)
+    if not result["ok"]:
+        return dict(result, path=target["path"], refused=False)
+    # Inspect what landed, but never assume it: a runner in a test does not create the directory.
+    target_path = Path(target["path"])
+    head_text = branch_text = None
+    if target_path.is_dir():
+        head_text = run(["git", "log", "-1", "--pretty=%h %s"], target_path).get("output", "").strip()
+        branch_text = branch(target_path)
+    return dict(result, path=target["path"], refused=False,
+                head=head_text or "(not inspected)", branch=branch_text or "(not inspected)")
