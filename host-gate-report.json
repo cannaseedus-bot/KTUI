@@ -528,6 +528,27 @@
         "after_signatures": []
       },
       {
+        "test_id": "test_graph.EnterpriseGraphTests.test_impact_reaches_both_markets.test_impact_reaches_both_markets",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_graph.EnterpriseGraphTests.test_scenario_is_read_only.test_scenario_is_read_only",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_graph.EnterpriseGraphTests.test_schema_and_endpoints.test_schema_and_endpoints",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
         "test_id": "test_merge_guards.TestF141M21.test_cross_schema_reference_rejected.test_cross_schema_reference_rejected",
         "before": "absent",
         "after": "passed",
@@ -666,6 +687,104 @@
         "after": "passed",
         "before_signatures": [],
         "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_bad_shape_rejected.test_bad_shape_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_compatibility_is_a_separate_structural_check.test_compatibility_is_a_separate_structural_check",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_contradictory_row_references_are_rejected.test_contradictory_row_references_are_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_duplicate_row_rejected.test_duplicate_row_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_incompatible_candidates_are_dropped_and_reported.test_incompatible_candidates_are_dropped_and_reported",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_invalid_query_rejected.test_invalid_query_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_no_implicit_execution.test_no_implicit_execution",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_retrieve_and_graph_proposal_are_read_only.test_retrieve_and_graph_proposal_are_read_only",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_row_retrieval_needs_no_encoder.test_row_retrieval_needs_no_encoder",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_scoring_survives_the_filter.test_scoring_survives_the_filter",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_the_producer_pair_schema_is_accepted.test_the_producer_pair_schema_is_accepted",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_unseen_text_is_reported_not_embedded.test_unseen_text_is_reported_not_embedded",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_validate.test_validate",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_vector_adapter.VectorAdapterTests.test_zero_vector_rejected.test_zero_vector_rejected",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
       }
     ]
   },
@@ -688,10 +807,10 @@
         "import phases; print(phases.base_health())"
       ],
       "exit_code": 0,
-      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 19:15\n",
+      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 19:51\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.156
+      "duration_seconds": 0.219
     },
     "extension_summary_before": {
       "command_line": [
@@ -714,12 +833,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.094
+      "duration_seconds": 0.141
     },
-    "captured_at": "2026-11-24T02:40:47.219683+00:00",
+    "captured_at": "2026-11-24T02:54:06.951784+00:00",
     "health_correlation": {
-      "suite_sha": "e3cb8d15d49749959e0cebcbdc91ec7c8205037f",
-      "health_sha": "e3cb8d15d49749959e0cebcbdc91ec7c8205037f",
+      "suite_sha": "429b51b16f2562b580cae48725ba101592bbaf3a",
+      "health_sha": "429b51b16f2562b580cae48725ba101592bbaf3a",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -728,7 +847,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> e3cb8d15d49749959e0cebcbdc91ec7c8205037f"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 429b51b16f2562b580cae48725ba101592bbaf3a"
       },
       {
         "code": "untracked_files",
@@ -834,10 +953,13 @@
         "guard_tests": [
           "test_aiml_port.TestAIMLPort.test_bad_node_reference.test_bad_node_reference",
           "test_assembly.TestAssembly.test_unused_malformed_source.test_unused_malformed_source",
+          "test_graph.EnterpriseGraphTests.test_schema_and_endpoints.test_schema_and_endpoints",
           "test_merge_guards.TestF141M21.test_cross_schema_reference_rejected.test_cross_schema_reference_rejected",
           "test_merge_guards.TestF141M21.test_missing_schema_not_skipped.test_missing_schema_not_skipped",
           "test_merge_guards.TestF141M21.test_same_schema_reference_accepted.test_same_schema_reference_accepted",
-          "test_merge_guards.TestMergeGuards.test_f14_other_schema_not_validated_by_tensor.test_f14_other_schema_not_validated_by_tensor"
+          "test_merge_guards.TestMergeGuards.test_f14_other_schema_not_validated_by_tensor.test_f14_other_schema_not_validated_by_tensor",
+          "test_vector_adapter.VectorAdapterTests.test_contradictory_row_references_are_rejected.test_contradictory_row_references_are_rejected",
+          "test_vector_adapter.VectorAdapterTests.test_the_producer_pair_schema_is_accepted.test_the_producer_pair_schema_is_accepted"
         ]
       },
       "M2": {
@@ -846,7 +968,7 @@
         "reasons": [
           {
             "code": "positive_guard_evidence",
-            "detail": "10 named M2 guard test(s) pass; no original failure was separately observable"
+            "detail": "11 named M2 guard test(s) pass; no original failure was separately observable"
           },
           {
             "code": "baseline_partial",
@@ -870,12 +992,13 @@
           "test_merge_guards.TestF141M21.test_repeatable_is_registry_declared.test_repeatable_is_registry_declared",
           "test_merge_guards.TestMergeGuards.test_m2_data_typo_rejected.test_m2_data_typo_rejected",
           "test_merge_guards.TestMergeGuards.test_m2_graph_typo_rejected.test_m2_graph_typo_rejected",
-          "test_registry_v3.TestRegistryV3.test_rank_declared_value_enforced.test_rank_declared_value_enforced"
+          "test_registry_v3.TestRegistryV3.test_rank_declared_value_enforced.test_rank_declared_value_enforced",
+          "test_vector_adapter.VectorAdapterTests.test_duplicate_row_rejected.test_duplicate_row_rejected"
         ]
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "e3cb8d15d49749959e0cebcbdc91ec7c8205037f",
+    "tested_commit": "429b51b16f2562b580cae48725ba101592bbaf3a",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
