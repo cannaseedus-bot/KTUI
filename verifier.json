@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 398,
+  "count": 400,
   "excludes": {
     "names": [
       "verifier.json",
@@ -414,17 +414,19 @@
     "tests_host/test_session_profile.py": "6a656a6e1be2fcc9d96efdad73bf4a5ec15c8f24b849e495fcb3eb4634872303",
     "tests_host/test_stream_lease.py": "47bacbe8eef82e5ccae31eb5ce22fab348ab8e8bef208f3af5db6ec4b12d35b2",
     "tests_host/test_tools.py": "82ff85e0ac655111150f4e6071bfa99d97892b0b36b4aa8da1ab23a721187b4a",
-    "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a"
+    "tests_host/test_verifier.py": "e23b34cb5d06e2daef86b77b51111775676350054abab46bbc110052142fcb5a",
+    "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
+    "verifier.py": "7fb1723dfcb202704ce217ce5bf517f3e36ec8f7fae01e58bb4c180310820a21"
   },
-  "hash": "1d161da72d1d5a146363aa5d0b3b620a19fbfde7fb0e4670c2abacbf41988551",
+  "hash": "e8550ae739c9d34e9703a41d6fef6227fe0d0599623d36fab41e5bf937172aec",
   "locked": true,
-  "note": "re-locked for M86 (verifier + guards)",
+  "note": "lock now covers verifier.py and its guards, which were untracked when first locked",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
     "count": 398,
-    "hash": "9a098d13816eefe76a4e363f63ee69a68b66bbba84039cff3df464db44af9d1d",
-    "updated_at": "2026-11-24T20:48:51Z"
+    "hash": "1d161da72d1d5a146363aa5d0b3b620a19fbfde7fb0e4670c2abacbf41988551",
+    "updated_at": "2026-11-24T20:51:20Z"
   },
   "schema": "kuhul://verifier/lock/v1",
-  "updated_at": "2026-11-24T20:51:20Z"
+  "updated_at": "2026-11-24T20:53:42Z"
 }
