@@ -69,6 +69,63 @@ def load(path: Path | None = None) -> dict:
                 adapters=adapters, authority="declaration_only")
 
 
+# -- typed payload checks -----------------------------------------------------------------------------
+TYPES = ("string", "number", "integer", "boolean", "object", "array")
+
+
+def check_type(field: str, value, spec: dict) -> list[dict]:
+    """`missing`, `null`, `wrong type` and `out of range` are four different answers."""
+    if value is None:
+        if spec.get("nullable"):
+            return []
+        return [dict(code="payload_null", detail=f"{field} is null and the schema is not nullable")]
+    kind = spec.get("type")
+    if kind not in TYPES:
+        return [dict(code="schema_type", detail=f"{field}: {kind!r} is not a declared type")]
+    # Python's bool is a subclass of int, so a numeric field must reject it explicitly.
+    if kind in ("number", "integer") and isinstance(value, bool):
+        return [dict(code="payload_type_mismatch", detail=f"{field} is a boolean, not a {kind}")]
+    ok = (isinstance(value, str) and kind == "string") or \
+         (isinstance(value, (int, float)) and not isinstance(value, bool) and kind == "number") or \
+         (isinstance(value, int) and not isinstance(value, bool) and kind == "integer") or \
+         (isinstance(value, bool) and kind == "boolean") or \
+         (isinstance(value, dict) and kind == "object") or \
+         (isinstance(value, list) and kind == "array")
+    if not ok:
+        return [dict(code="payload_type_mismatch",
+                     detail=f"{field} is {type(value).__name__}, expected {kind}")]
+    problems: list[dict] = []
+    if kind in ("number", "integer"):
+        if spec.get("minimum") is not None and value < spec["minimum"]:
+            problems.append(dict(code="payload_out_of_range",
+                                 detail=f"{field} = {value} is below {spec['minimum']}"))
+        if spec.get("maximum") is not None and value > spec["maximum"]:
+            problems.append(dict(code="payload_out_of_range",
+                                 detail=f"{field} = {value} is above {spec['maximum']}"))
+    if kind == "string":
+        if spec.get("min_length") and len(value) < spec["min_length"]:
+            problems.append(dict(code="payload_out_of_range",
+                                 detail=f"{field} is shorter than {spec['min_length']}"))
+        if spec.get("enum") and value not in spec["enum"]:
+            problems.append(dict(code="payload_out_of_range",
+                                 detail=f"{field} = {value!r} is not one of {spec['enum']}"))
+    return problems
+
+
+def validate_payload(registry: dict, uri: str, payload: dict) -> list[dict]:
+    """Presence first, then type and range, against the declarations in the registry."""
+    entry = (registry.get("schemas") or {}).get(uri) or {}
+    problems: list[dict] = []
+    declared = entry.get("types") or {}
+    for field in entry.get("required") or []:
+        if field not in payload:
+            problems.append(dict(code="payload_missing_field", detail=f"{uri}: {field!r}"))
+    for field, spec in declared.items():
+        if field in payload:
+            problems.extend(check_type(field, payload[field], spec))
+    return problems
+
+
 # -- validation ---------------------------------------------------------------------------------------
 def validate(registry: dict, message: dict) -> dict:
     """Check one message against its declared schema. No routing, no admission."""
@@ -99,8 +156,13 @@ def validate(registry: dict, message: dict) -> dict:
 
 
 # -- routing ------------------------------------------------------------------------------------------
-def route(registry: dict, message: dict, *, consumer: str, granted: set | None = None) -> dict:
-    """Deliver only when schema, edge and capability all hold. Admission is never granted here."""
+def route(registry: dict, message: dict, *, consumer: str, granted: set | None = None,
+          authenticated_producer: str | None = None) -> dict:
+    """Deliver only when schema, payload, producer identity, edge and capability all hold.
+
+    `authenticated_producer` is supplied by the host from its own dispatch context. A producer name taken from
+    the payload is a claim, not an identity, so it never authenticates itself.
+    """
     granted = set(granted or ())
     checked = validate(registry, message)
     refused = None
@@ -108,6 +170,15 @@ def route(registry: dict, message: dict, *, consumer: str, granted: set | None =
     edges = []
     if not checked["ok"]:
         refused = reasons[0]["code"] if reasons else "invalid_message"
+    elif not authenticated_producer:
+        refused = "producer_not_authenticated"
+        reasons.append(dict(code="producer_not_authenticated",
+                            detail="the host did not supply an authenticated producer identity"))
+    elif str(message.get("producer") or "") != str(authenticated_producer):
+        refused = "producer_not_authenticated"
+        reasons.append(dict(code="producer_not_authenticated",
+                            detail=f"the message claims {message.get('producer')!r}, the host authenticated "
+                                   f"{authenticated_producer!r}"))
     else:
         uri = checked["schema_uri"]
         producer = str(message.get("producer") or "")
@@ -124,6 +195,7 @@ def route(registry: dict, message: dict, *, consumer: str, granted: set | None =
                 reasons.append(dict(code="capability_not_granted",
                                     detail=f"{producer} needs {edges[0].get('capability')}"))
     return dict(schema="kuhul://bus/route/v1", delivered=refused is None, refused=refused,
+                authenticated_producer=authenticated_producer,
                 consumer=consumer, schema_uri=checked.get("schema_uri"),
                 producer=message.get("producer"), edges=edges, problems=reasons,
                 admitted=False, authority="declaration_only", execution=False,
@@ -189,3 +261,34 @@ def summary(registry: dict) -> str:
     for uri, entry in sorted(registry["schemas"].items()):
         lines.append(f"  {uri:46} v{entry['version']} · {entry['authority']}")
     return "\n".join(lines)
+
+# -- the ledger boundary: evidence persistence is not learning-state persistence -------------------------
+def ledger_record(delta: dict, verdict: dict, *, producer: str, schema_version: int,
+                  verification: str) -> dict:
+    """What the ledger may say about a verified delta - and what it must not imply."""
+    return dict(schema="kuhul://bus/verified-delta-record/v1",
+                message_id=f"delta:{delta.get('payload', {}).get('target')}:{schema_version}",
+                producer=producer, schema_uri=delta.get("schema_uri"), schema_version=schema_version,
+                payload=dict(delta.get("payload") or {}),
+                verification=dict(result=verification, verdict=verdict.get("payload", {}).get("verdict"),
+                                  by=verdict.get("producer")),
+                provenance=dict(chain="kuhul://bus/verified-delta/v1", admitted=False),
+                admitted=False, graph_mutated=False, persistence="evidence_only",
+                note=("an append-only record that a proposal was verified; it is not an admission and it "
+                      "does not persist a learning update"))
+
+
+def append_verified_delta(delta: dict, verdict: dict, *, producer: str, schema_version: int,
+                          path: Path | None = None) -> dict:
+    """Append the record through the evidence ledger. Read-only with respect to the graph."""
+    import evidence_record
+
+    record = ledger_record(delta, verdict, producer=producer, schema_version=schema_version,
+                           verification="passed")
+    stored = evidence_record.append(evidence_record.build(
+        input_text="", request_id=record["message_id"], inference="none", operators=[],
+        schema_validation="verified", latency_ms=0))
+    return dict(record=record, evidence=dict(sequence=stored.get("evidence_sequence"),
+                                             hash=stored.get("evidence_hash")),
+                admitted=False, authority="declaration_only", execution=False)
+

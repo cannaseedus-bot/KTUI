@@ -101,26 +101,30 @@ class RoutingTests(unittest.TestCase):
 
     def test_a_declared_edge_with_the_capability_delivers(self):
         result = schema_bus.route(self.registry, CANDIDATE, consumer="micronaut://v1/relations",
-                                  granted={"graph.relations.read"})
+                                  granted={"graph.relations.read"},
+                                  authenticated_producer=CANDIDATE["producer"])
         self.assertTrue(result["delivered"])
         self.assertFalse(result["admitted"], "delivery is not admission")
         self.assertEqual(result["edges"][0]["to"], "micronaut://v1/relations")
 
     def test_a_matching_schema_without_an_edge_is_refused(self):
         result = schema_bus.route(self.registry, CANDIDATE, consumer="micronaut://v1/learning",
-                                  granted={"graph.relations.read"})
+                                  granted={"graph.relations.read"},
+                                  authenticated_producer=CANDIDATE["producer"])
         self.assertEqual(result["refused"], "no_declared_edge")
 
     def test_an_edge_without_the_capability_is_refused(self):
         result = schema_bus.route(self.registry, CANDIDATE, consumer="micronaut://v1/relations",
-                                  granted=set())
+                                  granted=set(), authenticated_producer=CANDIDATE["producer"])
         self.assertEqual(result["refused"], "capability_not_granted")
 
     def test_a_spoofed_producer_finds_no_edge(self):
         spoofed = dict(CANDIDATE, producer="micronaut://v1/impostor")
         result = schema_bus.route(self.registry, spoofed, consumer="micronaut://v1/relations",
-                                  granted={"graph.relations.read"})
-        self.assertEqual(result["refused"], "no_declared_edge")
+                                  granted={"graph.relations.read"},
+                                  authenticated_producer="micronaut://v1/grams")
+        # the host authenticated `grams`; the message claims `impostor`, so identity fails before edges
+        self.assertEqual(result["refused"], "producer_not_authenticated")
 
     def test_consumers_are_listed_from_the_edges(self):
         consumers = schema_bus.consumers(self.registry, "urn:kuhul:schema:semantic-candidate:v1")
@@ -180,11 +184,132 @@ class LearningTests(unittest.TestCase):
         registry = schema_bus.load()
         delta = schema_bus.learning_delta(dict(source="a", target="b", relation="r", score=0.5))
         good = schema_bus.route(registry, delta, consumer="micronaut://v1/ch_en",
-                                granted={"graph.relations.read"})
+                                granted={"graph.relations.read"},
+                                authenticated_producer=delta["producer"])
         bad = schema_bus.route(registry, delta, consumer="micronaut://v1/relations",
-                               granted={"graph.relations.read"})
+                               granted={"graph.relations.read"},
+                               authenticated_producer=delta["producer"])
         self.assertTrue(good["delivered"])
         self.assertEqual(bad["refused"], "no_declared_edge")
+
+
+class TypedPayloadTests(unittest.TestCase):
+    """Presence, type and range are three different answers, and a bool is never a number."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = schema_bus.load()
+        cls.uri = "urn:kuhul:schema:semantic-candidate:v1"
+
+    def codes(self, payload) -> list[str]:
+        return [problem["code"] for problem in
+                schema_bus.validate_payload(self.registry, self.uri, payload)]
+
+    def base(self, **overrides) -> dict:
+        payload = dict(source="black dog", target="large canine", relation="semantic_similarity",
+                       score=0.85)
+        payload.update(overrides)
+        return payload
+
+    def test_a_valid_payload_has_no_problems(self):
+        self.assertEqual(self.codes(self.base()), [])
+
+    def test_a_string_score_is_a_type_mismatch(self):
+        self.assertEqual(self.codes(self.base(score="high")), ["payload_type_mismatch"])
+
+    def test_a_boolean_score_is_a_type_mismatch(self):
+        self.assertEqual(self.codes(self.base(score=True)), ["payload_type_mismatch"],
+                         "bool is a subclass of int in python, so it must be rejected explicitly")
+
+    def test_a_missing_field_is_named(self):
+        payload = self.base()
+        del payload["score"]
+        self.assertEqual(self.codes(payload), ["payload_missing_field"])
+
+    def test_a_null_is_its_own_outcome(self):
+        self.assertEqual(self.codes(self.base(score=None)), ["payload_null"])
+
+    def test_a_value_outside_the_range_is_refused(self):
+        self.assertEqual(self.codes(self.base(score=1.5)), ["payload_out_of_range"])
+        self.assertEqual(self.codes(self.base(score=-0.1)), ["payload_out_of_range"])
+
+    def test_an_enum_violation_is_refused(self):
+        self.assertEqual(self.codes(self.base(relation="vibes")), ["payload_out_of_range"])
+
+    def test_a_wrong_type_in_a_string_field_is_named(self):
+        self.assertEqual(self.codes(self.base(source=42)), ["payload_type_mismatch"])
+
+    def test_the_schema_declares_types_for_every_required_field(self):
+        for uri, entry in self.registry["schemas"].items():
+            declared = set((entry.get("types") or {}).keys())
+            for field in entry.get("required") or []:
+                self.assertIn(field, declared, f"{uri}: {field} has no declared type")
+
+
+class ProducerIdentityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = schema_bus.load()
+
+    def test_the_host_identity_must_be_supplied(self):
+        result = schema_bus.route(self.registry, CANDIDATE, consumer="micronaut://v1/relations",
+                                  granted={"graph.relations.read"})
+        self.assertEqual(result["refused"], "producer_not_authenticated")
+        self.assertFalse(result["delivered"])
+
+    def test_a_claimed_identity_that_disagrees_is_refused(self):
+        result = schema_bus.route(self.registry, CANDIDATE, consumer="micronaut://v1/relations",
+                                  granted={"graph.relations.read"},
+                                  authenticated_producer="micronaut://v1/impostor")
+        self.assertEqual(result["refused"], "producer_not_authenticated")
+
+    def test_a_matching_identity_delivers_and_still_does_not_admit(self):
+        result = schema_bus.route(self.registry, CANDIDATE, consumer="micronaut://v1/relations",
+                                  granted={"graph.relations.read"},
+                                  authenticated_producer=CANDIDATE["producer"])
+        self.assertTrue(result["delivered"])
+        self.assertFalse(result["admitted"])
+        self.assertEqual(result["authenticated_producer"], CANDIDATE["producer"])
+
+
+class LedgerBoundaryTests(unittest.TestCase):
+    def test_the_record_says_verified_and_not_persisted(self):
+        delta = schema_bus.learning_delta(dict(source="a", target="b", relation="semantic_similarity",
+                                               score=0.5))
+        verdict = schema_bus.verified_delta(delta, verdict="PASS", evidence="gml://x")
+        record = schema_bus.ledger_record(delta, verdict, producer="micronaut://v1/ch_en",
+                                          schema_version=1, verification="passed")
+        self.assertFalse(record["admitted"])
+        self.assertFalse(record["graph_mutated"])
+        self.assertEqual(record["persistence"], "evidence_only")
+        self.assertEqual(record["schema_version"], 1)
+        self.assertEqual(record["verification"]["verdict"], "PASS")
+        self.assertIn("not an admission", record["note"])
+
+    def test_appending_writes_one_evidence_row(self):
+        import tempfile
+
+        import evidence_record
+
+        folder = tempfile.TemporaryDirectory()
+        original = evidence_record.LOG
+        evidence_record.LOG = Path(folder.name) / "ledger.jsonl"
+        try:
+            delta = schema_bus.learning_delta(dict(source="a", target="b", relation="semantic_similarity",
+                                                   score=0.5))
+            verdict = schema_bus.verified_delta(delta, verdict="PASS", evidence="gml://x")
+            result = schema_bus.append_verified_delta(delta, verdict,
+                                                      producer="micronaut://v1/ch_en",
+                                                      schema_version=1)
+            rows = evidence_record.load()
+            self.assertEqual(len(rows), 1)
+            self.assertFalse(result["admitted"])
+            self.assertFalse(result["record"]["graph_mutated"])
+            self.assertEqual(sorted(result["evidence"]), ["hash", "sequence"],
+                             "the append returns the ledger position and digest")
+        finally:
+            evidence_record.LOG = original
+            folder.cleanup()
 
 
 if __name__ == "__main__":

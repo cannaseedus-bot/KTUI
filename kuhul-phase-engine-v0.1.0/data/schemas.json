@@ -1,55 +1,229 @@
 {
   "schema": "kuhul://schemas/v1",
   "authority": "declaration_only",
-  "note": "Schema URIs are the message contract between micronauts. A valid message is not a permission: routing also needs a declared edge, the producer's capability and an allowed consumer.",
+  "note": "Schema URIs are the message contract between micronauts. A valid message is not a permission: routing also needs a declared edge, the producer's capability and an allowed consumer. Field types are declared per schema; a payload is checked for presence, type and range, and a bool is never accepted as a number.",
   "schemas": {
     "urn:kuhul:schema:utterance:v1": {
-      "version": 1, "authority": "proposal", "producer": null,
-      "required": ["text"]
+      "version": 1,
+      "authority": "proposal",
+      "producer": null,
+      "required": [
+        "text"
+      ],
+      "types": {
+        "text": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
     },
     "urn:kuhul:schema:semantic-candidate:v1": {
-      "version": 1, "authority": "proposal", "producer": "micronaut://v1/grams",
-      "required": ["source", "target", "relation", "score"]
+      "version": 1,
+      "authority": "proposal",
+      "producer": "micronaut://v1/grams",
+      "required": [
+        "source",
+        "target",
+        "relation",
+        "score"
+      ],
+      "types": {
+        "source": {
+          "type": "string",
+          "min_length": 1
+        },
+        "target": {
+          "type": "string",
+          "min_length": 1
+        },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "semantic_similarity",
+            "attribute_of",
+            "instance_of"
+          ]
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        }
+      }
     },
     "urn:kuhul:schema:relation:v1": {
-      "version": 1, "authority": "proposal", "producer": "micronaut://v1/relations",
-      "required": ["subject", "predicate", "object"]
+      "version": 1,
+      "authority": "proposal",
+      "producer": "micronaut://v1/relations",
+      "required": [
+        "subject",
+        "predicate",
+        "object"
+      ],
+      "types": {
+        "subject": {
+          "type": "string",
+          "min_length": 1
+        },
+        "predicate": {
+          "type": "string",
+          "min_length": 1
+        },
+        "object": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
     },
     "urn:kuhul:schema:relation:v2": {
-      "version": 2, "authority": "proposal", "producer": "micronaut://v1/relations",
-      "required": ["subject", "predicate", "object", "provenance"]
+      "version": 2,
+      "authority": "proposal",
+      "producer": "micronaut://v1/relations",
+      "required": [
+        "subject",
+        "predicate",
+        "object",
+        "provenance"
+      ],
+      "types": {
+        "subject": {
+          "type": "string",
+          "min_length": 1
+        },
+        "predicate": {
+          "type": "string",
+          "min_length": 1
+        },
+        "object": {
+          "type": "string",
+          "min_length": 1
+        },
+        "provenance": {
+          "type": "object"
+        }
+      }
     },
     "urn:kuhul:schema:learning-delta:v1": {
-      "version": 1, "authority": "proposal", "producer": "micronaut://v1/learning",
-      "required": ["operation", "target", "evidence"]
+      "version": 1,
+      "authority": "proposal",
+      "producer": "micronaut://v1/learning",
+      "required": [
+        "operation",
+        "target",
+        "evidence"
+      ],
+      "types": {
+        "operation": {
+          "type": "string",
+          "enum": [
+            "assert_relation",
+            "adjust_weight",
+            "add_pattern"
+          ]
+        },
+        "target": {
+          "type": "string",
+          "min_length": 1
+        },
+        "evidence": {
+          "type": "object"
+        }
+      }
     },
     "urn:kuhul:schema:verified-delta:v1": {
-      "version": 1, "authority": "verified", "producer": "micronaut://v1/ch_en",
-      "required": ["delta", "verdict"]
+      "version": 1,
+      "authority": "verified",
+      "producer": "micronaut://v1/ch_en",
+      "required": [
+        "delta",
+        "verdict"
+      ],
+      "types": {
+        "delta": {
+          "type": "object"
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "PASS",
+            "FAIL"
+          ]
+        }
+      }
     },
     "urn:kuhul:schema:evidence:v1": {
-      "version": 1, "authority": "evidence", "producer": "evidence://ledger",
-      "required": ["observation"]
+      "version": 1,
+      "authority": "evidence",
+      "producer": "evidence://ledger",
+      "required": [
+        "observation"
+      ],
+      "types": {
+        "observation": {
+          "type": "object"
+        }
+      }
     },
     "urn:kuhul:schema:error:v1": {
-      "version": 1, "authority": "diagnostic", "producer": null,
-      "required": ["kind", "detail"]
+      "version": 1,
+      "authority": "diagnostic",
+      "producer": null,
+      "required": [
+        "kind",
+        "detail"
+      ],
+      "types": {
+        "kind": {
+          "type": "string",
+          "min_length": 1
+        },
+        "detail": {
+          "type": "string",
+          "min_length": 1
+        }
+      }
     }
   },
   "edges": [
-    {"from": "micronaut://v1/grams", "to": "micronaut://v1/relations",
-     "schema": "urn:kuhul:schema:semantic-candidate:v1", "capability": "graph.relations.read"},
-    {"from": "micronaut://v1/relations", "to": "micronaut://v1/learning",
-     "schema": "urn:kuhul:schema:relation:v1", "capability": "graph.relations.read"},
-    {"from": "micronaut://v1/relations", "to": "micronaut://v1/learning",
-     "schema": "urn:kuhul:schema:relation:v2", "capability": "graph.relations.read"},
-    {"from": "micronaut://v1/learning", "to": "micronaut://v1/ch_en",
-     "schema": "urn:kuhul:schema:learning-delta:v1", "capability": "graph.relations.read"},
-    {"from": "micronaut://v1/ch_en", "to": "evidence://ledger",
-     "schema": "urn:kuhul:schema:verified-delta:v1", "capability": "memory.write"}
+    {
+      "from": "micronaut://v1/grams",
+      "to": "micronaut://v1/relations",
+      "schema": "urn:kuhul:schema:semantic-candidate:v1",
+      "capability": "graph.relations.read"
+    },
+    {
+      "from": "micronaut://v1/relations",
+      "to": "micronaut://v1/learning",
+      "schema": "urn:kuhul:schema:relation:v1",
+      "capability": "graph.relations.read"
+    },
+    {
+      "from": "micronaut://v1/relations",
+      "to": "micronaut://v1/learning",
+      "schema": "urn:kuhul:schema:relation:v2",
+      "capability": "graph.relations.read"
+    },
+    {
+      "from": "micronaut://v1/learning",
+      "to": "micronaut://v1/ch_en",
+      "schema": "urn:kuhul:schema:learning-delta:v1",
+      "capability": "graph.relations.read"
+    },
+    {
+      "from": "micronaut://v1/ch_en",
+      "to": "evidence://ledger",
+      "schema": "urn:kuhul:schema:verified-delta:v1",
+      "capability": "memory.write"
+    }
   ],
   "adapters": [
-    {"id": "kuhul://adapter/relation/v1-to-v2", "accepts": "urn:kuhul:schema:relation:v1",
-     "emits": "urn:kuhul:schema:relation:v2", "adds": ["provenance"]}
+    {
+      "id": "kuhul://adapter/relation/v1-to-v2",
+      "accepts": "urn:kuhul:schema:relation:v1",
+      "emits": "urn:kuhul:schema:relation:v2",
+      "adds": [
+        "provenance"
+      ]
+    }
   ]
 }
