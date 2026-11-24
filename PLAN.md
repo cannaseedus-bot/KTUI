@@ -90,6 +90,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M50 | `runtime://green-screen/v1`: one read-only tree over the registries, bound to the UI, answering 'why this model' | **guard** | `runtime_tree.py`, `chat_app /runtime`, `tests_host/test_runtime_tree.py` (13 tests) |
 | M51 | Three instruction conditions on one frozen graph validator - and the system-prompt confound that changed the answer | **guard** | `condition_experiment.py`, `data/condition-experiment.json`, `data/condition-stability.json`, `tests_host/test_condition_experiment.py` (12 tests) |
 | M52 | One versioned operator contract (`kuhul://operators/v1`) rendered into the prompt and enforced by the validator; the clean two-condition protocol | **guard** | `data/operators.json`, `plan_graph.contract`, `contract_experiment.py`, `data/contract-experiment.json`, `tests_host/test_contract_experiment.py` (11 tests) |
+| M53 | The contract as a session template: rules-only vs rules+examples, measured on Qwen | **guard** | `data/session-profiles.json`, `session_profile.py`, `data/session-experiment.json`, `tests_host/test_session_profile.py` (13 tests) |
 
 ---
 
@@ -181,6 +182,39 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The session as the contract (M53)
+
+A running `llama-server` keeps no chat history between requests, so the session is the host's to send. The
+profiles are declarations (`kuhul-session-profiles/v1`), and the session is the only variable:
+
+| profile | messages | what it carries |
+|---|---|---|
+| `A_original` | 2 | the pre-contract system prompt |
+| `B_contract` | 2 | the short contract: operators, order, containment, rules |
+| `C_contract_examples` | 6 | the contract plus two demonstrations |
+
+**Measured on Qwen (planner), one repeat per cell, same validator and case set:**
+
+| profile | pair-01 | chain-01 |
+|---|---|---|
+| A_original | 1/1 complete | 0/1 complete |
+| B_contract | 0/1 (**unparsed**) | 0/1 complete |
+| C_contract_examples | **1/1 complete** | **1/1 complete** |
+
+**C is the only profile that completes both cases**, and the only one where the full chain completes. B -
+rules without demonstrations - *lost* pair-01 to an unparseable reply, so explicit semantics alone did not
+help this model: the demonstrations did.
+
+Two honest limits: one repeat per cell (the variance harness exists and was not used here), and one model
+(Gemma was not run for contrast). The `chain-01` failures under A and B are the same phase/target gap M52
+recorded - `verdict: exact` next to `complete: 0` - so the operator graph was right and the binding was not.
+
+The session is therefore a **reusable reasoning contract**: `plan_graph` renders and validates it,
+`session_profile` ships it with every request, and the profiles are data rather than a prompt edited in a
+model-specific code path.
 
 ---
 
@@ -1690,7 +1724,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 447 tests, OK (M3-M52) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 460 tests, OK (M3-M53) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

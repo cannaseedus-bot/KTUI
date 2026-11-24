@@ -1,0 +1,203 @@
+{
+  "schema": "kuhul-session-experiment/1",
+  "model": "planner",
+  "cases": [
+    "pair-01",
+    "chain-01"
+  ],
+  "repeats": 1,
+  "profiles": {
+    "A_original": {
+      "note": "the system prompt used before any contract work",
+      "examples": 0
+    },
+    "B_contract": {
+      "note": "the short contract, no examples",
+      "examples": 0
+    },
+    "C_contract_examples": {
+      "note": "the short contract plus two demonstrations",
+      "examples": 2
+    }
+  },
+  "contract_uri": "kuhul://operators/v1",
+  "started_at": "2026-11-24T07:04:34Z",
+  "results": {
+    "A_original": {
+      "pair-01": {
+        "case": "pair-01",
+        "repeats": 1,
+        "complete": 1,
+        "rate": 1.0,
+        "verdicts": {
+          "exact": 1
+        },
+        "messages": 2,
+        "cells": [
+          {
+            "run": 0,
+            "case": "pair-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "proposed": [
+              "filter",
+              "map"
+            ],
+            "tokens": 106,
+            "latency_ms": 8000,
+            "finish_reason": "stop",
+            "errors": []
+          }
+        ]
+      },
+      "chain-01": {
+        "case": "chain-01",
+        "repeats": 1,
+        "complete": 0,
+        "rate": 0.0,
+        "verdicts": {
+          "exact": 1
+        },
+        "messages": 2,
+        "cells": [
+          {
+            "run": 0,
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 201,
+            "latency_ms": 16093,
+            "finish_reason": "stop",
+            "errors": []
+          }
+        ]
+      }
+    },
+    "B_contract": {
+      "pair-01": {
+        "case": "pair-01",
+        "repeats": 1,
+        "complete": 0,
+        "rate": 0.0,
+        "verdicts": {
+          "unparsed": 1
+        },
+        "messages": 2,
+        "cells": [
+          {
+            "run": 0,
+            "case": "pair-01",
+            "parsed": false,
+            "verdict": null,
+            "complete": false,
+            "proposed": null,
+            "tokens": 175,
+            "latency_ms": 16719,
+            "finish_reason": "stop",
+            "errors": [
+              "unparseable"
+            ]
+          }
+        ]
+      },
+      "chain-01": {
+        "case": "chain-01",
+        "repeats": 1,
+        "complete": 0,
+        "rate": 0.0,
+        "verdicts": {
+          "exact": 1
+        },
+        "messages": 2,
+        "cells": [
+          {
+            "run": 0,
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 155,
+            "latency_ms": 12672,
+            "finish_reason": "stop",
+            "errors": []
+          }
+        ]
+      }
+    },
+    "C_contract_examples": {
+      "pair-01": {
+        "case": "pair-01",
+        "repeats": 1,
+        "complete": 1,
+        "rate": 1.0,
+        "verdicts": {
+          "exact": 1
+        },
+        "messages": 6,
+        "cells": [
+          {
+            "run": 0,
+            "case": "pair-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "proposed": [
+              "filter",
+              "map"
+            ],
+            "tokens": 38,
+            "latency_ms": 5141,
+            "finish_reason": "stop",
+            "errors": []
+          }
+        ]
+      },
+      "chain-01": {
+        "case": "chain-01",
+        "repeats": 1,
+        "complete": 1,
+        "rate": 1.0,
+        "verdicts": {
+          "exact": 1
+        },
+        "messages": 6,
+        "cells": [
+          {
+            "run": 0,
+            "case": "chain-01",
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 46,
+            "latency_ms": 4187,
+            "finish_reason": "stop",
+            "errors": []
+          }
+        ]
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "the session is the only variable; validator, case, budget and settings are identical across profiles"
+}
