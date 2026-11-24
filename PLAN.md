@@ -58,6 +58,8 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M19 | Reachable endpoint: `micronaut://v1/chat` over loopback, local answers only | **guard** | `micronaut_server.py`, `chat_app.py` (`/serve`, `--serve`), `start.bat serve`, `tests_host/test_server.py::M19…` |
 | M20 | Greeting-µ: `greeting.gml` declares greetings, destinations and the paths between them; multi-intent messages keep every clause | **guard** | `greeting.gml`, `greetings.py`, `chat_app.py` (`multi_intent_answer`), `tests_host/test_greetings.py::M20…` |
 | M21 | The loaded AIML corpus ports to one GML document, verified against the sources | **guard** | `aiml_to_gml.py`, `aiml-corpus.gml`, `tests_host/test_aiml_corpus.py::M21…` |
+| M22 | The daemon knows facts locally (curated ALICE banks) and offers depth instead of spending a model call | **guard** | `knowledge.py`, `chat_app.py` (`_maybe_offer`, `pending_deep`), `tests_host/test_knowledge.py::M22…` |
+| M23 | Answers carry clickable reference links (Wikipedia, Britannica, NASA, Space.com) labelled as searches | **guard** | `links.py`, `chat_app.py` (`maybe_reference`, `/links`), `micronaut_server.py`, `tests_host/test_links.py::M23…` |
 
 ---
 
@@ -152,13 +154,102 @@ gate cycle starts there.
 
 ---
 
+## Reference links (M23)
+
+A factual answer now ends with places to read more - clickable, and honest about what they are:
+
+```
+Reference links · searches, not pages I read
+- [Wikipedia (search)](https://en.wikipedia.org/w/index.php?search=saturn)
+- [Britannica (search)](https://www.britannica.com/search?query=saturn)
+- [NASA (search)](https://www.nasa.gov/?s=saturn)
+- [Space.com (search)](https://www.space.com/search?searchTerm=saturn)
+```
+
+Two rules shape it. **No guessed article paths**: a search URL resolves for any spelling of the
+topic, while `/wiki/Saturn's_ring_composition` is a guess that may 404. **No claim of having read
+them**: the label says searches, because the local answer came from the AIML corpus and the model's
+came from training - neither browsed, and this sandbox has no outbound network to browse with.
+
+Space topics get NASA and Space.com on top of Wikipedia and Britannica; everything else gets the first
+two. Topics are extracted from the question ("what is Saturn" -> `saturn`) with social phrases and
+sentence-length strings rejected, so a greeting never gets a Wikipedia search stapled to it.
+
+Three surfaces carry the links: a local knowledge answer, a model answer that has none of its own
+(`maybe_reference`, which leaves an answer that already cites something alone), and `POST /v1/chat`,
+which returns them as a `links` array for clients to render. `/links <topic>` prints them on demand.
+
+---
+
+## Knowing things, and offering depth (M22)
+
+Reported: *"What is Saturn? (Alice knows what Saturn is!) (but sent question to model?)"* - correct
+diagnosis. The ALICE knowledge was on disk but never learned: the tarball has no `startup.xml`, so the
+host only ever learned `knumatic_learned.aiml`. Saturn sat in `knowledge.aiml` the whole time.
+
+**Knowledge is learned now.** `knowledge.py` names a curated set - 21 banks, ~8,400 categories, about
+0.4 seconds - learned **before** the host's own banks so python-aiml's later-learn precedence keeps
+`hello`, identity, memory and git untouched:
+
+```
+what is saturn                -> Sixth planet from the sun, famed for its rings.
+who is shakespeare            -> A 15th Century English playright, Shakespeare wrote "Romeo and Juliet".
+what is the capital of france -> Paris.
+hello                         -> the daemon's own greeting (the corpus does not shadow it)
+explain quantum chromodynamics -> (nothing) -> the model, with a note
+```
+
+Eight banks are **excluded on purpose**, and the reason is measured rather than assumed: `default`,
+`ai`, `alice` and `badanswer` carry catch-all patterns, while `that`, `update1`, `stories` and
+`salutations` answer sentences they have no business answering - "hey, how are you, and can you check
+my server?" came back as *"All of them?"* from `that.aiml` and *"I think there might be a few
+exceptions."* from `update1.aiml`. Both broke the honest handoff and the multi-intent split.
+`KNUMATIC_KNOWLEDGE=off` disables the set for a session.
+
+**Depth is offered, not spent.** A short factual answer ends with *"Would you like me to delve deeper
+into it?"*, and the host remembers the original question. Saying **yes** sends **that question** to the
+model - not the word "yes" - and anything else cancels the offer:
+
+```
+you : what is saturn
+bot : Sixth planet from the sun, famed for its rings.
+      Would you like me to delve deeper into it? Say yes and I will ask the model about your
+      original question.
+you : yes
+bot : [asks the model about "what is saturn"]
+```
+
+Greetings, identity answers, tool results, memory turns and refusals never offer depth, because there
+is nothing to deepen. The guards capture the model call instead of making it, so the test asserts the
+*question* the model would receive.
+
+---
+
 ## The corpus as one document (M21)
 
 ```
-python aiml_to_gml.py --write     -> aiml-corpus.gml   (18 banks · 419 categories · 0.15 MB)
-python aiml_to_gml.py --check     -> ok · 578 edges · 99 redirects resolved / 3 unresolved
-python aiml_to_gml.py --write X --all   -> the whole tree: 84 banks · 99,941 categories · 21.9 MB, ~70s
+python aiml_to_gml.py --write            -> aiml-corpus.gml   (39 banks · 8,787 categories · 1.92 MB
+                                             4 registries · 9 core modules · 17 documents)
+python aiml_to_gml.py --check            -> ok · 9,427 edges · 406 redirects resolved / 159 unresolved
+python aiml_to_gml.py --write X --system -> + overlays/examples/legacy/grammar: 20 registries · 45 documents
+python aiml_to_gml.py --write X --all    -> the vendored ALICE tree: 84 banks · 99,941 categories · 21.9 MB
 ```
+
+The document now covers the whole runtime surface the review named, not only the banks:
+
+- **banks** - every `.aiml` the host loads: its own, the package's `phases/`, `routing/xcfe.aiml` and
+  `routing/kuhul-phases.aiml`, and every bank in `integrations/`;
+- **registries** - `schemas/aiml-registry.gml` (schema id, owner, resolvers, all six constraint names),
+  `registry.gml`, `tensor-registry.gml`, and the JSON phase contract, each with its digest;
+- **core modules** - the nine files in `core/` with digest, line count, public names and first
+  docstring line: the Python that validates all of this, described but never executed here;
+- **documents** - the GML the registries validate: the six `aiml_contracts` and the tensor `contracts`,
+  each with its schema, graph id, node and edge counts; a `validated_by` edge points at the registry
+  whose `schema_id` matches, and those 16 edges are derived, not asserted.
+
+`--system` adds the declarations the host does **not** load - overlays, examples, legacy documents,
+grammar files, the JSON registry and schema folders - so "everything in the package" is reachable
+without pretending it is loaded.
 
 One node per bank (with its sha256 and byte count), one node per `<category>` (phrase, wildcard count,
 template, kind, directive), one edge per containment, one edge per resolved `<srai>`, and an explicit
@@ -537,7 +628,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 115 tests, OK (M3-M21: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 10)
+host guards    : 140 tests, OK (M3-M23: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

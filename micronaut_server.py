@@ -68,7 +68,14 @@ class Engine:
             return dict(kind="deferred", reply=None, phases=self._trace(),
                         note="no local answer - the model is not invoked over the network")
         kind, reply = outcome
-        return dict(kind=kind, reply=str(reply), phases=self._trace())
+        references = []
+        try:
+            import links
+            if kind in ("aiml", "deferred"):
+                references = links.for_text(message)
+        except ImportError:
+            references = []
+        return dict(kind=kind, reply=str(reply), phases=self._trace(), links=references)
 
     def health(self) -> dict:
         app = self.app

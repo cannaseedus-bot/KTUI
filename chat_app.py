@@ -75,6 +75,14 @@ try:  # Greeting-µ: the greeting graph, used to keep every intent in a multi-in
     import greetings
 except ImportError:  # pragma: no cover
     greetings = None
+try:  # the curated ALICE knowledge banks the kernel learns first
+    import knowledge
+except ImportError:  # pragma: no cover
+    knowledge = None
+try:  # clickable reference links for a topic
+    import links
+except ImportError:  # pragma: no cover
+    links = None
 import math
 import tempfile
 import shlex
@@ -669,6 +677,11 @@ class WorkspacePicker(ModalScreen[Path | None]):
         self.dismiss(None)
 
 
+AFFIRMATIVE = re.compile(
+    r"^(?:yes|yeah|yep|yup|sure|ok|okay|please|go on|go ahead|do it|tell me more|delve deeper|"
+    r"more|continue|absolutely|yes please|please do)\b", re.I)
+
+
 class ChatApp(App):
     # The palette is the model switcher: system commands (screen, quit…) plus ChatCommands below.
     COMMANDS = App.COMMANDS | {ChatCommands}
@@ -725,6 +738,10 @@ class ChatApp(App):
         self.git_write = False
         # The loopback endpoint, when the human starts one (/serve).
         self.server = None
+        # A short local answer can offer depth: "would you like me to delve deeper?" remembers the
+        # original question, so agreeing sends *that* to the model rather than the word "yes".
+        self.pending_deep = None
+        self.offer_deepening = True
         self.daemon = self.make_daemon()
 
     def make_daemon(self):
@@ -835,6 +852,14 @@ class ChatApp(App):
         `startup.xml` is used only when it exists, which it does not in the ALICE tarball.
         """
         kernel = aiml.Kernel()
+        # Knowledge first: python-aiml lets a later learn take precedence, so everything the daemon
+        # owns (greetings, identity, memory, git) is learned after this and always wins.
+        if knowledge is not None:
+            for path in knowledge.paths():
+                try:
+                    kernel.learn(str(path))
+                except Exception:
+                    continue
         alice_dir = APP_ROOT / "aiml-en-us-foundation-alice"
         startup = alice_dir / "startup.xml"
         if alice_dir.is_dir() and startup.is_file():
@@ -1221,6 +1246,17 @@ class ChatApp(App):
         lines.append("`/user <id>` switches identity · `/allow memory` grants writes · `/allow memory off` revokes")
         return "\n".join(lines)
 
+    def action_links(self, argument: str = "") -> None:
+        if links is None:
+            self.say_system("the links module is unavailable")
+            return
+        query = (argument or "").strip()
+        if not query:
+            self.say_system("Give me a topic: `/links saturn`, `/links quantum chromodynamics`.")
+            return
+        block = links.block(query, limit=6, heading=f"Reference links for {query}")
+        self.say_system(block or f"no reference links for {query!r}")
+
     def action_memory(self) -> None:
         self.say_system(self.memory_summary())
 
@@ -1276,6 +1312,43 @@ class ChatApp(App):
         lines.append("")
         lines.append("`/plan <name> [term]` shows the graph; `/plan run <name> [term]` runs an admitted one.")
         self.say_system("\n".join(lines))
+
+    def maybe_reference(self, answer: str, *, last_user: str, response) -> str:
+        """Append reference links to a model answer that has none - and never to a non-topic."""
+        if links is None or not answer.strip() or links.has_links(answer):
+            return answer
+        try:
+            routes = greetings.routes(last_user) if greetings is not None else None
+        except Exception:
+            routes = None
+        intents = (routes or {}).get("intents") or []
+        if not intents or intents[0].get("destination") != "question":
+            return answer
+        extra = links.block(last_user)
+        if not extra:
+            return answer
+        response.update(f"\n\n{extra}")
+        return f"{answer}\n\n{extra}"
+
+    def _maybe_offer(self, question: str, answer: str) -> str:
+        """Attach the deepening offer to a short factual answer, remembering the original question."""
+        if not self.offer_deepening or greetings is None or not (answer or "").strip():
+            return answer
+        try:
+            routes = greetings.routes(question)
+        except Exception:
+            return answer
+        intents = routes.get("intents") or []
+        if len(intents) != 1 or intents[0].get("destination") != "question":
+            return answer
+        self.pending_deep = question
+        references = links.block(question) if links is not None else ""
+        parts = [answer]
+        if references:
+            parts.append(references)
+        parts.append("_Would you like me to delve deeper into it? Say **yes** and I will ask "
+                     "the model about your original question._")
+        return "\n\n".join(parts)
 
     def multi_intent_answer(self, text: str, _depth: int = 0) -> str | None:
         """Answer a multi-intent utterance from the graph, or hand the whole thing on.
@@ -1338,6 +1411,8 @@ class ChatApp(App):
         if turn.kind == "refused":
             # A refusal is an answer: the user is told what to fix, not handed to the model.
             return "refused", turn.answer
+        if turn.kind == "aiml":
+            return "aiml", self._maybe_offer(text, turn.answer)
         if turn.kind == "gitop":
             return "gitop", self.execute_gitop(turn.answer)
         return "aiml", turn.answer
@@ -1409,6 +1484,7 @@ class ChatApp(App):
         commands["push"] = ("Git: push the current branch", partial(self.action_gitop, "push"), "Needs `/allow git`; shows git's own error")
         commands["sync"] = ("Git: commit then push", partial(self.action_gitop, "sync"), "Commit, then push; stops at the first failure")
         commands["allow_git"] = ("Git: grant repo writes", partial(self.action_git_grant, "on"), "Enables commit and push until revoked")
+        commands["links"] = ("Links: reference searches for a topic", self.action_links, "Wikipedia, Britannica, NASA, Space.com - searches, not pages I read")
         commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
         commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
         commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
@@ -1572,6 +1648,9 @@ class ChatApp(App):
             return
         if name in {"commit", "push", "sync"}:
             self.action_gitop(name, argument or "")
+            return
+        if name == "links":
+            self.action_links(argument or "")
             return
         if name in {"memory", "remembered"}:
             self.action_memory()
@@ -1995,6 +2074,15 @@ class ChatApp(App):
             self.handle_command(text)
             return
 
+        # 0.5. A pending deepening offer: agreeing sends the *original* question to the model.
+        if self.pending_deep and AFFIRMATIVE.match(text.strip()):
+            question = self.pending_deep
+            self.pending_deep = None
+            v.mount(ToolLog(f"Deepening: asking the model about {question!r}"))
+            self.stream_llm_response(question)
+            return
+        self.pending_deep = None  # anything else cancels the offer
+
         # 1. Task-list commands, resolved through the AIML bank by the bus.
         # Both /task and \task use the same task-list mutation path.
         task_match = re.fullmatch(r"\\task(?:\s+(.*))?", text, flags=re.IGNORECASE | re.DOTALL)
@@ -2142,6 +2230,7 @@ class ChatApp(App):
                 final = stream.get_final_completion()
                 self.messages.append(final.choices[0].message.model_dump(exclude_none=True))
                 answer = final.choices[0].message.content or ""
+                self.maybe_reference(answer, last_user=user_text, response=resp)
                 self.remember("assistant", answer)
                 # One shared log for every local client: the dumper compiles these pairs into AIML.
                 last_user = next((m["content"] for m in reversed(self.messages) if m.get("role") == "user"), "")

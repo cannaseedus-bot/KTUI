@@ -37,6 +37,18 @@ def nodes_of(parsed, kind):
     return found
 
 
+def node_attributes(parsed, kind):
+    """Nodes of one kind with *all* their entries: some attributes repeat (constraint_name)."""
+    found = []
+    for entry in parsed.entries:
+        if entry.name != "node":
+            continue
+        pairs = [(attribute.name, attribute.value) for attribute in entry.value.entries]
+        if dict(pairs).get("kind") == kind:
+            found.append(pairs)
+    return found
+
+
 class M21CorpusPort(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -52,7 +64,8 @@ class M21CorpusPort(unittest.TestCase):
     # -- scope ----------------------------------------------------------------------------------
     def test_scope_is_the_host_corpus_not_the_vendored_one(self):
         banks = aiml_to_gml.host_banks()
-        self.assertEqual(len(banks), 18)
+        import knowledge
+        self.assertEqual(len(banks), 18 + len(knowledge.paths()))
         self.assertTrue(all(bank.is_file() for bank in banks))
         self.assertGreater(len(aiml_to_gml.all_banks()), len(banks),
                            "the --all scope should be larger than the loaded corpus")
@@ -62,7 +75,7 @@ class M21CorpusPort(unittest.TestCase):
         sources = aiml_to_gml.inventory(aiml_to_gml.host_banks())
         categories = nodes_of(self.parsed, "category")
         self.assertEqual(len(categories), sources["total_categories"])
-        self.assertIn(len(categories), (419, 420), "the loaded corpus should be about 419 categories")
+        self.assertGreater(len(categories), 3000, "the loaded corpus now includes the knowledge banks")
 
     def test_every_bank_becomes_a_node_with_its_digest(self):
         sources = aiml_to_gml.inventory(aiml_to_gml.host_banks())
@@ -80,6 +93,12 @@ class M21CorpusPort(unittest.TestCase):
         self.assertEqual(int(memory[0]["wildcard_count"]), 1)
         self.assertIn("MEMORY", memory[0]["template"])
         self.assertIn("memory", (memory[0]["template_kind"] + memory[0]["template"]).lower())
+
+    def test_knowledge_questions_have_categories(self):
+        categories = nodes_of(self.parsed, "category")
+        saturn = [node for node in categories if node.get("phrase") == "WHAT IS SATURN"]
+        self.assertEqual(len(saturn), 1, "the corpus projection must carry the knowledge banks")
+        self.assertIn("planet", saturn[0]["template"].lower())
 
     def test_wildcard_counts_match_the_patterns(self):
         sources = aiml_to_gml.inventory(aiml_to_gml.host_banks())
@@ -128,6 +147,48 @@ class M21CorpusPort(unittest.TestCase):
         self.assertTrue(committed.is_file(), "run: python aiml_to_gml.py --write")
         report = aiml_to_gml.check(committed)
         self.assertTrue(report["ok"], report["problems"])
+
+    def test_registries_modules_and_documents_are_in_the_projection(self):
+        registries = nodes_of(self.parsed, "registry")
+        modules = nodes_of(self.parsed, "module")
+        documents = nodes_of(self.parsed, "document")
+        self.assertEqual(len(registries), 4, [item["name"] for item in registries])
+        self.assertEqual(len(modules), 9, [item["name"] for item in modules])
+        self.assertEqual(len(documents), 17)
+        aiml_registry = next(pairs for pairs in node_attributes(self.parsed, "registry")
+                             if dict(pairs).get("name") == "aiml-registry.gml")
+        attributes = dict(aiml_registry)
+        self.assertEqual(attributes["schema_id"], "aiml-gml/1")
+        self.assertEqual(attributes["owner"], "gml.aiml")
+        constraints = [value for name, value in aiml_registry if name == "constraint_name"]
+        self.assertIn("pattern_wildcard_count", constraints)
+        self.assertIn("endpoint_mode", constraints)
+        edges = [entry for entry in self.parsed.entries if entry.name == "edge"]
+        relations = [next((a.value for a in edge.value.entries if a.name == "relation"), "")
+                     for edge in edges]
+        self.assertGreater(relations.count("validated_by"), 0,
+                           "a contract whose schema has a registry should point at it")
+
+    def test_the_named_package_paths_are_covered(self):
+        """The paths the review named: the AIML registry, phases, core, contracts, routing, integrations."""
+        covered = set()
+        for node in nodes_of(self.parsed, "bank") + nodes_of(self.parsed, "document") \
+                + nodes_of(self.parsed, "module") + nodes_of(self.parsed, "registry"):
+            covered.add(node.get("path") or node.get("name") or "")
+        for expected in ("aiml-registry.gml", "pop.aiml", "chen.aiml", "gml2.py", "registry.py",
+                         "category.gml", "xcfe.aiml", "kuhul-phases.aiml", "daemon-modes.aiml"):
+            self.assertTrue(any(expected == item or item.endswith("/" + expected)
+                                for item in covered), f"{expected} missing from the projection")
+
+    def test_the_system_scope_adds_the_unloaded_declarations(self):
+        folder = Path(self.folder.name)
+        default_banks = aiml_to_gml.host_banks()
+        with_system = folder / "system.gml"
+        written = aiml_to_gml.write(with_system, system=True)
+        self.assertGreater(len(written["documents"]), 17)
+        self.assertGreater(len(written["registries"]), 4)
+        self.assertEqual(len(written["banks"]), len(default_banks),
+                         "the system scope must not change which banks are included")
 
     def test_the_document_declares_that_it_grants_nothing(self):
         constraints = [entry for entry in self.parsed.entries

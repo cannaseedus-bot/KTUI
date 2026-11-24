@@ -20,6 +20,7 @@ AIML kernel loads. It is a projection of the corpus, used for inspection and ver
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import re
 import sys
@@ -38,11 +39,16 @@ XML_NS = re.compile(r"^\{.*\}")
 
 def host_banks() -> list[Path]:
     """The banks the host and the daemon actually load, in load order."""
-    files = [APP_ROOT / name for name in ("_override.aiml", "codex.aiml", "gitops.aiml",
+    try:
+        import knowledge
+        knowledge_files = knowledge.paths()
+    except ImportError:  # pragma: no cover
+        knowledge_files = []
+    files = list(knowledge_files)
+    files += [APP_ROOT / name for name in ("_override.aiml", "codex.aiml", "gitops.aiml",
                                           "identity.aiml", "memory.aiml", "smalltalk.aiml",
                                           "micronaut.aiml", "micronaut-example.aiml")]
-    files += [PACKAGE / "phases" / f"{phase}.aiml"
-              for phase in ("pop", "wo", "yax", "sek", "chen", "xul")]
+    files += phase_banks()
     files += [PACKAGE / "routing" / "kuhul-phases.aiml", PACKAGE / "routing" / "xcfe.aiml",
               PACKAGE / "integrations" / "daemon-modes.aiml",
               APP_ROOT / "aiml-en-us-foundation-alice" / "knumatic_learned.aiml"]
@@ -67,6 +73,119 @@ def _key(path: Path) -> str:
         return path.resolve().relative_to(APP_ROOT).as_posix()
     except ValueError:
         return path.as_posix()
+
+
+def phase_banks() -> list[Path]:
+    """Every phase bank in the package's phases directory, not a fixed list of six."""
+    return sorted((PACKAGE / "phases").glob("*.aiml"))
+
+
+def registry_docs() -> list[Path]:
+    """The schema/registry declarations the corpus depends on: GML registries and JSON schemas."""
+    folder = PACKAGE / "schemas"
+    return sorted(list(folder.glob("*.gml")) + list(folder.glob("*.json")))
+
+
+def core_modules() -> list[Path]:
+    """The Python that validates all of this - listed, hashed, never executed by the projection."""
+    return sorted((PACKAGE / "core").glob("*.py"))
+
+
+def contract_docs() -> list[Path]:
+    """The GML documents the registries validate: the tensor contracts and the six AIML contracts."""
+    return sorted(list((PACKAGE / "contracts").glob("*.gml"))
+                  + list((PACKAGE / "aiml_contracts").glob("*.gml")))
+
+
+def system_docs() -> list[Path]:
+    """The declarations outside the loaded runtime: overlays, examples, legacy documents, grammar."""
+    wanted = []
+    for folder, patterns in (("overlays", ("*.gml",)), ("examples", ("*.gml",)),
+                             ("legacy", ("*.gml", "*.json")), ("grammar", ("*.ebnf", "*.json")),
+                             ("registry", ("*.json",)), ("schema", ("*.json", "*.xsd"))):
+        for pattern in patterns:
+            wanted += sorted((PACKAGE / folder).glob(pattern))
+    return wanted
+
+
+def integration_banks() -> list[Path]:
+    """Every bank in the package's integrations directory."""
+    return sorted((PACKAGE / "integrations").glob("*.aiml"))
+
+
+def describe_document(path: Path) -> dict:
+    """A contract document: its schema, graph id, and the size of its graph."""
+    info = dict(name=path.name, path=_key(path), digest=digest(path), bytes=path.stat().st_size,
+                schema=None, graph_id=None, nodes=0, edges=0, error=None)
+    try:
+        import phases
+        document = phases.core_module("gml2").parse(path.read_text(encoding="utf-8"))
+    except Exception as error:
+        info["error"] = f"{type(error).__name__}: {error}"[:160]
+        return info
+
+    def value_of(node, name):
+        for entry in getattr(node, "entries", []) or []:
+            if getattr(entry, "name", "") == name:
+                return getattr(entry, "value", None)
+        return None
+
+    for entry in document.entries:
+        if getattr(entry, "name", "") == "node":
+            info["nodes"] += 1
+        elif getattr(entry, "name", "") == "edge":
+            info["edges"] += 1
+    info["schema"] = value_of(document, "schema")
+    info["graph_id"] = value_of(document, "graph_id")
+    return info
+
+
+def describe_registry(path: Path) -> dict:
+    """What a registry document declares: its schema id, owner, resolvers and constraint names."""
+    info = dict(name=path.name, digest=digest(path), bytes=path.stat().st_size)
+    if path.suffix != ".gml":
+        info.update(kind="json-schema", schema_id=None, owner=None, resolvers=[], constraints=[])
+        return info
+    try:
+        import phases
+        document = phases.core_module("gml2").parse(path.read_text(encoding="utf-8"))
+    except Exception as error:
+        info.update(kind="unparsed", error=f"{type(error).__name__}: {error}"[:160],
+                    schema_id=None, owner=None, resolvers=[], constraints=[])
+        return info
+
+    def value_of(node, name):
+        for entry in getattr(node, "entries", []) or []:
+            if getattr(entry, "name", "") == name:
+                return getattr(entry, "value", None)
+        return None
+
+    extension = next((entry for entry in document.entries if entry.name == "extension"), None)
+    info.update(kind="gml-registry",
+                schema_id=value_of(extension.value, "schema_id") if extension is not None else None,
+                owner=value_of(extension.value, "owner") if extension is not None else None,
+                resolvers=[dict(scheme=value_of(entry.value, "scheme"),
+                                mode=value_of(entry.value, "kind"))
+                           for entry in document.entries if entry.name == "resolver"],
+                constraints=[value_of(entry.value, "name") for entry in document.entries
+                             if entry.name == "constraint"])
+    return info
+
+
+def describe_module(path: Path) -> dict:
+    """A core module: size, line count, its docstring's first line and its public names."""
+    source = path.read_text(encoding="utf-8")
+    try:
+        tree = ast.parse(source)
+        names = [node.name for node in tree.body
+                 if isinstance(node, (ast.FunctionDef, ast.ClassDef))
+                 and not node.name.startswith("_")]
+        doc = (ast.get_docstring(tree) or "").splitlines()
+    except SyntaxError:
+        names, doc = [], []
+    return dict(name=path.name, digest=digest(path), bytes=path.stat().st_size,
+                lines=source.count("\n") + 1, public=names[:12],
+                summary=(doc[0] if doc else "")[:160])
 
 
 def digest(path: Path) -> str:
@@ -137,13 +256,17 @@ def inventory(paths: list[Path]) -> dict:
                 total_categories=len(categories), total_banks=len(banks))
 
 
-def _quote(text: str) -> str:
-    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+def _quote(text) -> str:
+    value = "" if text is None else str(text)
+    return '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
 
 
 def render(document: dict) -> str:
     """The single-file GML projection."""
     banks, categories = document["banks"], document["categories"]
+    registries = document.get("registries") or []
+    modules = document.get("modules") or []
+    documents = document.get("documents") or []
     by_phrase: dict[str, int] = {}
     lines = [
         "graph [",
@@ -231,6 +354,57 @@ def render(document: dict) -> str:
             lines.append(f' edge [ source {category_ids[index]} target {directive_ids[key]} '
                          f'relation "emits" ]')
 
+    registry_ids: dict[int, int] = {}
+    module_ids: dict[int, int] = {}
+    document_ids: dict[int, int] = {}
+    for entry in registries:
+        registry_ids[id(entry)] = next_id
+        next_id += 1
+    for entry in modules:
+        module_ids[id(entry)] = next_id
+        next_id += 1
+    for entry in documents:
+        document_ids[id(entry)] = next_id
+        next_id += 1
+
+    for entry in registries:
+        attributes = ['kind "registry"', f'name {_quote(entry["name"])}',
+                      f'digest {_quote(entry["digest"])}', f'bytes {entry["bytes"]}',
+                      f'form {_quote(entry.get("kind") or "unknown")}']
+        if entry.get("schema_id"):
+            attributes.append(f'schema_id {_quote(entry["schema_id"])}')
+        if entry.get("owner"):
+            attributes.append(f'owner {_quote(entry["owner"])}')
+        for resolver in entry.get("resolvers") or []:
+            label = f"{resolver.get('scheme')}::{resolver.get('mode')}"
+            attributes.append(f'resolver {_quote(label)}')
+        for name in entry.get("constraints") or []:
+            attributes.append(f'constraint_name {_quote(str(name))}')
+        lines.append(f" node [ id {registry_ids[id(entry)]} " + " ".join(attributes) + " ]")
+
+    for entry in modules:
+        lines.append(f' node [ id {module_ids[id(entry)]} kind "module" '
+                     f'name {_quote(entry["name"])} digest {_quote(entry["digest"])} '
+                     f'bytes {entry["bytes"]} lines {entry["lines"]} '
+                     f'public {_quote(",".join(entry["public"]))} '
+                     f'summary {_quote(entry["summary"])} ]')
+
+    for entry in documents:
+        lines.append(f' node [ id {document_ids[id(entry)]} kind "document" '
+                     f'name {_quote(entry["name"])} path {_quote(entry["path"])} '
+                     f'digest {_quote(entry["digest"])} bytes {entry["bytes"]} '
+                     f'nodes {entry["nodes"]} edges {entry["edges"]} '
+                     f'schema {_quote(entry["schema"] or "none")} '
+                     f'graph_id {_quote(entry["graph_id"] or "none")} ]')
+
+    registry_by_schema = {entry["schema_id"]: id(entry) for entry in registries
+                          if entry.get("schema_id")}
+    for entry in documents:
+        target = registry_by_schema.get(entry["schema"])
+        if target is not None:
+            lines.append(f' edge [ source {document_ids[id(entry)]} target {registry_ids[target]} '
+                         f'relation "validated_by" ]')
+
     lines += [
         "",
         ' constraint [ name "one_node_per_category" arity 1 scope "graph" '
@@ -245,9 +419,24 @@ def render(document: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write(output: Path = DEFAULT_OUTPUT, *, everything: bool = False) -> dict:
+def write(output: Path = DEFAULT_OUTPUT, *, everything: bool = False, system: bool = False) -> dict:
     paths = all_banks() if everything else host_banks()
     document = inventory(paths)
+    document["registries"] = [describe_registry(path) for path in registry_docs()]
+    document["modules"] = [describe_module(path) for path in core_modules()]
+    document["documents"] = [describe_document(path) for path in contract_docs()]
+    if system:
+        # The rest of the package's declarations are not loaded by the host; they are included only
+        # when the caller asks, and they are marked as such rather than blended into the corpus.
+        for path in system_docs():
+            if path.suffix == ".gml":
+                document["documents"].append(describe_document(path))
+            else:
+                document["registries"].append(describe_registry(path))
+    document["errors"] += [dict(path=item["name"], detail=item["error"])
+                           for item in document["documents"] if item.get("error")]
+    document["errors"] += [dict(path=item["name"], detail=item["error"])
+                           for item in document["registries"] if item.get("error")]
     document["text"] = render(document)
     document["bytes"] = len(document["text"].encode("utf-8"))
     Path(output).write_text(document["text"], encoding="utf-8", newline="\n")
@@ -297,20 +486,28 @@ def check(document_path: Path = DEFAULT_OUTPUT, *, everything: bool = False) -> 
                              if int(attributes.get("wildcard_count") or 0))
     if wildcards != recorded_wildcards:
         problems.append(dict(code="wildcard_counts", detail=f"{recorded_wildcards} vs {wildcards}"))
-    resolve_edges = sum(1 for edge in edges
-                        if next((a.value for a in edge.value.entries if a.name == "relation"), "") == "redirects_to")
+    relations = [next((a.value for a in edge.value.entries if a.name == "relation"), "") for edge in edges]
+    resolve_edges = relations.count("redirects_to")
+    # Count edges, not nodes: srai_missing nodes are deduplicated by phrase, so a phrase reached from
+    # two categories is one node and two edges.
+    missing_edges = relations.count("redirects_missing")
     redirected = sum(len(category.srai) for category in sources["categories"])
-    if resolve_edges + missing != redirected:
+    if resolve_edges + missing_edges != redirected:
         problems.append(dict(code="srai_accounting",
-                             detail=f"{resolve_edges} resolved + {missing} missing vs {redirected} redirects"))
+                             detail=f"{resolve_edges} resolved + {missing_edges} missing vs "
+                                    f"{redirected} redirect(s)"))
     return dict(ok=not problems, problems=problems, banks=len(banks), categories=len(categories),
-                edges=len(edges), resolved_redirects=resolve_edges, unresolved_redirects=missing,
+                edges=len(edges), resolved_redirects=resolve_edges,
+                unresolved_redirects=missing_edges, srai_missing_nodes=missing,
                 errors=sources["errors"])
 
 
 def summary(document: dict, output: Path) -> str:
     lines = [f"wrote {output} · {document['total_banks']} bank(s) · {document['total_categories']} "
-             f"category(ies) · {document['bytes'] / 1024 / 1024:.2f} MB"]
+             f"category(ies) · {document['bytes'] / 1024 / 1024:.2f} MB · "
+             f"{len(document.get('registries') or [])} registry(ies) · "
+             f"{len(document.get('modules') or [])} module(s) · "
+             f"{len(document.get('documents') or [])} document(s)"]
     for error in document["errors"][:5]:
         lines.append(f"  parse error: {error['path']}: {error['detail']}")
     return "\n".join(lines)
@@ -323,10 +520,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write", nargs="?", const=str(DEFAULT_OUTPUT), default=None)
     parser.add_argument("--check", nargs="?", const=str(DEFAULT_OUTPUT), default=None)
     parser.add_argument("--all", action="store_true", help="include the vendored ALICE corpus")
+    parser.add_argument("--system", action="store_true",
+                        help="also include the package's overlays, examples, legacy and grammar "
+                             "declarations (not loaded by the host)")
     args = parser.parse_args(argv)
     if args.write:
         output = Path(args.write)
-        document = write(output, everything=args.all)
+        document = write(output, everything=args.all, system=args.system)
         print(summary(document, output))
         return 0 if not document["errors"] else 2
     report = check(Path(args.check or DEFAULT_OUTPUT), everything=args.all)
