@@ -63,6 +63,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M24 | The five GML/2 contract issues: reference modes, dynamic SRAI, runtime cycle guard, capability ladder, ordered templates | **guard** | `srai_resolver.py`, `aiml_host.states`, `core/rules.py` (segments required), `tests_host/test_gml2_contracts.py::M24…` |
 | M25 | AIML round-trip conformance: 131 real categories migrated, validated, and answering identically to python-aiml | **guard** | `aiml_graph.py`, `tests_host/test_aiml_roundtrip.py::M25…` |
 | M26 | Retrieval and composition: the two contracts are consumed - rank relations, compose a verified paragraph | **guard** | `compose.py`, `compose.aiml`, `aiml_contracts/{retrieval,composition}.gml`, `tests_host/test_compose.py::M26…` |
+| M27 | EmbeddingGemma2 vector adapter verified against the real 99,524-row assets; similarity ranks, compatibility filters, XCFE admits | **guard** | `adapters/embeddinggemma2.py`, `tests/test_vector_adapter.py` (14 tests) |
 
 ---
 
@@ -154,6 +155,44 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## EmbeddingGemma2 vectors (M27)
+
+The adapter existed as a scaffold that had never seen the real assets - its own README said the JSONL
+structure had not been inspected. It has now been run against all five files:
+
+```
+rows 99,524 · dimensions 256 · float32 · three 100 MB .npy lanes · 52 MB bindings (1.7 s to parse)
+record: {"index": n, "A": {"vector_row": n}, "B": {"vector_row": n}, "pattern": …, "template": …,
+         "authority": "data_only"}
+validate() -> VALIDATED_READ_ONLY, coverage == vector count
+```
+
+The first real defect: `pairs()` required a flat `vector_row` per record, which the producer never
+writes, so `validate()` failed on line 1 of the bindings. The row is the record's `index`, and
+`A.vector_row`/`B.vector_row` must agree with it - a record contradicting itself is a contract error,
+not a silent guess.
+
+**Ranking is not authorization**, and the adapter now enforces that rather than documenting it:
+
+| surface | does | never does |
+|---|---|---|
+| `retrieve(vector)` | chunked cosine on one lane | admit, execute, persist |
+| `retrieve_by_row(row)` | nearest neighbours of an existing row | embed text |
+| `lookup(text)` | exact pattern lookup | pretend an unseen phrase has a vector |
+| `for_text(text)` | exact hit, then neighbours; else `NO_ENCODER_MATCH` | fabricate an embedding |
+| `compatible(pattern, text)` | AIML wildcard compatibility | score anything |
+| `rank_and_filter(text)` | keeps compatible, reports dropped | let a high score bypass structure |
+
+Measured on the real data: `rank_and_filter("what is ai")` keeps row 1 (`WHAT IS AI`, 1.0) and drops
+88,107 / 88,466 / 93,242 (`WHAT IS A AI`, `WHAT IS AN AI`, `WHAT IS AN ARTIFICIAL INTELLIGENCE`) -
+semantically close, structurally unable to bind. Every candidate stays `PENDING_XCFE`.
+
+There is no text encoder in this repository, and the adapter says so instead of substituting one: an
+unseen phrase returns `NO_ENCODER_MATCH`. Vector assets are `data_only`; they rank candidates and
+grant nothing.
 
 ---
 
@@ -727,7 +766,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 179 tests, OK (M3-M26: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12, gml2 15, roundtrip 13, compose 11)
+host guards    : 179 tests, OK (M3-M26): package suite 97 tests (incl. 14 vector-adapter tests)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
