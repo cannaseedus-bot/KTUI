@@ -1,0 +1,167 @@
+{
+  "schema": "kuhul-contract-experiment/1",
+  "case": "chain-01",
+  "repeats": 3,
+  "protocol": {
+    "schema": "kuhul-protocol/1",
+    "case": "chain-01",
+    "contract_uri": "kuhul://operators/v1",
+    "system_prompt_sha256": "31d31997219efdc12d262846bb02ce72215964f44377709f4b8e040d2510e671",
+    "suffix_sha256": {
+      "baseline": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "contract": "e4ef2a3fe3f4536bd9e150cdc8899e10e4562a5dc0b5e3b758e16abd543cc1ec"
+    },
+    "decoding": {
+      "temperature": 0,
+      "max_tokens": 900
+    },
+    "output_schema": "{\"phase\": \"Pop|Wo|Yax|Sek|Chen|Xul\", \"operators\": [\"<operator>\", \"...\"], \"authority\": \"proposal\"}",
+    "expected_graph_sha256": "d061c565723e35afa6b787d97f10bab034bad0a5577c961e808954ff516fa75c"
+  },
+  "interleaved": true,
+  "system_prompt": "You translate instructions into K'UHUL operator plans. Reply with a JSON array and NOTHING else - no prose, no explanation, no code fence. Each element has exactly these keys: phase (one of Pop, Wo, Yax, Sek, Ch'en, Xul), operator (one of filter, map, fold, accumulate, reduce), target (a reference like \"graph.matches\" or \"gml://relations\"), binding (a string, required for filter and map), next (the next operator or phase, or null), authority (the string \"proposal\"). Every plan uses phase \"Sek\".",
+  "baseline_frozen": {
+    "case": "chain-01",
+    "suffix": "",
+    "note": "kept unchanged"
+  },
+  "conditions": {
+    "baseline": {
+      "note": "the original ambiguous instruction, unchanged",
+      "contract_uri": null
+    },
+    "contract": {
+      "note": "the same instruction plus kuhul://operators/v1, rendered from the declaration",
+      "contract_uri": "kuhul://operators/v1"
+    }
+  },
+  "started_at": "2026-11-24T07:44:46Z",
+  "results": {
+    "advisor": {
+      "baseline": {
+        "repeats": 3,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 775,
+            "latency_ms": 385250,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "[{\"phase\":\"Sek\",\"operator\":\"filter\",\"target\":\"graph.matches\",\"binding\":\"valid\",\"next\":\"map\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"map\",\"target\":\"gml://relations\",\"binding\":\"toProposition\",\"next\":\"fold\",\"authority\":\"proposal\"},{"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 750,
+            "latency_ms": 155984,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "[{\"phase\":\"Sek\",\"operator\":\"filter\",\"target\":\"graph.matches\",\"binding\":\"validMatch\",\"next\":\"map\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"map\",\"target\":\"gml://relations\",\"binding\":\"proposition\",\"next\":\"fold\",\"authority\":\"proposal\""
+          },
+          {
+            "run": 2,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "tokens": 882,
+            "latency_ms": 206484,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "[{\"phase\":\"Sek\",\"operator\":\"filter\",\"target\":\"graph.matches\",\"binding\":\"isValid\",\"next\":\"map\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"map\",\"target\":\"graph.matches\",\"binding\":\"toProposition\",\"next\":\"fold\",\"authority\":\"proposal\"},{"
+          }
+        ]
+      },
+      "contract": {
+        "repeats": 3,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 0,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": false,
+            "verdict": null,
+            "complete": false,
+            "nodes_ok": false,
+            "edges_ok": false,
+            "proposed": null,
+            "tokens": 900,
+            "latency_ms": 212141,
+            "finish_reason": "length",
+            "errors": [
+              "unparseable"
+            ],
+            "reply_head": ""
+          },
+          {
+            "run": 1,
+            "parsed": false,
+            "verdict": null,
+            "complete": false,
+            "nodes_ok": false,
+            "edges_ok": false,
+            "proposed": null,
+            "tokens": 900,
+            "latency_ms": 197281,
+            "finish_reason": "length",
+            "errors": [
+              "unparseable"
+            ],
+            "reply_head": ""
+          },
+          {
+            "run": 2,
+            "parsed": false,
+            "verdict": null,
+            "complete": false,
+            "nodes_ok": false,
+            "edges_ok": false,
+            "proposed": null,
+            "tokens": 900,
+            "latency_ms": 224687,
+            "finish_reason": "length",
+            "errors": [
+              "unparseable"
+            ],
+            "reply_head": ""
+          }
+        ]
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "one frozen case, repeated per cell, identical system prompt in both conditions; exact graph equivalence is the only success criterion"
+}

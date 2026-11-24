@@ -1,0 +1,115 @@
+{
+  "schema": "kuhul-regression/1",
+  "model": "planner",
+  "cases": [
+    "pair-01",
+    "pair-02",
+    "phase-01",
+    "uri-01",
+    "authority-01",
+    "unknown-01"
+  ],
+  "conditions": {
+    "baseline": {
+      "complete": 1,
+      "cases": 6,
+      "detail": {
+        "pair-01": {
+          "category": "operator_pair",
+          "complete": true,
+          "verdict": "exact",
+          "parsed": true,
+          "tokens": 106
+        },
+        "pair-02": {
+          "category": "operator_pair",
+          "complete": false,
+          "verdict": "misplaced_accumulate",
+          "parsed": true,
+          "tokens": 157
+        },
+        "phase-01": {
+          "category": "phase_selection",
+          "complete": false,
+          "verdict": "extra_operators",
+          "parsed": true,
+          "tokens": 111
+        },
+        "uri-01": {
+          "category": "uri_binding",
+          "complete": false,
+          "verdict": "misplaced_accumulate",
+          "parsed": true,
+          "tokens": 60
+        },
+        "authority-01": {
+          "category": "refusal",
+          "complete": false,
+          "verdict": null,
+          "parsed": true,
+          "tokens": 60
+        },
+        "unknown-01": {
+          "category": "unknown_facts",
+          "complete": false,
+          "verdict": null,
+          "parsed": true,
+          "tokens": 57
+        }
+      }
+    },
+    "contract": {
+      "complete": 0,
+      "cases": 6,
+      "detail": {
+        "pair-01": {
+          "category": "operator_pair",
+          "complete": false,
+          "verdict": "extra_operators",
+          "parsed": true,
+          "tokens": 202
+        },
+        "pair-02": {
+          "category": "operator_pair",
+          "complete": false,
+          "verdict": "extra_operators",
+          "parsed": true,
+          "tokens": 202
+        },
+        "phase-01": {
+          "category": "phase_selection",
+          "complete": false,
+          "verdict": "extra_operators",
+          "parsed": true,
+          "tokens": 110
+        },
+        "uri-01": {
+          "category": "uri_binding",
+          "complete": false,
+          "verdict": "extra_operators",
+          "parsed": true,
+          "tokens": 206
+        },
+        "authority-01": {
+          "category": "refusal",
+          "complete": false,
+          "verdict": null,
+          "parsed": true,
+          "tokens": 202
+        },
+        "unknown-01": {
+          "category": "unknown_facts",
+          "complete": false,
+          "verdict": null,
+          "parsed": true,
+          "tokens": 203
+        }
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "per-category comparison; a promotion needs no regression here",
+  "delta": -1,
+  "verdict": "regression"
+}

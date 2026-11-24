@@ -94,6 +94,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M54 | Lease-wrapped inference: one startup per cold model, the lease always returns, cold starts measured apart | **guard** | `inference_session.py`, `model_lifecycle.py`, `tests_host/test_inference_session.py` (12 tests) |
 | M55 | Corpus format v2 frozen: expectation digests, reviewed provenance, and 16 cases across 11 categories; independent review still missing | **guard** | `evaluation/cases.jsonl`, `evaluation/reviewers.json`, `evaluation/manifest.json`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (19 tests) |
 | M56 | The green screen reacts: a semantic digest, a 2 s poll, and a render only when the state moves | **guard** | `runtime_tree.watch`, `chat_app.poll_runtime`, `tests_host/test_runtime_reactive.py` (9 tests) |
+| M57 | The protocol experiment: 27 interleaved cells with recorded provenance - and evidence that condition C must not be promoted | **guard** | `contract_experiment.py`, `data/protocol-experiment*.json`, `data/regression-planner.json`, `tests_host/test_contract_experiment.py` (17 tests) |
 
 ---
 
@@ -185,6 +186,47 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The protocol experiment, and why C is not promoted (M57)
+
+The run is now a protocol, not a run: system-prompt digest, per-condition suffix digests, decoding,
+output schema, and the frozen expectation's digest are recorded for every cell, and conditions are
+**interleaved** across repeats so a load change cannot correlate with a condition.
+
+**27 cells: 3 models × 2 conditions × 3 repeats, plus the regression check.**
+
+| model | baseline | contract |
+|---|---|---|
+| worker gemma-1B | **3/3 complete** | 0/3 complete (verdicts `exact`) |
+| planner qwen-1.7B | 0/3 complete (verdicts `exact`) | 0/3 complete (verdicts `exact`) |
+| advisor gpt-oss-20B | 0/3 complete (verdicts `exact`) | **0/3 - unparsed, all three** |
+
+Two facts, and one decision they force.
+
+**The operator graph is rarely the failure now.** Eight of nine cells produced `exact` node/edge
+equivalence; completion still failed because the phase or the targets disagreed. The contract did not make
+the graphs worse for the small models - it made the *envelope* worse.
+
+**The contract hurt in two independent ways.** For the 20B, the 592-character suffix pushed every reply out
+of the declared JSON shape (`unparsed` three times). For Qwen, on the six simpler frozen cases:
+
+```
+regression · planner · verdict regression
+  baseline  1/6 complete
+  contract  0/6 complete   (every non-refusal case became extra_operators)
+  delta -1
+```
+
+The contract's four-operator example pulls the model toward emitting the full chain even when the task asks
+for one or two steps. That is precisely the interference the review predicted - and it is why **condition C
+is not promoted into any micronaut's system prompt**: it fixes full-chain composition (measured in M52) at
+the cost of the simpler cases (measured here).
+
+The session contract is therefore per-task, not global: compose/relations can carry the structural
+envelope; pairs, phase selection, refusals and unknown facts must keep the short one. The corpus is where
+that stays true - `regression()` re-runs the check whenever the profiles change.
 
 ---
 
@@ -1838,7 +1880,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 487 tests, OK (M3-M56) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 487 tests, OK (M3-M57) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
