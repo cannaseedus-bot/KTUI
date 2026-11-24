@@ -773,6 +773,76 @@
         "after_signatures": []
       },
       {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_a_gated_operation_may_never_be_registered.test_a_gated_operation_may_never_be_registered",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_every_operation_is_classified_with_a_known_status.test_every_operation_is_classified_with_a_known_status",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_headers_carry_the_phase_metadata.test_headers_carry_the_phase_metadata",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_registered_operations_resolve_to_a_callable.test_registered_operations_resolve_to_a_callable",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_the_gated_operations_are_exactly_the_writes_and_executions.test_the_gated_operations_are_exactly_the_writes_and_executions",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_the_report_declares_that_matching_grants_nothing.test_the_report_declares_that_matching_grants_nothing",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_the_report_is_deterministic.test_the_report_is_deterministic",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_the_six_banks_are_counted.test_the_six_banks_are_counted",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_the_summary_lists_every_status.test_the_summary_lists_every_status",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
+        "test_id": "test_phase_ops.PhaseOpsAuditTests.test_unbound_operations_say_why.test_unbound_operations_say_why",
+        "before": "absent",
+        "after": "passed",
+        "before_signatures": [],
+        "after_signatures": []
+      },
+      {
         "test_id": "test_program.ProgramGrammarTests.test_a_bound_step_runs_and_a_failing_step_is_reported.test_a_bound_step_runs_and_a_failing_step_is_reported",
         "before": "absent",
         "after": "passed",
@@ -1031,10 +1101,10 @@
         "import phases; print(phases.base_health())"
       ],
       "exit_code": 0,
-      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 21:20\n",
+      "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 21:29\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.172
+      "duration_seconds": 0.234
     },
     "extension_summary_before": {
       "command_line": [
@@ -1057,12 +1127,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.11
+      "duration_seconds": 0.141
     },
-    "captured_at": "2026-11-24T04:28:15.256632+00:00",
+    "captured_at": "2026-11-24T04:32:23.668780+00:00",
     "health_correlation": {
-      "suite_sha": "0400122bc70b3bc7a013a8441435676ddc650c11",
-      "health_sha": "0400122bc70b3bc7a013a8441435676ddc650c11",
+      "suite_sha": "a0549bf0e085a4156aa3a241a2be6050c71929ee",
+      "health_sha": "a0549bf0e085a4156aa3a241a2be6050c71929ee",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -1071,7 +1141,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 0400122bc70b3bc7a013a8441435676ddc650c11"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> a0549bf0e085a4156aa3a241a2be6050c71929ee"
       },
       {
         "code": "untracked_files",
@@ -1227,7 +1297,7 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "0400122bc70b3bc7a013a8441435676ddc650c11",
+    "tested_commit": "a0549bf0e085a4156aa3a241a2be6050c71929ee",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
