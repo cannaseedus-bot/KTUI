@@ -1,0 +1,55 @@
+{
+  "schema": "kuhul://schemas/v1",
+  "authority": "declaration_only",
+  "note": "Schema URIs are the message contract between micronauts. A valid message is not a permission: routing also needs a declared edge, the producer's capability and an allowed consumer.",
+  "schemas": {
+    "urn:kuhul:schema:utterance:v1": {
+      "version": 1, "authority": "proposal", "producer": null,
+      "required": ["text"]
+    },
+    "urn:kuhul:schema:semantic-candidate:v1": {
+      "version": 1, "authority": "proposal", "producer": "micronaut://v1/grams",
+      "required": ["source", "target", "relation", "score"]
+    },
+    "urn:kuhul:schema:relation:v1": {
+      "version": 1, "authority": "proposal", "producer": "micronaut://v1/relations",
+      "required": ["subject", "predicate", "object"]
+    },
+    "urn:kuhul:schema:relation:v2": {
+      "version": 2, "authority": "proposal", "producer": "micronaut://v1/relations",
+      "required": ["subject", "predicate", "object", "provenance"]
+    },
+    "urn:kuhul:schema:learning-delta:v1": {
+      "version": 1, "authority": "proposal", "producer": "micronaut://v1/learning",
+      "required": ["operation", "target", "evidence"]
+    },
+    "urn:kuhul:schema:verified-delta:v1": {
+      "version": 1, "authority": "verified", "producer": "micronaut://v1/ch_en",
+      "required": ["delta", "verdict"]
+    },
+    "urn:kuhul:schema:evidence:v1": {
+      "version": 1, "authority": "evidence", "producer": "evidence://ledger",
+      "required": ["observation"]
+    },
+    "urn:kuhul:schema:error:v1": {
+      "version": 1, "authority": "diagnostic", "producer": null,
+      "required": ["kind", "detail"]
+    }
+  },
+  "edges": [
+    {"from": "micronaut://v1/grams", "to": "micronaut://v1/relations",
+     "schema": "urn:kuhul:schema:semantic-candidate:v1", "capability": "graph.relations.read"},
+    {"from": "micronaut://v1/relations", "to": "micronaut://v1/learning",
+     "schema": "urn:kuhul:schema:relation:v1", "capability": "graph.relations.read"},
+    {"from": "micronaut://v1/relations", "to": "micronaut://v1/learning",
+     "schema": "urn:kuhul:schema:relation:v2", "capability": "graph.relations.read"},
+    {"from": "micronaut://v1/learning", "to": "micronaut://v1/ch_en",
+     "schema": "urn:kuhul:schema:learning-delta:v1", "capability": "graph.relations.read"},
+    {"from": "micronaut://v1/ch_en", "to": "evidence://ledger",
+     "schema": "urn:kuhul:schema:verified-delta:v1", "capability": "memory.write"}
+  ],
+  "adapters": [
+    {"id": "kuhul://adapter/relation/v1-to-v2", "accepts": "urn:kuhul:schema:relation:v1",
+     "emits": "urn:kuhul:schema:relation:v2", "adds": ["provenance"]}
+  ]
+}

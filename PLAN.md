@@ -102,6 +102,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M62 | Stage 2 of the green screen: a generation counter skips the rebuild, the digest still gates the repaint | **guard** | `runtime_signals.py`, `chat_app.poll_runtime`, `model_lifecycle`/`evidence_record` bumps, `tests_host/test_runtime_signals.py` (8 tests) |
 | M63 | The generation counts committed changes only (readiness-gated, failures distinct), with a slow reconciliation rebuild for external edits | **guard** | `model_lifecycle.ensure` bump placement, `chat_app.RECONCILE_EVERY`, `tests_host/test_runtime_signals.py` (13 tests) |
 | M64 | Grams-u: deterministic n-gram extraction with sliding/bound windowing, provenance digests, and relations left to GML | **guard** | `grams.py`, `tests_host/test_grams.py` (13 tests) |
+| M65 | The schema URI bus: typed handoffs gated by edge + capability, and version evolution only through registered adapters | **guard** | `schema_bus.py`, `data/schemas.json`, `tests_host/test_schema_bus.py` (21 tests) |
 
 ---
 
@@ -193,6 +194,35 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The schema URI bus (M65)
+
+Messages between micronauts are typed by schema URI, and **a valid message is not a permission**. Routing needs
+four things, each with its own refusal so nothing hides behind a neighbour:
+
+| check | refusal |
+|---|---|
+| the URI is registered | `unknown_schema` |
+| every required field is present | `payload_missing_field` |
+| the declared authority class matches the claim | `authority_mismatch` |
+| a declared producer → consumer edge exists | `no_declared_edge` (also catches a spoofed producer) |
+| the producer's capability is granted | `capability_not_granted` |
+
+`admitted` is false on every delivered message: delivery is not admission, and XCFE is not in this module.
+
+**Version evolution is explicit.** `relation:v1 → v2` exists only because an adapter is registered for that
+pair, and the adapter may **not invent** the field it adds: without `provenance` in the payload the conversion
+refuses with `missing_source_evidence`, because a default would be a change of meaning dressed as a migration.
+
+**The learning pipeline is a proposal chain.** `learning_delta()` emits
+`urn:kuhul:schema:learning-delta:v1` with `authority: "proposal"`, `requires: "xcfe_admission"` and
+`persisted: false`; `verified_delta()` refuses anything but a `PASS`/`FAIL` verdict and still reports
+`admitted: false`. A schema-valid message cannot rewrite the graph by being well-formed.
+
+The eight schemas, five edges and one adapter live in `data/schemas.json` - declarative, versioned, and
+validated at load (an edge to an unknown schema or an adapter with an unregistered endpoint fails the load).
 
 ---
 
@@ -2108,7 +2138,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 542 tests, OK (M3-M64) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 563 tests, OK (M3-M65) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
