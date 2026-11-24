@@ -759,6 +759,11 @@ class ChatApp(App):
         # The phase chain's verdict for the last turn, kept so /daemon and /plan can show it.
         self.last_plan = None
         self.last_routing = None
+        # The green screen: a digest of the last render, and counters a guard can read.
+        self.last_tree = None
+        self.runtime_digest = None
+        self.runtime_polls = 0
+        self.runtime_renders = 0
         # A short local answer can offer depth: "would you like me to delve deeper?" remembers the
         # original question, so agreeing sends *that* to the model rather than the word "yes".
         self.pending_deep = None
@@ -1354,6 +1359,38 @@ class ChatApp(App):
             return
         block = links.block(query, limit=6, heading=f"Reference links for {query}")
         self.say_system(block or f"no reference links for {query!r}")
+
+    def poll_runtime(self) -> None:
+        """Stage 1 reactive projection: poll, compare a semantic digest, render only on change.
+
+        Read-only by construction: `runtime_tree.watch()` builds the projection from the registries and
+        calls nothing that could wake a model, take a lease or change a binding.
+        """
+        if runtime_tree is None:
+            return
+        self.runtime_polls += 1
+        try:
+            snapshot = runtime_tree.watch()
+        except Exception as error:            # a broken registry is displayed, never fatal
+            self.runtime_digest = f"error:{type(error).__name__}"
+            return
+        if snapshot["digest"] == self.runtime_digest:
+            return
+        self.runtime_digest = snapshot["digest"]
+        self.runtime_renders += 1
+        self.last_tree = snapshot["tree"]
+        try:
+            panel = self.query_one("#green-screen", Static)
+        except Exception:
+            return
+        tree = snapshot["tree"]
+        models = ", ".join(f"{node['id'].split('/')[-1]} {node['fields'].get('state', '?')}"
+                           for node in tree["nodes"] if node["kind"] == "model")
+        counts = " · ".join(f"{kind} {count}" for kind, count in snapshot["counts"].items())
+        panel.update(f"{len(tree['nodes'])}n/{len(tree['edges'])}e · {counts}\n{models}")
+
+    def on_mount(self) -> None:
+        self.set_interval(2.0, self.poll_runtime)
 
     def action_runtime(self) -> None:
         """The runtime projection: what the registries actually say about the running system."""
@@ -2162,6 +2199,10 @@ class ChatApp(App):
                     yield Static("HISTORY", id="history-title")
                     yield Static("", id="history-body")
                     yield Static("/resume N  /new  /rewind N", id="history-help")
+                with Vertical(id="runtime-section"):
+                    yield Static("RUNTIME (read-only)", id="runtime-title")
+                    yield Static("", id="green-screen")
+                    yield Static("polled · digests compared · nothing woken", id="runtime-help")
         yield Static("", id="completion-hint")
         yield Input(placeholder="Type your message here... (Ctrl+Space to complete)")
         yield WorkspaceBar(id="workspace-bar")

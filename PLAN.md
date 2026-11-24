@@ -93,6 +93,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M53 | The contract as a session template: rules-only vs rules+examples, measured on Qwen | **guard** | `data/session-profiles.json`, `session_profile.py`, `data/session-experiment.json`, `tests_host/test_session_profile.py` (13 tests) |
 | M54 | Lease-wrapped inference: one startup per cold model, the lease always returns, cold starts measured apart | **guard** | `inference_session.py`, `model_lifecycle.py`, `tests_host/test_inference_session.py` (12 tests) |
 | M55 | Corpus format v2 frozen: expectation digests, reviewed provenance, and 16 cases across 11 categories; independent review still missing | **guard** | `evaluation/cases.jsonl`, `evaluation/reviewers.json`, `evaluation/manifest.json`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (19 tests) |
+| M56 | The green screen reacts: a semantic digest, a 2 s poll, and a render only when the state moves | **guard** | `runtime_tree.watch`, `chat_app.poll_runtime`, `tests_host/test_runtime_reactive.py` (9 tests) |
 
 ---
 
@@ -184,6 +185,42 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The green screen reacts (M56)
+
+The projection was a snapshot you asked for. It is a live view now, and it did not need another engine:
+
+```
+semantic digest   nodes, kinds, labels, declared state and typed edges - canonical JSON, sha256
+volatile fields   record counts, request ids, latency and timestamps are excluded from the digest
+poll              every 2 s: build the projection, compare the digest, render only when it changed
+render            `28n/51e · corpus 5 · evidence 1 · micronaut 5 · model 3 · phase 6 …`
+                  `advisor hot · planner hot · worker hot`
+```
+
+Measured in the app: three polls in a row with unchanged state produce **one** render
+(`polls 3 · renders 1`), and a digest change produces the next render.
+
+Four properties, each guarded:
+
+| property | how it is proven |
+|---|---|
+| **no-change stability** | identical state → identical 64-char digest; three polls → one render |
+| **transition visibility** | HOT → COLD changes the digest, and the cold projection shows `advisor cold`, `worker hot` |
+| **authority preserved** | `ensure`, `acquire`, `release` and `release_idle` are patched to raise before building the projection - it still builds, and none of them was reached |
+| **no second graph** | every poll rebuilds from the registries; a test counts the builds and finds one per poll, so the widget holds only a digest and the last text |
+
+The volatile-field test is the one that keeps this honest: adding 41 records to the evidence count leaves the
+digest **unchanged**, because a new record is not a change to the screen's claim about structure. Change a
+model's `state` and it moves.
+
+**Still not connected, deliberately:** stage 2 - event-driven invalidation from lifecycle transitions and
+ledger writes - is not done, so the view updates on a timer rather than on an event. And phase transitions
+are not projected per request: the phase nodes describe the six phases that exist, not which one a particular
+turn is in, because nothing emits per-turn phase events yet. Both are named here rather than implied by a
+green readout.
 
 ---
 
@@ -1801,7 +1838,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 478 tests, OK (M3-M55) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 487 tests, OK (M3-M56) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

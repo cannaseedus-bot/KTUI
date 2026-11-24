@@ -16,6 +16,7 @@ authoritative, and the screen only ever shows their verified state.
 """
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -219,3 +220,36 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main(sys.argv[1:]))
+
+# -- reactive projection: a digest that changes only when the semantics change -------------------------
+# Volatile fields would make the screen refresh on every turn (a record count, a timestamp, a latency).
+# The digest covers what the green screen actually claims: structure and declared state.
+VOLATILE_FIELDS = ("records", "last_request_id", "chain_ok", "latency_ms", "recorded_at",
+                   "observed_execution", "tokens")
+
+
+def _semantic(node: dict) -> dict:
+    fields = {key: value for key, value in (node.get("fields") or {}).items()
+              if key not in VOLATILE_FIELDS}
+    return dict(id=node["id"], kind=node["kind"], label=node["label"],
+                authority=node.get("authority"), fields=fields)
+
+
+def semantic_digest(tree: dict) -> str:
+    """A stable digest of the projection's meaning: same state, same digest."""
+    import hashlib
+
+    payload = dict(nodes=[_semantic(node) for node in tree.get("nodes") or []],
+                   edges=sorted((edge["source"], edge["relation"], edge["target"])
+                                for edge in tree.get("edges") or []))
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def watch(*, host: dict | None = None) -> dict:
+    """Build a projection and its digest. Pure: it reads the registries and starts nothing."""
+    tree = projection(host=host)
+    return dict(tree=tree, digest=semantic_digest(tree),
+                counts={kind: sum(1 for node in tree["nodes"] if node["kind"] == kind)
+                        for kind in sorted({node["kind"] for node in tree["nodes"]})})
+
