@@ -109,6 +109,11 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M69 | The real streaming path holds the lease: one acquire/release per turn, cancellation safe, and time-to-first-token measured separately from the wake | **guard** | `chat_app.stream_llm_response`, `inference_session.StreamingCall.begin/note_chunk/end`, `tests_host/test_app_stream_turn.py` (7 tests) |
 | M70 | Four distinct attestation outcomes, and independence that needs an authorized onboarding record rather than a flag | **guard** | `review_attestations.registry/independence`, `evaluation/reviewers.json` (onboarding + policy), `tests_host/test_review_attestations.py` (19 tests) |
 | M71 | The first-review packet and the three separate counts - the artifact a reviewer signs, containing expectations only | **guard** | `review_attestations.status`, `review_packet.py`, `evaluation/review-packet/`, `tests_host/test_review_packet.py` (13 tests) |
+| M72 | Reconcile declared Micronauts, registration claims, route declarations, and observable host invocation without conflating proposals with execution | **done** | `micronaut_audit.py`, `data/micronauts/README-semantic-registry.md` |
+| M73 | Resolve Micronaut program references against maintained source or mark them unresolved; verify Graph Theory registration from host evidence | **open** | `micronaut_audit.py`, `data/micronauts/kuhul-micronaut-registry.json`, `data/micronauts/graph-theory-micronaut.v1.json` |
+| M74 | Document the distinct scope of the semantic catalog and generic route catalog; do not infer aliases or count both as implemented agents | **done** | `data/micronauts/README-semantic-registry.md`, `micronaut_audit.py` |
+| M75 | Bind declared UI/Graph Theory routes to concrete host handlers only where source and capability admission exist; capture invocation evidence separately | **open** | `data/manifest/css.manifest.json`, `data/alice/Bindings.aiml`, host dispatcher, `micronaut_audit.py` |
+| M76 | Add conformance guards for registry-status claims, local reference resolution, and UI dispatch status so inventory drift is caught | **open** | `tests_host/test_micronaut_registry.py`, `micronaut_audit.py`, semantic registry and CSS manifest |
 
 ---
 
@@ -2591,3 +2596,22 @@ Expected failure signatures and what they mean:
   history": the bundle holds every ref, and its SHA-256 is in `manifest.json` and in the audit ledger.
   What it does **not** close is off-machine retention - the bundle lives on this disk until someone
   copies `backups/` elsewhere. Verified restore is not the same thing as an independent copy.
+
+### M72 — Micronaut registration audit
+
+**Symptom:** The semantic registry, phase-engine catalog, GML/AIML routes, and CSS bindings describe overlapping capabilities with different lifecycle meanings. A declaration or route was easy to read as proof of an executable handler.
+
+**Fix:** `micronaut_audit.py` inventories each source separately, checks declared edge endpoints and all local file/module references, and reports dispatch claims without promoting them to runtime evidence. The semantic-registry README now calls out its Graph Theory registration claim as a per-entry declaration that requires active-host confirmation; the generic five-agent catalog remains explicitly `declaration_only`. Vendor assets that moved under `data/` are recognized as relocated, while 17 program/module references remain unresolved in this checkout.
+
+**Verify:** `python micronaut_audit.py` from the `.aiml` root. It reports 13 semantic entries, five route-catalog entries, six declaration-only edges, four CSS bindings, one registered-capability claim, and 17 unresolved local program/module references. Inspect the JSON output for the per-entry details.
+
+**If erased:** Registration claims, missing source references, and non-invoked UI bindings can again be confused with handlers that actually ran.
+### M74 — keep catalog scopes distinct
+
+**Symptom:** The 13-entry semantic registry and five-entry phase-engine route catalog could be mistaken for one list of 18 executable agents.
+
+**Fix:** Documented their different purposes and stated that identity mapping requires an explicit binding contract. The phase-engine catalog remains a declaration-only routing example.
+
+**Verify:** `python micronaut_audit.py` reports the catalogs separately; read the “Separate catalogs are not aliases” section in `data/micronauts/README-semantic-registry.md`.
+
+**If erased:** Registry counts and status claims can imply implementations that have no handler binding.
