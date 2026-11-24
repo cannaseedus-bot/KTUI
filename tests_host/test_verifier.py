@@ -28,8 +28,19 @@ class LockTests(unittest.TestCase):
         self.assertEqual(len(record["hash"]), 64)
 
     def test_the_shipped_source_matches_the_lock(self):
+        # the lock covers the committed source, so an uncommitted edit in the working tree is not drift
         report = verifier.verify()
         self.assertTrue(report["ok"], report.get("drift"))
+        self.assertEqual(report["current"]["count"], verifier.load()["record"]["count"])
+
+    def test_the_lock_hashes_head_not_the_working_tree(self):
+        import subprocess
+
+        record = verifier.load()["record"]
+        self.assertEqual(record["source"], "HEAD")
+        committed = verifier.manifest(committed=True)
+        self.assertEqual(committed["hash"], record["hash"],
+                         "the lock describes what was committed, not whatever is on disk")
 
     def test_the_lock_does_not_hash_its_own_volatile_artifacts(self):
         record = verifier.load()["record"]

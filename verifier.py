@@ -34,6 +34,13 @@ class VerifierError(ValueError):
     """The lock cannot be built or read."""
 
 
+def _keep(name: str) -> bool:
+    normalized = name.replace("\\", "/")
+    if normalized in EXCLUDED_NAMES or normalized.startswith(EXCLUDED_PREFIXES):
+        return False
+    return not any(normalized.startswith(prefix) for prefix in EXCLUDED_GLOBS)
+
+
 def tracked_files() -> list[str]:
     """Every file git tracks, minus the ones that change per run."""
     try:
@@ -43,39 +50,78 @@ def tracked_files() -> list[str]:
         raise VerifierError(f"git ls-files failed: {error}") from error
     if completed.returncode != 0:
         raise VerifierError(f"git ls-files failed: {completed.stderr.strip()[:200]}")
-    names = [name for name in completed.stdout.split("\0") if name]
-    kept = []
-    for name in names:
-        normalized = name.replace("\\", "/")
-        if normalized in EXCLUDED_NAMES or normalized.startswith(EXCLUDED_PREFIXES):
-            continue
-        if any(normalized.startswith(prefix) for prefix in EXCLUDED_GLOBS):
-            continue
-        kept.append(normalized)
-    return sorted(kept)
+    return sorted(name for name in completed.stdout.split("\0") if name and _keep(name))
 
 
 def digest_file(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def manifest() -> dict:
-    """Path -> SHA-256 for every hashed file, plus the rolled digest."""
+def _head_contents() -> dict[str, bytes]:
+    """The committed bytes of every tracked file, read from HEAD in one batch.
+
+    Hashing HEAD rather than the working tree is deliberate: a lock must not certify an uncommitted edit that
+    happens to be lying around, and a tree is normally dirty while work is in progress.
+    """
+    listing = subprocess.run(["git", "ls-tree", "-r", "-z", "--full-tree", "HEAD"], cwd=str(HOST_ROOT),
+                             capture_output=True, timeout=120)
+    if listing.returncode != 0:
+        raise VerifierError(f"git ls-tree failed: {listing.stderr.decode('utf-8', 'replace')[:200]}")
+    entries = [entry for entry in listing.stdout.split(b"\0") if entry]
+    wanted = []
+    for entry in entries:
+        header, _, path = entry.partition(b"\t")
+        parts = header.split()
+        if len(parts) >= 3 and parts[1] == b"blob":
+            wanted.append((path.decode("utf-8", "replace"), parts[2].decode("ascii")))
+    names = {name for name, _ in wanted}
+    kept = [pair for pair in wanted if _keep(pair[0])]
+    if not kept:
+        return {}
+    payload = b"\n".join(sha.encode("ascii") for _, sha in kept) + b"\n"
+    batch = subprocess.run(["git", "cat-file", "--batch"], cwd=str(HOST_ROOT), input=payload,
+                           capture_output=True, timeout=300)
+    if batch.returncode != 0:
+        raise VerifierError(f"git cat-file failed: {batch.stderr.decode('utf-8', 'replace')[:200]}")
+    contents: dict[str, bytes] = {}
+    stream = batch.stdout
+    position = 0
+    for name, _sha in kept:
+        newline = stream.index(b"\n", position)
+        header = stream[position:newline].split()
+        size = int(header[2]) if len(header) >= 3 else 0
+        start = newline + 1
+        contents[name] = stream[start:start + size]
+        position = start + size + 1          # content is followed by a newline
+    return contents
+
+
+def manifest(*, committed: bool = True) -> dict:
+    """Path -> SHA-256 for every hashed file, plus the rolled digest.
+
+    `committed=True` hashes HEAD (what was actually committed); `committed=False` hashes the working tree.
+    """
     entries = {}
-    for name in tracked_files():
-        path = HOST_ROOT / name
-        if path.is_file():
-            entries[name] = digest_file(path)
+    if committed:
+        for name, content in _head_contents().items():
+            entries[name] = hashlib.sha256(content).hexdigest()
+    else:
+        for name in tracked_files():
+            path = HOST_ROOT / name
+            if path.is_file():
+                entries[name] = digest_file(path)
     canonical = json.dumps(entries, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    return dict(files=entries, hash=hashlib.sha256(canonical).hexdigest(), count=len(entries))
+    return dict(files=entries, hash=hashlib.sha256(canonical).hexdigest(), count=len(entries),
+                source="HEAD" if committed else "working tree")
 
 
 def build(*, lock: Path | None = None, note: str = "") -> dict:
     lock = Path(lock or LOCK)
-    current = manifest()
+    current = manifest(committed=True)
     record = dict(schema=SCHEMA, algorithm="sha256", locked=True,
                   updated_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                   hash=current["hash"], files=current["files"], count=current["count"],
+                  source=current["source"],
                   note=(note or "one hash over the tracked source; update it only when the source updates"),
                   excludes=dict(names=list(EXCLUDED_NAMES), prefixes=list(EXCLUDED_PREFIXES),
                                 prefixes_by_name=list(EXCLUDED_GLOBS)),
@@ -105,7 +151,7 @@ def verify(*, lock: Path | None = None) -> dict:
         return dict(ok=False, refused=loaded["refused"], detail=loaded.get("detail"),
                     drift={}, locked=None, current=None)
     locked = loaded["record"]
-    current = manifest()
+    current = manifest(committed=True)
     locked_files = locked.get("files") or {}
     changed = sorted(name for name in locked_files
                      if name in current["files"] and locked_files[name] != current["files"][name])
