@@ -1,0 +1,11 @@
+{
+  "schema": "asx-enterprise-graph/1",
+  "authority": "declaration_only",
+  "allowed_node_kinds": ["enterprise", "department", "supplier", "cost_driver", "component", "product", "market", "customer_segment", "metric", "risk", "regulation"],
+  "allowed_relations": ["has_department", "manages_supplier", "supplies", "contributes_to_cost", "used_in", "sold_in", "serves_segment", "measured_by", "affects", "governs", "monitors"],
+  "operations": ["QUERY", "FILTER", "MAP", "FOLD", "ACCUMULATE", "REDUCE"],
+  "mutation": false,
+  "execution": false,
+  "persistence": false,
+  "xcfe_admission_required": true
+}

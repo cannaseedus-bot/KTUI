@@ -173,8 +173,10 @@ Pop { … } Wo { … } Yax { … } Sek { … } Chen { … } Xul { … }
   blocks with the eight types, bindings and `⟁glyph` references. `Chen` and the corpus's `Ch'en` both
   parse and canonicalize to `Ch'en`.
 - **validate** covers what parsing cannot: opcode vocabulary, argument arity per opcode, lane types,
-  unresolved glyphs, unknown references, and **phase order** - a program opening `Xul` before `Pop` is
-  reported rather than silently reordered.
+  unresolved glyphs and unknown references. **Phases are a vocabulary, not a schedule**: any subset in
+  any order is valid - `Wo { … }` alone, or `Xul` before `Pop` - because a phase is meaningful only for
+  the work it does. The report records `phases`, `canonical` and `order`, and only an unknown phase
+  *name* is an error. `strict_order=True` is available for callers that want the sequence enforced.
 - **serialize** is round-trip stable (`parse(serialize(parse(x)))` equals `serialize(parse(x))`).
 - **trace, never execute**: `evaluate()` walks in phase order and records each step with its resolved
   arguments and declared effect; an unbound opcode is `deferred` with the reason, a raising one records

@@ -1,0 +1,10 @@
+<aiml version="2.0">
+  <category>
+    <pattern>WHAT PRODUCTS ARE AFFECTED BY SHIPPING COSTS</pattern>
+    <template><srai>ENTERPRISE QUERY SHIPPING IMPACT</srai></template>
+  </category>
+  <category>
+    <pattern>ENTERPRISE QUERY SHIPPING IMPACT</pattern>
+    <template>GRAPH_QUERY:shipping_impact</template>
+  </category>
+</aiml>

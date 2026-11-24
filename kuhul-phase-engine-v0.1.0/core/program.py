@@ -208,6 +208,8 @@ class Parser:
             return self.declaration()
         if token.kind == "ident" and phase_of(word):
             return self.phase_block()
+        if token.kind == "ident" and self.peek(1) is not None and self.peek(1).value == "{":
+            raise ProgramError(f"not a phase: {token.value!r} (expected one of {', '.join(PHASES)})")
         if token.kind == "ident" and word == "lane":
             return self.lane_block()
         if token.kind == "ident" and word == "bind":
@@ -343,7 +345,8 @@ def parse_khl(text: str) -> Program:
 
 
 # -- validation -------------------------------------------------------------------------------------
-def validate(program: Program, *, dialect: str = "call") -> dict:
+def validate(program: Program, *, dialect: str = "call",
+             strict_order: bool = False) -> dict:
     """Grammar rules the parser cannot check: vocabularies, arity, references, bindings."""
     problems: list[dict] = []
     opcodes = set(OPCODES) if dialect == "call" else set(KHL_OPS)
@@ -381,14 +384,19 @@ def validate(program: Program, *, dialect: str = "call") -> dict:
                     problems.append(dict(code="unresolved_glyph", detail=side.value))
                 elif side.kind == "ident" and side.value not in known:
                     problems.append(dict(code="unresolved_binding", detail=side.value))
-    for phase in program.phase_order():
-        if program.phase_order().index(phase) != PHASES.index(phase):
-            problems.append(dict(code="phase_order",
-                                 detail=f"{phase} appears out of order"))
-            break
+    # Phases are a vocabulary, not a schedule: which ones a program uses - and in which order - is the
+    # program's business, because a phase is meaningful only for the work it does. Only an unknown
+    # phase name is a defect. Callers that want the canonical sequence enforced can ask for it.
+    used = program.phase_order()
+    canonical = [phase for phase in PHASES if phase in used]
+    if strict_order and used != canonical:
+        problems.append(dict(code="phase_order",
+                             detail=f"written {used} but canonical is {canonical}"))
+    order = ("canonical" if tuple(used) == PHASES else
+             "subset" if used == canonical else "as-written")
     return dict(ok=not problems, problems=problems, opcodes=program.opcodes(),
-                phases=program.phase_order(), glyphs=len(glyphs), relations=len(relations),
-                lanes=lanes)
+                phases=used, canonical=canonical, order=order,
+                glyphs=len(glyphs), relations=len(relations), lanes=lanes)
 
 
 # -- serialization -----------------------------------------------------------------------------------

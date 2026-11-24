@@ -74,8 +74,8 @@ class ProgramGrammarTests(unittest.TestCase):
         with self.assertRaises(program.ProgramError):
             program.parse('glyph ⟁DATA = "x"')
 
-    def test_unknown_phase_is_rejected(self):
-        with self.assertRaises(program.ProgramError):
+    def test_an_unknown_phase_name_is_rejected(self):
+        with self.assertRaisesRegex(program.ProgramError, "not a phase"):
             program.parse('Zap { emit("x") }')
 
     # -- validation ------------------------------------------------------------------------------
@@ -101,10 +101,31 @@ class ProgramGrammarTests(unittest.TestCase):
         self.assertIn("unknown_lane_type",
                       {problem["code"] for problem in program.validate(bad)["problems"]})
 
-    def test_phase_order_is_checked(self):
-        bad = program.parse('Xul { emit("x") } Pop { emit("y") }')
-        self.assertIn("phase_order",
-                      {problem["code"] for problem in program.validate(bad)["problems"]})
+    def test_phases_are_used_as_needed(self):
+        """A phase is meaningful only for the work it does: any subset, any order, is valid."""
+        one = program.validate(program.parse('Wo { emit("x") }'))
+        self.assertTrue(one["ok"], one["problems"])
+        self.assertEqual(one["phases"], ["Wo"])
+        self.assertEqual(one["order"], "subset")
+
+        written = program.validate(program.parse('Xul { emit("x") } Pop { emit("y") }'))
+        self.assertTrue(written["ok"], "the program's own order is not a defect")
+        self.assertEqual(written["phases"], ["Xul", "Pop"])
+        self.assertEqual(written["order"], "as-written")
+        self.assertEqual(written["canonical"], ["Pop", "Xul"])
+
+        all_six = program.validate(program.parse(
+            'Pop { emit("a") } Wo { emit("b") } Yax { emit("c") } Sek { emit("d") } '
+            'Chen { emit("e") } Xul { emit("f") }'))
+        self.assertTrue(all_six["ok"])
+        self.assertEqual(all_six["order"], "canonical")
+
+    def test_strict_order_is_opt_in(self):
+        parsed = program.parse('Xul { emit("x") } Pop { emit("y") }')
+        self.assertTrue(program.validate(parsed)["ok"])
+        strict = program.validate(parsed, strict_order=True)
+        self.assertFalse(strict["ok"])
+        self.assertIn("phase_order", {problem["code"] for problem in strict["problems"]})
 
     # -- serialization ---------------------------------------------------------------------------
     def test_serialization_is_round_trip_stable(self):

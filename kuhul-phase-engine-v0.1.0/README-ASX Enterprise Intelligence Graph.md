@@ -40,8 +40,17 @@ Ch'en { verify("provenance,units,coverage,permissions") }    # Chen and Ch'en bo
 ```
 
 Validation is separate from parsing and covers what the parser cannot: the opcode vocabulary, argument
-arity, lane types, unresolved `⟁glyphs`, unknown references, and phase order (a program that opens
-`Xul` before `Pop` is reported, not silently reordered).
+arity, lane types, unresolved `⟁glyphs` and unknown references.
+
+**Phases are a vocabulary, not a schedule.** Which of the six a program uses - and in which order - is
+the program's business, because a phase is meaningful only for the work it does. `Wo { … }` on its own
+is valid, and so is `Xul { … } Pop { … }`. The report records what was used (`phases`), the canonical
+equivalent (`canonical`) and how they relate (`order`: `canonical` / `subset` / `as-written`); only an
+unknown phase *name* is an error. A caller that wants the canonical sequence enforced asks for it with
+`validate(program, strict_order=True)`.
+
+XML is not required either: the call grammar and the bracket dialect are the two accepted forms, and
+the phases work in both without any markup layer.
 
 **Nothing here executes.** `evaluate()` walks the program in phase order and records each step with its
 resolved arguments and its declared effect. A step whose implementation is not bound is recorded as

@@ -1,0 +1,4 @@
+{"event_id":"obs-001","subject":"shipping_apac","metric":"shipping_cost_usd_per_unit","value":10.0,"currency":"USD","scenario":"baseline","source":"synthetic_fixture"}
+{"event_id":"obs-002","subject":"shipping_apac","metric":"shipping_cost_change_pct","value":15.0,"scenario":"shock_15pct","source":"synthetic_fixture"}
+{"event_id":"obs-003","subject":"product_a","metric":"shipping_cost_exposure_units","value":2.0,"scenario":"baseline","source":"synthetic_fixture"}
+{"event_id":"obs-004","subject":"product_b","metric":"shipping_cost_exposure_units","value":1.0,"scenario":"baseline","source":"synthetic_fixture"}
