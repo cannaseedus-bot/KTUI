@@ -117,6 +117,44 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+## Typed payloads and producer identity
+
+Three contained changes to the schema bus, and no new registry.
+
+**Typed payload checks** against the existing declarations: presence, type and range are three different answers,
+with `payload_missing_field`, `payload_null`, `payload_type_mismatch` and `payload_out_of_range` kept apart. A
+**bool is rejected as a number**, explicitly, because python's `bool` is a subclass of `int`.
+
+| payload | outcome |
+|---|---|
+| `score: 0.85` | valid |
+| `score: "high"` | `payload_type_mismatch` |
+| `score: true` | `payload_type_mismatch` |
+| score absent | `payload_missing_field` |
+| `score: null` | `payload_null` |
+| `score: 1.5` | `payload_out_of_range` |
+| `relation: "vibes"` | `payload_out_of_range` (enum) |
+
+**Host-bound producer identity.** `route()` takes `authenticated_producer` from the host's dispatch context and
+refuses with `producer_not_authenticated` when it is absent or disagrees with the claimed producer, so a spoofed
+producer is caught before the edge lookup:
+
+```
+DeliveryAllowed = SchemaValid and PayloadValid and ProducerAuthenticated and EdgeDeclared and CapabilityGranted
+```
+
+and delivery still does not imply admission.
+
+**The ledger boundary.** `ledger_record()` states that a proposal was **verified**, carrying the message id,
+producer, schema version, verification result and provenance, with `admitted: false`, `graph_mutated: false`,
+`persistence: "evidence_only"`. Evidence persistence is not learning-state persistence.
+
+One defect while wiring: my first patch made `validate_payload` call itself - the required-field anchor matched
+inside the new function - and it recursed a thousand frames before failing. The type matrix caught it on the first
+run.
+
+---
+
 ## The evidence gate now proves what its name says (M72)
 
 The regression behind this: `evidence_satisfied: true` was reported while the capture had executed **only the
