@@ -121,6 +121,14 @@ try:  # the model turn's three observable handlers: process, validate, close
     import model_turn
 except ImportError:  # pragma: no cover
     model_turn = None
+try:  # the AIML/SRAI redirect chain, used to resolve a spoken route name
+    import srai_resolver
+except ImportError:  # pragma: no cover
+    srai_resolver = None
+try:  # AIML/SRAI -> a declared route -> one host dispatch, and text is never a route
+    import micro_agent_bridge
+except ImportError:  # pragma: no cover
+    micro_agent_bridge = None
 try:  # Wo: classify the turn deterministically, and never invent a target
     import turn_classifier
 except ImportError:  # pragma: no cover
@@ -793,6 +801,9 @@ class ChatApp(App):
         # The green screen: a digest of the last render, and counters a guard can read.
         self.last_tree = None
         self.last_binding = None
+        self.last_route = None
+        self.route_completer = None      # tests inject one; production uses route_complete_for
+        self.route_invoker = None
         self.runtime_digest = None
         self.runtime_polls = 0
         self.runtime_renders = 0
@@ -1166,6 +1177,105 @@ class ChatApp(App):
         except Exception as error:
             self.observation_errors += 1
             self.last_observation_error = f"{event} {phase}: {type(error).__name__}: {error}"[:200]
+
+    def route_lookup(self, pattern: str) -> str | None:
+        """The AIML matcher for a route request: spoken name -> declared route token.
+
+        The declared table is the source of truth; this lookup only translates what the user typed into a token the
+        table owns, so a rendered answer can never become a route.
+        """
+        spoken = str(pattern or "").strip().upper()
+        for name in (micro_agent_bridge.DECLARED_ROUTES if micro_agent_bridge else {}):
+            if spoken == name:
+                return f"ROUTE {name}"
+            if spoken.replace(" ", "_") == name:
+                # the spoken form redirects to the token, then the token routes: both hops are traced
+                return f"SRAI {name}"
+        return None
+
+    def route_complete_for(self, alias: str, payload: dict | None) -> str:
+        """Dispatch to a registered model alias through the existing inference path."""
+        declaration = model_lifecycle.load()
+        entry = (declaration.get("by_name") or {}).get(alias)
+        if entry is None:
+            raise LookupError(f"{alias!r} is not a registered backend")
+        messages = [{"role": "system", "content": "You are the planner. Return a short ordered plan."},
+                    {"role": "user", "content": str((payload or {}).get("text") or "")}]
+        return session_profile.complete(entry["base_url"], messages, timeout=300)
+
+    def execute_route(self, text: str) -> str | None:
+        """One live route turn: Yax resolve, Sek invoke, Ch'en verify, Xul emit. None when not a route.
+
+        Every step reports against the same request id, and exactly one backend invocation can happen.
+        """
+        if micro_agent_bridge is None:
+            return None
+        spoken = (text or "").strip()
+        if not spoken:
+            return None
+        probe = srai_resolver.resolve(spoken.upper(), [], self.route_lookup, max_depth=3)             if srai_resolver is not None else {"reply": None, "trace": []}
+        reply = probe.get("reply") or ""
+        if not reply.startswith("ROUTE "):
+            return None                      # ordinary text, including text containing model://
+        name = reply[len("ROUTE "):].strip()
+
+        # Wo binding: the route, its target, and the grants this turn actually holds.
+        granted = self.granted_capabilities()
+        resolved = micro_agent_bridge.resolve(name, declaration=micro_agent_bridge.DECLARED_ROUTES)
+        self.last_binding = dict(schema="kuhul://turn/route-binding/v1", status="bound" if resolved["ok"]
+                                 else "unsupported", task_family="route", route=name,
+                                 target_family=resolved.get("scheme"), allowed_targets=[resolved.get("target")]
+                                 if resolved.get("target") else [], route_id=resolved.get("alias"),
+                                 binding_source="declared_route", candidate_families=[name],
+                                 reason=resolved.get("detail"), authority="declaration_only")
+        # Yax: the AIML/SRAI chain, both hops preserved.
+        self.observe_model_phase("phase_enter", "Yax", {"operation": "srai.resolve", "route": name})
+        self.observe_model_phase("phase_exit", "Yax",
+                                 {"operation": "srai.resolve", "ok": bool(reply), "outcome": "ok",
+                                  "hops": len(probe.get("trace") or []), "reply": reply})
+
+        # Sek: one dispatch through the bridge.
+        self.observe_model_phase("phase_enter", "Sek", {"operation": "bridge.dispatch", "route": name})
+        completer = self.route_completer or (lambda alias, payload: self.route_complete_for(alias, payload))
+        result = micro_agent_bridge.run(name, {"text": spoken}, grants=granted,
+                                        request_id=getattr(self, "request_id", None),
+                                        complete_for=completer,
+                                        invoke_for=getattr(self, "route_invoker", None))
+        # Sek's own work is the dispatch: a call that ran and returned something (even unusable) is ok here.
+        # Whether the result is good is Ch'en's question, not Sek's.
+        dispatched = result["status"] != "refused"
+        self.observe_model_phase("phase_exit", "Sek",
+                                 {"operation": "bridge.dispatch", "ok": dispatched,
+                                  "outcome": ("ok" if dispatched else "failed"),
+                                  "status": result["status"],
+                                  "scheme": result.get("scheme"), "target": result.get("target")})
+
+        # Ch'en: the bridge result is verified, not the inference. A completed call is not a good answer.
+        verdict = (result["status"] == "completed"
+                   and result.get("output_type") == "candidate_text"
+                   and bool(str(result.get("result") or "").strip()))
+        self.observe_model_phase("phase_enter", "Ch'en", {"operation": "bridge.verify"})
+        self.observe_model_phase("phase_exit", "Ch'en",
+                                 {"operation": "bridge.verify", "ok": bool(verdict), "outcome": "ok",
+                                  "turn_outcome": ("accepted" if verdict else "refused"),
+                                  "verdict": ("accepted" if verdict else (result.get("refused") or "failed")),
+                                  "verified": bool(verdict), "admitted": result.get("admitted")})
+
+        if verdict:
+            answer = str(result["result"]).strip()
+            self.remember("assistant", answer)
+            self.messages.append({"role": "assistant", "content": answer})
+            outcome, text_out = "accepted", answer
+        else:
+            detail = result.get("detail") or result.get("refused") or "no result"
+            outcome = "refused"
+            text_out = f"No route result: {detail}. Nothing was invoked beyond the declared route."
+        self.observe_model_phase("phase_enter", "Xul", {"operation": "route.close", "verdict": outcome})
+        self.observe_model_phase("phase_exit", "Xul",
+                                 {"operation": "route.close", "ok": outcome == "accepted", "outcome": "ok",
+                                  "turn_outcome": outcome, "emitted": True, "verified": bool(verdict)})
+        self.last_route = result
+        return text_out
 
     def classify_turn(self, text: str) -> dict | None:
         """Wo's work for one turn: a typed binding, observed, and never a grant."""
@@ -1714,6 +1824,9 @@ class ChatApp(App):
             # An execution-class capability is required and not granted. No fallback: falling back
             # would run the same operation through the unrestricted path the grant exists to gate.
             return "refused", verdict["reason"]
+        routed = self.execute_route(text) if _depth == 0 else None
+        if routed is not None:
+            return "route", routed
         combined = self.multi_intent_answer(text, _depth)
         if combined:
             return "aiml", combined

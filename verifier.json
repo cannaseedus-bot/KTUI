@@ -21,7 +21,7 @@
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
     "MICRO-AGENT-BRIDGE.md": "a530c33ceaf4f2b56600afd21f29931068b7b725f52183a74df34e3d92cb3e51",
-    "PLAN.md": "c57ba8921b4a349b9bee2bc9e270e38435936df6acef51dc750c04459b9b8770",
+    "PLAN.md": "767712141feb9e8f0c15f19d35ed25d3a339e192505a46b2bb16e5b13662874b",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -102,7 +102,7 @@
     "bound_scoring.py": "04d6b7b0204c1c72298ca277bd7bd1632409bf5be43efe9d723b358506a8feb7",
     "ce_experiment.py": "cbbc320db174cabee733bd59849fd361728d2ecf38c5615b17dffe108e111764",
     "ce_protocol.py": "6dc7eaa627548cc68b89de7edb5e376dbed4d201df3215d7c80e63f88fba4dbf",
-    "chat_app.py": "be90fa4e9738413551fbbbfe6f487e63c0afb5f38bff5ffa0850fd3f641c2135",
+    "chat_app.py": "8409de525fd788a306c636017b98ac5f7d2612f563d0f10dd4574b4ed5d35b99",
     "codex.aiml": "447e2af5c8bbf84344a4b23d7f700da737f5176e88a16145e51ec982afe4973e",
     "compose.aiml": "2eaeb48a02ef318d825f789c2326b094b00788834a0b6ab17cc2734dbf072321",
     "compose.py": "da6612a7e3195d13a31c52206e42ee40cf63b75a44bf2d89f60a8af4d91c483c",
@@ -123,7 +123,7 @@
     "evaluation/scoring-contract.json": "40ccd709ebbb83ffa649d3d867f232ba0494ed33e77f13904565bfef97473968",
     "evaluation/task-sessions.json": "eb902d19a8b552bcf6e8a8114ce6d0f2f8ffcddcbd2fa8ca0bd4e14bf899fb19",
     "evaluation_harness.py": "df294a6e450ad009d5f0bb3547307e899d7ab059939443385fde4379a5d7d787",
-    "evidence-suites.json": "fd2f459ee8fa19f8d4688e687af2f8867c2e53b94e35e7035802be59127fea9f",
+    "evidence-suites.json": "e0cb828d1345b409decb5643714977674678fab62d9bafc91a0e5f2e10270877",
     "evidence_gate.py": "cf1f5273ec87f0f75a01512882db6cf8c66c3d9f305fc3b7c354ce798e40d5e4",
     "evidence_record.py": "7f0142a220bdac6d6a3757ae57ef67ca710aa3d0dfe38eaf53ef31281e97b6dc",
     "functions.py": "55aac70a851903f795c32046a270d6429828ab1aa9941a066c51e3a028f7c116",
@@ -428,16 +428,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "53c0803ce124436a32a3e1c855856bf0c86481a6d98bbd3b8fd5eb0aab05154e",
+  "hash": "88b331525728091fc917c29791307fac51ce41e6cb8b3a9beccbe816f79c511f",
   "locked": true,
-  "note": "re-lock after the PLAN section",
+  "note": "lock for the live route turn (M91)",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
-    "count": 407,
-    "hash": "4b243d73b7fef15abae5d7fd82dc698772e75ff887df41f36b8ad152d3f438ad",
-    "updated_at": "2026-11-24T22:05:04Z"
+    "count": 409,
+    "hash": "53c0803ce124436a32a3e1c855856bf0c86481a6d98bbd3b8fd5eb0aab05154e",
+    "updated_at": "2026-11-24T22:07:44Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T22:07:44Z"
+  "updated_at": "2026-11-24T22:48:03Z"
 }

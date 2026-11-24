@@ -38,7 +38,7 @@
         "-s",
         "tests_host"
       ],
-      "minimum_tests": 840
+      "minimum_tests": 849
     }
   }
 }
