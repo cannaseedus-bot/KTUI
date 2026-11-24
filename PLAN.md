@@ -120,6 +120,35 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:wo-instrumentation-and-write-verification -->
 <!-- milestone:learning-chain-end-to-end -->
 <!-- milestone:delivery-integrity-of-the-learning-chain -->
+<!-- milestone:learning-pipeline-closure -->
+## Learning-u: closed, with its limits stated
+
+The pipeline is **frozen** at `7c9edd2`. What closure means here, in the terms the project has been using:
+
+| property | evidence |
+|---|---|
+| implemented boundary | five hops: typed candidate, proposal delta, authenticated route, PASS/FAIL verification, evidence-only append |
+| observed behaviour | one end-to-end run recorded 5 hops, verdict PASS, `admitted: false`, `persistence: "evidence_only"`, `graph_mutated: false` |
+| negative tests | malformed candidate, boolean score, invalid verdict, duplicate delivery, ledger write failure, dry run |
+| reproducible evidence | `tests_host/test_learning_pipeline.py` (14 guards) plus the same-commit gate evidence |
+| stated limit | duplicate detection is a **linear ledger scan**; it is correct at this scale and must never become a second source of truth if it is ever replaced by an index |
+
+The invariant the pipeline holds:
+
+```
+LedgerWrite  =>  CandidateValid and RouteAuthorized and VerdictValid
+```
+
+and its deliberate non-implications: persisted evidence is **not** XCFE admission, **not** graph mutation and
+**not** a learned-state update. `persisted` and `verification_ok` are separate fields so neither can be inferred
+from the other.
+
+**Reopen only on an operational requirement or a failing guard.** A duplicate is defined by message identity, not
+semantic similarity: two independently generated candidates may describe the same relationship and remain distinct
+evidence, while replaying one message never becomes a second confirmation.
+
+---
+
 ## Delivery integrity of the learning chain
 
 Two failures that protect the ledger's meaning, both refused rather than absorbed.

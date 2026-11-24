@@ -8,6 +8,16 @@ rather than merely declared:
         -> verified-delta:v1        only on PASS or FAIL
         -> evidence ledger append   admitted false, persistence "evidence_only"
 
+STATUS: frozen (commit 7c9edd2, evidence 47c8cbd). The five hops, the authority separation and the delivery
+semantics are exercised end to end and defended by guards. Two documented limits, neither of which justifies
+reopening it without an operational requirement:
+
+    duplicate detection is a linear scan of the ledger     correct at this scale, O(n) per delivery, and it must
+                                                          never become a second source of truth if it is ever
+                                                          replaced by an index
+    a duplicate is defined by message identity            two independently generated candidates may describe
+                                                          the same relationship and remain distinct evidence
+
 Three things this refuses to do, because they are the boundaries the rest of the system relies on:
 
     it does not mutate the graph            graph_mutated is false and stays false
