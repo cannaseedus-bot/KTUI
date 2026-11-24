@@ -100,11 +100,16 @@ def route(text: str, *, granted: set | None = None, context: dict | None = None,
                                 "operation that a requires_grant declaration exists to block"))
         return dict(verdict, action="fallback",
                     reason=f"read-only capability unavailable ({', '.join(missing)}); the answer path runs")
-    except Exception:
+    except BaseException as error:
         ok = False
+        _observe("phase_exit", "Pop", request_id, boundary="phase_chain", ok=False,
+                 outcome=("cancelled" if isinstance(error, (KeyboardInterrupt, GeneratorExit))
+                          else "failed"),
+                 error=type(error).__name__)
         raise
     finally:
-        _observe("phase_exit", "Pop", request_id, boundary="phase_chain", ok=ok)
+        if ok:
+            _observe("phase_exit", "Pop", request_id, boundary="phase_chain", ok=True, outcome="ok")
 
 
 def summary(verdict: dict) -> str:

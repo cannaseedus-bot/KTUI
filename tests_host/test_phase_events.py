@@ -141,5 +141,89 @@ class HostPathTests(unittest.TestCase):
         self.assertTrue(view["complete"])
 
 
+class FailureAndCancellationTests(unittest.TestCase):
+    """A request that fails or is cancelled must not leave a phase looking eternally active."""
+
+    def setUp(self):
+        phase_events.reset()
+
+    def test_a_failure_is_its_own_event_family(self):
+        phase_events.emit("turn-1", "phase_enter", phase="Sek")
+        phase_events.emit("turn-1", "phase_failed", phase="Sek", detail={"outcome": "failed"})
+        view = phase_events.observe("turn-1")
+        self.assertEqual(view["state"], "failed")
+        self.assertTrue(view["failed"])
+        self.assertIsNone(view["active_phase"], "the phase is not left active")
+
+    def test_a_cancellation_is_distinct_from_a_failure(self):
+        phase_events.emit("turn-2", "phase_enter", phase="Yax")
+        phase_events.emit("turn-2", "phase_exit", phase="Yax",
+                          detail={"ok": False, "outcome": "cancelled"})
+        view = phase_events.observe("turn-2")
+        self.assertEqual(view["state"], "cancelled")
+        self.assertTrue(view["cancelled"])
+        self.assertFalse(view["failed"])
+
+    def test_an_unknown_outcome_is_refused(self):
+        with self.assertRaises(phase_events.EventError):
+            phase_events.emit("turn-3", "phase_exit", phase="Pop", detail={"outcome": "vibes"})
+
+    def test_a_raising_host_path_ends_the_phase(self):
+        import phase_routing
+
+        original = phase_routing.phase_chain.resolve
+
+        def broken(*args, **kwargs):
+            raise RuntimeError("the chain is unreadable")
+
+        phase_routing.phase_chain.resolve = broken
+        try:
+            with self.assertRaises(RuntimeError):
+                phase_routing.route("anything", request_id="turn-4")
+        finally:
+            phase_routing.phase_chain.resolve = original
+        view = phase_events.observe("turn-4")
+        self.assertEqual(view["state"], "failed")
+        self.assertIsNone(view["active_phase"])
+
+    def test_concurrent_turns_keep_independent_traces(self):
+        import phase_routing
+
+        phase_routing.route("who are you", request_id="turn-a")
+        phase_routing.route("who are you", request_id="turn-b")
+        a, b = phase_events.observe("turn-a"), phase_events.observe("turn-b")
+        self.assertEqual(a["request_id"], "turn-a")
+        self.assertEqual(b["request_id"], "turn-b")
+        self.assertEqual(len(a["events"]), len(b["events"]))
+        self.assertTrue(all(record["request_id"] == "turn-a" for record in a["events"]))
+        self.assertTrue(all(record["request_id"] == "turn-b" for record in b["events"]))
+
+
+class BoundedHistoryTests(unittest.TestCase):
+    def setUp(self):
+        phase_events.reset()
+
+    def test_a_trace_is_bounded(self):
+        for index in range(phase_events.MAX_EVENTS + 25):
+            phase_events.emit("turn-long", "proposal_generated", detail={"index": index})
+        events = phase_events.events("turn-long")
+        self.assertEqual(len(events), phase_events.MAX_EVENTS)
+        self.assertEqual(events[-1]["detail"]["index"], phase_events.MAX_EVENTS + 24)
+
+    def test_the_number_of_traces_is_bounded(self):
+        for index in range(phase_events.MAX_TRACES + 5):
+            phase_events.emit(f"turn-{index}", "proposal_generated")
+        self.assertLessEqual(len(phase_events._traces), phase_events.MAX_TRACES)
+
+    def test_an_event_bumps_the_generation(self):
+        import runtime_signals
+
+        runtime_signals.reset("phase")
+        before = runtime_signals.generation()
+        phase_events.emit("turn-bump", "proposal_generated")
+        self.assertGreater(runtime_signals.generation(), before,
+                           "a committed phase event changes what the projection would show")
+
+
 if __name__ == "__main__":
     unittest.main()

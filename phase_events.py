@@ -30,8 +30,9 @@ for _candidate in (str(HOST_ROOT / "kuhul-phase-engine-v0.1.0" / "core"), str(HO
 import plan_graph  # noqa: E402
 
 SCHEMA = "kuhul://phase-event/v1"
-FAMILIES = ("phase_enter", "phase_exit", "proposal_generated", "proposal_validated",
-            "execution_admitted")
+FAMILIES = ("phase_enter", "phase_exit", "phase_failed", "proposal_generated",
+            "proposal_validated", "execution_admitted")
+OUTCOMES = ("ok", "failed", "cancelled")
 SOURCES = ("host", "validator", "xcfe")
 PHASES = plan_graph.PHASES
 
@@ -39,6 +40,9 @@ _lock = threading.Lock()
 _traces: dict[str, list[dict]] = {}
 _sequence: dict[str, int] = {}
 _clock = time.monotonic
+# Bounded on purpose: an in-process observation stream is a diagnostic, not a log that grows forever.
+MAX_EVENTS = 200
+MAX_TRACES = 64
 
 
 class EventError(ValueError):
@@ -62,15 +66,33 @@ def emit(request_id: str, event: str, *, phase: str | None = None, source: str =
             raise EventError(f"{declared!r} is not a registered phase")
     if event.startswith("phase_") and phase is None:
         raise EventError("a phase event needs a phase")
-    if event == "phase_exit" and not _traces.get(identifier):
-        raise EventError("a phase cannot exit before it entered")
+    if event in ("phase_exit", "phase_failed") and not _traces.get(identifier):
+        raise EventError("a phase cannot end before it entered")
+    outcome = str((detail or {}).get("outcome") or "")
+    if outcome and outcome not in OUTCOMES:
+        raise EventError(f"outcome {outcome!r} is not one of {OUTCOMES}")
     record = dict(schema=SCHEMA, request_id=identifier, event=event, phase=phase,
                   source=source, authority="observed", detail=dict(detail or {}),
                   sequence=0, monotonic=round(_clock(), 6))
     with _lock:
         _sequence[identifier] = _sequence.get(identifier, 0) + 1
         record["sequence"] = _sequence[identifier]
-        _traces.setdefault(identifier, []).append(record)
+        trace = _traces.setdefault(identifier, [])
+        trace.append(record)
+        if len(trace) > MAX_EVENTS:
+            del trace[:len(trace) - MAX_EVENTS]
+        while len(_traces) > MAX_TRACES:
+            oldest = next(iter(_traces))
+            if oldest == identifier and len(_traces) == 1:
+                break
+            _traces.pop(oldest, None)
+            _sequence.pop(oldest, None)
+    # A committed event changes what the projection would show, so the green screen is told.
+    try:
+        import runtime_signals
+        runtime_signals.bump(f"phase:{event}")
+    except Exception:
+        pass
     return record
 
 
@@ -88,15 +110,21 @@ def observe(request_id: str) -> dict:
                     events=[], complete=False,
                     note="no events were recorded; the trace is unknown, not empty by design")
     entered = [record for record in trace if record["event"] == "phase_enter"]
-    exited = [record for record in trace if record["event"] == "phase_exit"]
+    ended = [record for record in trace if record["event"] in ("phase_exit", "phase_failed")]
+    exited = ended
     active = [record for record in entered
               if record["phase"] not in {done["phase"] for done in exited}]
-    failed = [record for record in trace
-              if record["event"] == "phase_exit" and not record["detail"].get("ok", True)]
-    state = ("failed" if failed else
+    cancelled = [record for record in ended
+                 if record["detail"].get("outcome") == "cancelled"]
+    failed = [record for record in ended
+              if record["event"] == "phase_failed"
+              or (record["detail"].get("ok") is False and record["detail"].get("outcome") != "cancelled")]
+    state = ("cancelled" if cancelled else
+             "failed" if failed else
              "active" if active else
              "exited" if exited else "unknown")
     return dict(schema=SCHEMA, request_id=str(request_id), observed=True, failed=bool(failed),
+                cancelled=bool(cancelled),
                 active_phase=(active[-1]["phase"] if active else None),
                 last_phase=entered[-1]["phase"] if entered else None,
                 state=state, sequence=trace[-1]["sequence"], events=trace,
