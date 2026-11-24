@@ -844,8 +844,13 @@ def resolve_executable(config: dict) -> Path:
     raise ValueError(f"llama-server.exe is missing; run: python task-engine.py prepare")
 
 
-def build_server_argv(config: dict, *, model_path: str | None = None) -> list[str]:
-    """The llama-server command line. Loopback only, and tool calling enabled."""
+def build_server_argv(config: dict, *, model_path: str | None = None,
+                      port: int | None = None) -> list[str]:
+    """The llama-server command line. Loopback only, and tool calling enabled.
+
+    `port` lets a second server run beside the default one - the router addresses backends by port, and
+    one of them can be a small model while the default serves the big one.
+    """
     server = config["server"]
     executable = resolve_executable(config)
     resolved = resolve_model_path(config, model_path)
@@ -856,7 +861,7 @@ def build_server_argv(config: dict, *, model_path: str | None = None) -> list[st
         str(executable),
         "-m", model,
         "--host", "127.0.0.1",
-        "--port", str(int(server.get("port", 9032))),
+        "--port", str(int(port if port is not None else server.get("port", 9032))),
         "-c", str(int(server.get("context", 8192))),
         "-t", str(int(server.get("threads", 4))),
         *[str(arg) for arg in server.get("server_args", [])],
@@ -864,10 +869,12 @@ def build_server_argv(config: dict, *, model_path: str | None = None) -> list[st
     return argv
 
 
-def start_server(config: dict, *, model_path: str | None = None) -> subprocess.Popen:
+def start_server(config: dict, *, model_path: str | None = None,
+                 port: int | None = None) -> subprocess.Popen:
     """Start llama-server and wait for /health. The model load happens here, so the wait is generous."""
-    argv = build_server_argv(config, model_path=model_path)
-    endpoint = local_endpoint(config)
+    argv = build_server_argv(config, model_path=model_path, port=port)
+    endpoint = (f"http://127.0.0.1:{int(port)}" if port is not None
+                else local_endpoint(config))
     timeout = int(config["server"].get("server_start_timeout_seconds", 180))
     # stdout/stderr go to a file: llama-server logs a great deal while loading, and an unread pipe
     # would fill and block the server before it ever became healthy.
@@ -983,7 +990,7 @@ def command_prepare(config: dict, args: argparse.Namespace) -> int:
 
 
 def command_launch(config: dict, args: argparse.Namespace) -> int:
-    process = start_server(config, model_path=args.model)
+    process = start_server(config, model_path=args.model, port=args.port)
     print(f"server:   started {local_endpoint(config)} (pid {process.pid})")
     try:
         if args.task:
@@ -1134,6 +1141,7 @@ def main(argv: list[str] | None = None) -> int:
     launch.add_argument("--model", help="Alias from [models] (listed fastest first by `models`), a filename, or an absolute path (default: default_model)")
     launch.add_argument("--task", nargs=argparse.REMAINDER, help="Task to run once the server is healthy")
     launch.add_argument("--keep-alive", action="store_true", help="Leave the server running until Ctrl+C")
+    launch.add_argument("--port", type=int, help="Serve on this port instead of [server].port (default 9032)")
     chat = sub.add_parser("chat", help="Run one task against an already-running server")
     chat.add_argument("task", nargs=argparse.REMAINDER)
     sub.add_parser("shell", help="Interactive terminal")

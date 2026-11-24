@@ -134,14 +134,18 @@ def select(router: dict, micronaut_uri: str, *, preference: str | None = None,
                     declared=sorted(router.get("routing") or {}),
                     authority="declaration_only", execution=False, admitted=False,
                     reason="the manifest declares no model for this micronaut")
+    # An explicit preference from the host outranks the micronaut's declared default; the declaration
+    # is what applies when nobody asked for a different class of model.
     order: list[str] = []
-    if routed:
-        order.append(routed)
     preferred = preference or ((router["models"].get(routed) or {}).get("preference")
                                if routed else None)
+    if preference is None and routed:
+        order.append(routed)
     for name in (router.get("preferences") or {}).get(preferred or "", []):
         if name not in order:
             order.append(name)
+    if routed and routed not in order:
+        order.append(routed)
     for name in (router.get("models") or {}):
         if name not in order:
             order.append(name)

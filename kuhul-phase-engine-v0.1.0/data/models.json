@@ -6,13 +6,19 @@
       "base_url": "http://127.0.0.1:9032/v1",
       "role": "complex_reasoning",
       "preference": "deep",
-      "features": ["chat", "tools"]
+      "features": [
+        "chat",
+        "tools"
+      ]
     },
     "worker": {
       "base_url": "http://127.0.0.1:9040/v1",
       "role": "fast_inference",
       "preference": "fast",
-      "features": ["chat"]
+      "features": [
+        "chat",
+        "code"
+      ]
     }
   },
   "routing": {
@@ -23,9 +29,18 @@
     "micronaut://v1/compose": "advisor"
   },
   "preferences": {
-    "fast": ["worker", "advisor"],
-    "deep": ["advisor", "worker"],
-    "cheap": ["worker", "advisor"]
+    "fast": [
+      "worker",
+      "advisor"
+    ],
+    "deep": [
+      "advisor",
+      "worker"
+    ],
+    "cheap": [
+      "worker",
+      "advisor"
+    ]
   },
   "policy": {
     "probe": "/models",

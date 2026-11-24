@@ -79,6 +79,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M40 | Micronaut registry: typed agents and typed edges, with structural / routing / authority reported separately | **guard** | `micronaut_registry.py`, `data/micronauts.json`, `data/micronaut-edges.json`, `tests_host/test_micronaut_registry.py` (16 tests) |
 | M41 | Shared corpus resolver: authorized retrieval, typed evidence, per-agent projection; retrieval ≠ learning ≠ training | **guard** | `corpus.py`, `data/corpus.json`, `tests_host/test_corpus.py` (15 tests) |
 | M42 | Model router: registered endpoints only, AIML answers first, a binding is not an invocation | **guard** | `model_router.py`, `data/models.json`, `tests_host/test_model_router.py` (17 tests) |
+| M42.1 | Two live backends (advisor 9032, worker 9040), `--port` on the launcher, explicit preference outranks the declared default | **guard** | `model_router.select`, `task-engine.py --port`, `data/models.json` |
 
 ---
 
@@ -170,6 +171,37 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Two live backends (M42.1)
+
+The router's `worker` slot is now served, not hypothetical:
+
+```
+python task-engine.py launch --model gemma-3-1b --port 9040 --keep-alive
+
+  advisor  ok 200  46 ms  gpt-oss-20b-MXFP4.gguf        (port 9032)
+  worker   ok 200   0 ms  gemma-3-1B-it-QAT-Q4_0.gguf   (port 9040, 1.2 GB)
+```
+
+`task-engine.py` gained `--port` (it read the port only from the config), and `select()` now lets an
+**explicit** preference outrank a micronaut's declared default - without that, "switch this turn to the
+fast model" could never override `relations -> advisor`:
+
+```
+aiml      (no preference) -> worker      declared default
+compose   (no preference) -> advisor     declared default
+relations (preference=fast) -> worker    override
+compose   (preference=fast) -> worker    override
+aiml      (preference=deep) -> advisor   override
+```
+
+And the worker answers for real: a `chat/completions` call to 9040 replied `"Yes."` with
+`gemma-3-1B-it-QAT-Q4_0.gguf` as the model - the binding is not decorative.
+
+The worker's features are `["chat", "code"]`, matching how the model is used here; `worker` costs 1.2 GB
+against the advisor's 0.9 GB resident (both were already loaded in this checkout).
 
 ---
 

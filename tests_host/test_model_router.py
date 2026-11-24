@@ -135,8 +135,10 @@ class HealthTests(unittest.TestCase):
         self.assertNotIn("url", result, "no request is made for an unregistered model")
 
     def test_an_unreachable_endpoint_is_reported(self):
-        router = model_router.load()
-        result = model_router.health(router, "worker")   # nothing listens on 9040 in this checkout
+        # A registered endpoint that is not listening: point at a closed loopback port so the test does
+        # not depend on whether a second server happens to be running in this checkout.
+        router = router_with("http://127.0.0.1:9/v1")
+        result = model_router.health(router, "worker")
         self.assertFalse(result["ok"])
         self.assertEqual(result["refused"], "unreachable")
         self.assertIn("latency_ms", result)
