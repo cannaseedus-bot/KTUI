@@ -111,8 +111,9 @@ class DispatchTests(unittest.TestCase):
         self.assertEqual(result["scheme"], "micronaut")
         self.assertEqual(result["output_type"], "typed_result")
         self.assertEqual(result["result"], {"relations": 3})
-        self.assertEqual(self.spy.calls, [("micronaut", "micronaut://gml/graph-theory/query",
-                                          {"operation": "inventory"})])
+        self.assertEqual(self.spy.calls, [("micronaut", "micronaut://v1/aiml",
+                                          {"operation": "inventory"})],
+                         "the declared target is a registered handler, not an invented URI")
 
     def test_a_missing_dispatcher_is_refused_not_crashed(self):
         result = bridge.run("ASK_PLANNER", {}, grants={"model.inference"}, request_id="t")

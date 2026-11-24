@@ -803,7 +803,8 @@ class ChatApp(App):
         self.last_binding = None
         self.last_route = None
         self.route_completer = None      # tests inject one; production uses route_complete_for
-        self.route_invoker = None
+        self.route_invoker = self.route_invoke
+        self._engine = None
         self.runtime_digest = None
         self.runtime_polls = 0
         self.runtime_renders = 0
@@ -1178,6 +1179,21 @@ class ChatApp(App):
             self.observation_errors += 1
             self.last_observation_error = f"{event} {phase}: {type(error).__name__}: {error}"[:200]
 
+    def engine_host(self):
+        """The existing engine, created once. A second engine per turn would defeat admission accounting."""
+        if getattr(self, "_engine", None) is None:
+            if micronaut_server is None:
+                return None
+            self._engine = micronaut_server.Engine()
+        return self._engine
+
+    def route_invoke(self, uri: str, payload: dict | None) -> dict:
+        """Adapt the bridge's invoker interface onto the existing engine, keeping its admission decision."""
+        engine = self.engine_host()
+        if engine is None:
+            raise LookupError("the micronaut engine is unavailable")
+        return engine.invoke_micronaut(uri, payload or {})
+
     def route_lookup(self, pattern: str) -> str | None:
         """The AIML matcher for a route request: spoken name -> declared route token.
 
@@ -1237,7 +1253,13 @@ class ChatApp(App):
         # Sek: one dispatch through the bridge.
         self.observe_model_phase("phase_enter", "Sek", {"operation": "bridge.dispatch", "route": name})
         completer = self.route_completer or (lambda alias, payload: self.route_complete_for(alias, payload))
-        result = micro_agent_bridge.run(name, {"text": spoken}, grants=granted,
+        # A micronaut route sends its declared input contract, not free text: the engine validates it.
+        if resolved.get("scheme") == "micronaut":
+            payload = {"$schema": resolved.get("input_schema") or "kuhul://schema/utterance/v1",
+                       "text": spoken}
+        else:
+            payload = {"text": spoken}
+        result = micro_agent_bridge.run(name, payload, grants=granted,
                                         request_id=getattr(self, "request_id", None),
                                         complete_for=completer,
                                         invoke_for=getattr(self, "route_invoker", None))
@@ -1251,17 +1273,39 @@ class ChatApp(App):
                                   "scheme": result.get("scheme"), "target": result.get("target")})
 
         # Ch'en: the bridge result is verified, not the inference. A completed call is not a good answer.
-        verdict = (result["status"] == "completed"
-                   and result.get("output_type") == "candidate_text"
-                   and bool(str(result.get("result") or "").strip()))
+        if result["status"] == "completed" and resolved.get("scheme") == "micronaut":
+            # A typed result must keep its schema identity: a graph result is not flattened into text.
+            body = result.get("result") or {}
+            payload_out = body.get("payload") or {}
+            expected = resolved.get("output_schema")
+            verdict = bool(expected) and payload_out.get("$schema") == expected
+            contract_detail = dict(expected_schema=expected, actual_schema=payload_out.get("$schema"),
+                                   invocation=(body.get("invocation") or {}).get("handler"))
+        else:
+            verdict = (result["status"] == "completed"
+                       and result.get("output_type") == "candidate_text"
+                       and bool(str(result.get("result") or "").strip()))
+            contract_detail = dict(expected_schema=None, actual_schema=None, invocation=None)
         self.observe_model_phase("phase_enter", "Ch'en", {"operation": "bridge.verify"})
         self.observe_model_phase("phase_exit", "Ch'en",
                                  {"operation": "bridge.verify", "ok": bool(verdict), "outcome": "ok",
                                   "turn_outcome": ("accepted" if verdict else "refused"),
                                   "verdict": ("accepted" if verdict else (result.get("refused") or "failed")),
-                                  "verified": bool(verdict), "admitted": result.get("admitted")})
+                                  "verified": bool(verdict), "admitted": result.get("admitted"),
+                                  "expected_schema": contract_detail["expected_schema"],
+                                  "actual_schema": contract_detail["actual_schema"],
+                                  "handler": contract_detail["invocation"]})
 
-        if verdict:
+        if verdict and resolved.get("scheme") == "micronaut":
+            body = result.get("result") or {}
+            items = (body.get("payload") or {}).get("items") or []
+            rendered = ", ".join(f"{item.get('pattern')} ({item.get('category')})" for item in items[:4])
+            answer = (f"typed result {body['payload']['$schema']} from "
+                      f"{(body.get('invocation') or {}).get('handler')}: {rendered or 'no candidates'}")
+            self.remember("assistant", answer)
+            self.messages.append({"role": "assistant", "content": answer})
+            outcome, text_out = "accepted", answer
+        elif verdict:
             answer = str(result["result"]).strip()
             self.remember("assistant", answer)
             self.messages.append({"role": "assistant", "content": answer})

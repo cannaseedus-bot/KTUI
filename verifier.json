@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 412,
+  "count": 413,
   "covers": "tracked working tree; uncommitted edits are refused by verify()",
   "excludes": {
     "names": [
@@ -102,7 +102,7 @@
     "bound_scoring.py": "04d6b7b0204c1c72298ca277bd7bd1632409bf5be43efe9d723b358506a8feb7",
     "ce_experiment.py": "cbbc320db174cabee733bd59849fd361728d2ecf38c5615b17dffe108e111764",
     "ce_protocol.py": "6dc7eaa627548cc68b89de7edb5e376dbed4d201df3215d7c80e63f88fba4dbf",
-    "chat_app.py": "8409de525fd788a306c636017b98ac5f7d2612f563d0f10dd4574b4ed5d35b99",
+    "chat_app.py": "3be53e5499e547a0ffdd2c780c0d1cf5e1b5614067ad487f19d57af42f9a1540",
     "codex.aiml": "447e2af5c8bbf84344a4b23d7f700da737f5176e88a16145e51ec982afe4973e",
     "compose.aiml": "2eaeb48a02ef318d825f789c2326b094b00788834a0b6ab17cc2734dbf072321",
     "compose.py": "da6612a7e3195d13a31c52206e42ee40cf63b75a44bf2d89f60a8af4d91c483c",
@@ -123,7 +123,7 @@
     "evaluation/scoring-contract.json": "40ccd709ebbb83ffa649d3d867f232ba0494ed33e77f13904565bfef97473968",
     "evaluation/task-sessions.json": "eb902d19a8b552bcf6e8a8114ce6d0f2f8ffcddcbd2fa8ca0bd4e14bf899fb19",
     "evaluation_harness.py": "df294a6e450ad009d5f0bb3547307e899d7ab059939443385fde4379a5d7d787",
-    "evidence-suites.json": "d260a9aadbc80b5256de7700818b86bbff25e778119854dfa91331c9bd5d45e4",
+    "evidence-suites.json": "52bbb75dbe71ea28ca56644d923c450f9e29a928ee33ef79cde43e4e3f263cb7",
     "evidence_gate.py": "cf1f5273ec87f0f75a01512882db6cf8c66c3d9f305fc3b7c354ce798e40d5e4",
     "evidence_record.py": "7f0142a220bdac6d6a3757ae57ef67ca710aa3d0dfe38eaf53ef31281e97b6dc",
     "functions.py": "55aac70a851903f795c32046a270d6429828ab1aa9941a066c51e3a028f7c116",
@@ -322,7 +322,7 @@
     "mcp_host.py": "e65e0cae1aad48c5155e3d1492afac31f38607723a7bd5f2a9f69ba6c150191d",
     "memory.aiml": "1d02d6da27be9d30fee2757e52c056c6185c2624566817e410aeff139b76c33a",
     "memory.gml": "cbf7c00cde77d15dbfdb1f5811a2a0e3fb89cb8221f78e61c15fb6dc2db7ddfe",
-    "micro_agent_bridge.py": "58dab59891987b81facdb0b9d9304000bc62ee2ce3a0ab1183678d410fd04878",
+    "micro_agent_bridge.py": "8c233636fad2108d84b9998f2d76d25e0a554021ddf5392039f8a8bd6defb9fc",
     "micronaut_registry.py": "a666b62976a968a6b4e76daa83b9bd08739995745e33ab4bd93bc5fd834398cf",
     "micronaut_server.py": "948fa2e6e503c2ca06fc448b6165bad6d955be0fe87ecbd032ac4fbe1f6be7dc",
     "mirror_ledger.py": "dc81f36b0e89ee180a98c20f57d7c76e53560958174c567b05c78cd909e9791b",
@@ -393,7 +393,7 @@
     "tests_host/test_live_capture.py": "985f9f19b00bd24980ea21f580d06283f5cdd893f2003eca56a68dcce91f9d32",
     "tests_host/test_mcp_host.py": "91080fe51606447263b03a16f2b90446fb58f46e2eeb3f91b6d6b87f5dd15111",
     "tests_host/test_memory.py": "78f6b59ffcbb5ade5782a80a75b2456c53207ac979370e8fae7e78f4b5bb678b",
-    "tests_host/test_micro_agent_bridge.py": "17efe0b1a1a53d526c1926ac4370ef613125600b3728f7d8cf86668240ab0158",
+    "tests_host/test_micro_agent_bridge.py": "175c9b66efa553d9fcac62f7a4515b2e9d483e32e7180212e13a958eab112e9c",
     "tests_host/test_micronaut_registry.py": "f0381289feea543d041346dbe753f14171f0afd64276b682fa858c93c35eee8a",
     "tests_host/test_model_lifecycle.py": "9985b12bb76da3650a392823611b13c028ae727159648d8ad6bf311ae21135f2",
     "tests_host/test_model_router.py": "9163b560537653cc1cfb9e43e1cebd7b84c409a1744003bfae7ae39bbb66e50e",
@@ -415,6 +415,7 @@
     "tests_host/test_review_attestations.py": "706e47a33733022b0b4c1dcc955accb89f3643c9b3e121fcd43dd7b669bf6f6e",
     "tests_host/test_review_packet.py": "7afe7fd33f15af0eef46d109f752192be7970005ac73b7b782212bc070f07579",
     "tests_host/test_route_turn.py": "f302b9841677539d1980f15b8a9a81baa8e61f89d4fb9708626a7bd70bb76993",
+    "tests_host/test_route_turn_micronaut.py": "409d8f18793270e70f3a38c2a932ed441fe90aa079c4ca121f9b31f58534521c",
     "tests_host/test_routing.py": "dee82b6b82590529ff5dcb841e8a67901b1110a041c6dfbdbe5cfec528c90b4d",
     "tests_host/test_runtime_independence.py": "c9aae7220be59975a9d546e436f7416aa519249cc5e9694da1026759411a0584",
     "tests_host/test_runtime_reactive.py": "79ed3d9cc10173c83ab72596b6eb6a3b95e6725e2db7fbf2a3a5884060454b3c",
@@ -431,16 +432,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "2c96aac852a279a87bea345d5cb4b5607f8dcc00d81e2a78a8930e941522d0b3",
+  "hash": "bf7207ef02b723f1b12db974e263c1fdb91947b9534d269894bd9c77f46b1029",
   "locked": true,
-  "note": "re-lock after the PLAN section",
+  "note": "re-lock after the bridge test fix",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
-    "count": 410,
-    "hash": "7a16bb873955672d0662c0c9303a65d64b1f9839b2950e5d96e6295cde435a00",
-    "updated_at": "2026-11-24T23:06:00Z"
+    "count": 412,
+    "hash": "7290d00f9af26b86aace7a59631600b9343ab881796f0d0a8695bb65fa23d5e6",
+    "updated_at": "2026-11-24T23:13:16Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T23:08:47Z"
+  "updated_at": "2026-11-24T23:15:57Z"
 }

@@ -38,8 +38,16 @@ DECLARED_ROUTES = {
                         capability="model.inference", output_type="candidate_text"),
     "ASK_WORKER": dict(scheme="model", target="model://worker", alias="worker",
                        capability="model.inference", output_type="candidate_text"),
-    "QUERY_RELATIONS": dict(scheme="micronaut", target="micronaut://gml/graph-theory/query",
-                            capability="graph.relations.read", output_type="typed_result"),
+    # A registered handler with its real contracts: utterance in, candidates out. The engine decides
+    # registration and validates the payload; this table only declares which handler a route means.
+    "QUERY_RELATIONS": dict(scheme="micronaut", target="micronaut://v1/aiml",
+                            capability="graph.relations.read", output_type="typed_result",
+                            input_schema="kuhul://schema/utterance/v1",
+                            output_schema="kuhul://schema/candidates/v1"),
+    # Declared on purpose and unregistered on purpose: the bridge may authorize by capability, and the engine
+    # still refuses by registration. That refusal must survive, not be papered over.
+    "QUERY_UNREGISTERED": dict(scheme="micronaut", target="micronaut://v1/does-not-exist",
+                               capability="graph.relations.read", output_type="typed_result"),
 }
 
 
