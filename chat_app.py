@@ -91,11 +91,17 @@ try:  # the phase chain as the first routing boundary
     import phase_routing
 except ImportError:  # pragma: no cover
     phase_routing = None
+try:  # live evidence capture for every turn
+    import evidence_record
+except ImportError:  # pragma: no cover
+    evidence_record = None
 import math
 import tempfile
 import shlex
 import subprocess
 import threading
+import time
+import uuid
 import shutil
 import requests
 import webbrowser
@@ -1054,6 +1060,29 @@ class ChatApp(App):
         return "\n".join(blocks)
 
     # -- user memory: proposals in, admitted writes out ---------------------------------------------
+    def record_turn(self, text: str, *, kind: str, latency_ms: int, inference: str,
+                    observed_execution: bool = False, execution_kind: str | None = None) -> dict | None:
+        """Record one turn. Best effort: a recording failure never changes the answer or grants anything."""
+        if evidence_record is None:
+            return None
+        try:
+            record = evidence_record.build(
+                input_text=text, request_id=self.request_id, latency_ms=latency_ms,
+                inference=inference, observed_execution=observed_execution,
+                execution_kind=execution_kind,
+                routing=dict(action=self.last_routing.get("action") if self.last_routing else None,
+                             closure=self.last_routing.get("closure") if self.last_routing else None),
+                binding={"micronaut": "micronaut://v1/compose", "selected": None},
+                operators=[])
+            self.last_record = evidence_record.append(record)
+            self.last_record_error = None
+            return self.last_record
+        except Exception as error:
+            # Losing an observation is a defect; letting it break the turn would be a worse one.
+            self.last_record_error = f"{type(error).__name__}: {error}"
+            self.last_record = None
+            return None
+
     def granted_capabilities(self) -> set[str]:
         """What this session may do, in capability terms the phase chain can name."""
         granted = {"graph.relations.read"}
@@ -1322,6 +1351,24 @@ class ChatApp(App):
         block = links.block(query, limit=6, heading=f"Reference links for {query}")
         self.say_system(block or f"no reference links for {query!r}")
 
+    def action_evidence(self) -> None:
+        """What the recorder saw on the last turn, and whether the log still verifies."""
+        if evidence_record is None:
+            self.say_system("The evidence recorder (evidence_record.py) is unavailable.")
+            return
+        record = self.last_record
+        if record is None:
+            self.say_system(f"Last turn: not recorded ({self.last_record_error or 'no turn yet'}).")
+        else:
+            self.say_system(
+                f"Last turn `{record['request_id'] or '-'}` · inference {record['inference'] or '-'} · "
+                f"{record['latency_ms']} ms · executed {record['observed_execution']} · "
+                f"admitted {record['admission']['proposal_admitted']}")
+        rows = evidence_record.load()
+        report = evidence_record.verify()
+        self.say_system(f"Evidence log · {len(rows)} record(s) · chain "
+                        f"{'verified' if report['ok'] else 'BROKEN'} · {evidence_record.LOG}")
+
     def action_memory(self) -> None:
         self.say_system(self.memory_summary())
 
@@ -1560,6 +1607,7 @@ class ChatApp(App):
         commands["links"] = ("Links: reference searches for a topic", self.action_links, "Wikipedia, Britannica, NASA, Space.com - searches, not pages I read")
         commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
         commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
+        commands["evidence"] = ("Evidence: the recorded turns and the chain state", self.action_evidence, "Request id, latency, execution vs admission; hash-chained")
         commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
         commands["mode"] = ("Mode: list the daemon response modes", self.action_modes, "Bias vectors as a style prior")
         commands["daemon"] = ("Daemon: trace the last turn's six phases", self.action_daemon, "What each phase saw and decided")
@@ -2141,6 +2189,7 @@ class ChatApp(App):
         text = event.value.strip()
         if not text: return
         event.input.value = ""
+        self.request_id = uuid.uuid4().hex[:12]
         v = self.query_one("#chat-view", VerticalScroll)
         v.mount(Prompt(text))
         v.scroll_end(animate=False)
@@ -2185,7 +2234,19 @@ class ChatApp(App):
 
         # 3. AIML, including its tool bridge: a template that says TOOL git status runs it here and
         # returns the output instead of paying for a model round trip.
+        started = time.monotonic()
         local = self.local_answer(text)
+        elapsed = int(round((time.monotonic() - started) * 1000))
+        if local:
+            kind_of, _ = local
+            self.record_turn(text, kind=kind_of, latency_ms=elapsed, inference="local",
+                             observed_execution=kind_of in {"tool", "gitop", "compose", "memory",
+                                                           "memquery"},
+                             execution_kind=("host_operation" if kind_of in {"tool", "gitop", "compose",
+                                                                             "memory", "memquery"}
+                                             else None))
+        else:
+            self.record_turn(text, kind="deferred", latency_ms=elapsed, inference="model")
         if local:
             kind, body = local
             headings = {

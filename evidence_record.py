@@ -18,6 +18,7 @@ it needs real inference and a held-out grader, and this module will not pretend 
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import time
@@ -36,7 +37,8 @@ import phase_routing  # noqa: E402
 SCHEMA = "kuhul-inference-record/1"
 LOG = HOST_ROOT / "logs" / "inference" / "records.jsonl"
 CLOSURES = ("none", "redirected", "delegated", "refused")
-FIELDS = ("recorded_at", "input", "closure", "routing_action", "micronaut", "binding",
+FIELDS = ("recorded_at", "request_id", "input_sha256", "input_chars", "observed_execution",
+          "execution_kind", "inference", "closure", "routing_action", "micronaut", "binding",
           "model_id", "retrieval", "operators", "schema_validation", "admission",
           "tokens", "latency_ms")
 
@@ -46,7 +48,11 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def build(*, input_text: str, routing: dict | None = None, binding: dict | None = None,
+def build(*, input_text: str | None = None, input_sha256: str | None = None,
+          input_chars: int | None = None, request_id: str | None = None,
+          observed_execution: bool = False, execution_kind: str | None = None,
+          inference: str | None = None,
+          routing: dict | None = None, binding: dict | None = None,
           model_id: str | None = None, retrieval: dict | None = None,
           operators: list | None = None, schema_validation: str | None = None,
           tokens: dict | None = None, latency_ms: float | None = None,
@@ -56,7 +62,16 @@ def build(*, input_text: str, routing: dict | None = None, binding: dict | None 
     closure = routing.get("closure")
     if closure is not None and closure not in CLOSURES:
         raise ValueError(f"closure {closure!r} is not one of {CLOSURES}")
-    record = dict(schema=SCHEMA, recorded_at=_now(), input=str(input_text or ""),
+    # The prompt itself is not needed to reconstruct a turn: a digest and a length are enough to tell
+    # turns apart without storing what the user typed.
+    digest = input_sha256 or (hashlib.sha256(str(input_text or "").encode("utf-8")).hexdigest()
+                             if input_text is not None else None)
+    record = dict(schema=SCHEMA, recorded_at=_now(), request_id=request_id,
+                  input_sha256=digest, input_chars=(input_chars if input_chars is not None
+                                                    else (len(str(input_text)) if input_text is not None
+                                                          else None)),
+                  observed_execution=bool(observed_execution), execution_kind=execution_kind,
+                  inference=inference,
                   closure=closure, routing_action=routing.get("action"),
                   micronaut=micronaut or (binding or {}).get("micronaut"),
                   binding=(binding or {}).get("selected"),
@@ -64,8 +79,11 @@ def build(*, input_text: str, routing: dict | None = None, binding: dict | None 
                   retrieval=dict(retrieval or {}) or None,
                   operators=list(operators or []),
                   schema_validation=schema_validation,
-                  admission=dict(admitted=False, authority="declaration_only",
-                                 note="a record observes; it never admits"),
+                  admission=dict(proposal_admitted=False, observed_execution=bool(observed_execution),
+                                 authority="declaration_only",
+                                 note=("the host performed an authorized operation; no proposal was "
+                                       "admitted" if observed_execution else
+                                       "a record observes; it never admits")),
                   tokens=dict(tokens) if tokens else None,
                   # Integer milliseconds on purpose: the evidence log is chained through the ledger,
                   # whose canonical form refuses floats so records stay byte-stable.
@@ -74,17 +92,17 @@ def build(*, input_text: str, routing: dict | None = None, binding: dict | None 
     return record
 
 
-def append(record: dict, path: Path = LOG) -> dict:
+def append(record: dict, path: Path | None = None) -> dict:
     """Chain the record into the evidence log, so the log is tamper-evident like the audit ledger."""
-    path = Path(path)
+    path = Path(path or LOG)
     chained = ledger_plugin.append({"kind": "inference-record", "payload": record}, path,
                                    verify_first=True)
     return dict(record, evidence_sequence=chained["sequence"],
                 evidence_hash=chained["content_hash"])
 
 
-def load(path: Path = LOG) -> list[dict]:
-    path = Path(path)
+def load(path: Path | None = None) -> list[dict]:
+    path = Path(path or LOG)
     if not path.is_file():
         return []
     rows = []
@@ -98,8 +116,8 @@ def load(path: Path = LOG) -> list[dict]:
     return rows
 
 
-def verify(path: Path = LOG) -> dict:
-    return ledger_plugin.verify(path)
+def verify(path: Path | None = None) -> dict:
+    return ledger_plugin.verify(Path(path or LOG))
 
 
 def summarise(records: list[dict]) -> dict:

@@ -82,6 +82,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M42.1 | Two live backends (advisor 9032, worker 9040), `--port` on the launcher, explicit preference outranks the declared default | **guard** | `model_router.select`, `task-engine.py --port`, `data/models.json` |
 | M43 | Inference evidence records and the three-path comparison: what the corpus saves, with unmeasured values left None | **guard** | `evidence_record.py`, `tests_host/test_evidence_record.py` (14 tests) |
 | M44 | Proposal evaluation: can the 1B model produce valid K'UHUL plans? Scored by the existing validators | **guard** | `proposal_eval.py`, `runtime_servers.py`, `data/proposal-eval-live.json`, `tests_host/test_proposal_eval.py` (10 tests) |
+| M45 | Live evidence capture: one request id per turn, digest not prompt, execution distinguished from admission, recording can never break an answer | **guard** | `chat_app.record_turn`, `evidence_record.build`, `/evidence`, `tests_host/test_live_capture.py` (9 tests) |
 
 ---
 
@@ -173,6 +174,32 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Live evidence capture (M45)
+
+The recorder is now fed by real turns. Each turn gets one request id, and the record joins the phase
+chain's verdict, the binding, the latency and the execution semantics:
+
+```
+last turn `a349e23d4039` · inference local · 172 ms · executed True · admitted False
+evidence log · 6 record(s) · chain verified · C:\Users\canna\.aiml\logs\inference\records.jsonl
+```
+
+`/evidence` (or Ctrl+P) shows that. Three properties, each guarded:
+
+- **the prompt is digested, not stored** - `input_sha256` and `input_chars` identify a turn for
+  reconstruction without keeping what the user typed;
+- **recording is best effort** - a test patches the log writer to raise `OSError("disk full")`, and the
+  answer still renders while `last_record_error` names the failure. An observation that breaks a turn
+  would be a worse defect than a missing observation;
+- **observed execution and proposal admission are separate fields** - `admission.proposal_admitted` stays
+  false while `observed_execution` is true for a turn where a tool actually ran (`git status`), so the log
+  cannot truthfully say "nothing was admitted" while omitting that the host performed an authorized read.
+
+The `/evidence` command is registered in the palette and reports the chain state, so a tampered log is
+visible from the UI rather than only in a test.
 
 ---
 
@@ -1383,7 +1410,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 356 tests, OK (M3-M44) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 363 tests, OK (M3-M45) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

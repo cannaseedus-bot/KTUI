@@ -64,7 +64,7 @@ class RecordTests(unittest.TestCase):
 
     def test_a_record_never_admits(self):
         record = evidence_record.build(input_text="x", routing={"action": "chain"})
-        self.assertFalse(record["admission"]["admitted"])
+        self.assertFalse(record["admission"]["proposal_admitted"])
         self.assertEqual(record["admission"]["authority"], "declaration_only")
         self.assertFalse(record["execution"])
 
