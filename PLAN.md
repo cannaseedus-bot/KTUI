@@ -124,6 +124,35 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:learning-pipeline-closure -->
 <!-- milestone:ce-across-categories-and-full-run-cost -->
 <!-- milestone:a-versus-ce-across-the-frozen-corpus -->
+<!-- milestone:a-generated-key-is-not-a-reviewer -->
+## A generated key is not a reviewer
+
+The registry carried a `reviewer://pending-human` entry with a public key **I generated**, described as
+"provisioned for a human reviewer". That is the wrong framing in artifact form: a key held by this project does not
+create independent review, and keeping it invites self-certification.
+
+Repaired:
+
+- the private key `logs/keys/reviewer-ed25519.pem` is deleted - I should not hold a key that purports to be a
+  reviewer's;
+- the placeholder is gone from `reviewers.json`; the only registered signer is the author, whose attestations
+  verify and are explicitly not independent;
+- the empty slot now lives **outside** the reviewers map as `awaiting_external_reviewer` with `status: "none"`, a
+  note that a project-generated key cannot stand in for one, and the four requirements a real reviewer must meet
+  (unaffiliated, own key generated and held by them, an onboarding record naming who approved the role, signed
+  attestations for the selected cases).
+
+Guards pin the state: only the author is registered; the empty slot carries no key; no attestation names anyone
+else; the corpus reports **0 benchmark-eligible**; and a *valid* signature from a new signer still fails
+independence with `onboarding_missing` - a signature is not a review, and an onboarding record is not proof of
+behaviour either.
+
+Unchanged and correct: **3 verified · 0 independent · 0 benchmark-eligible**. The A/CE numbers remain internal
+regression evidence. "Request path" in these notes means the host's internal dispatch, never a route a user
+navigates; the Yax gap is an engineering gap, not a user action.
+
+---
+
 ## A versus CE across the frozen corpus (96 calls, protocol frozen first)
 
 Protocol `f33d9a19` was written **before** the run: 16 frozen cases by id and expectation digest, conditions A and
