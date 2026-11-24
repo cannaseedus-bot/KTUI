@@ -117,6 +117,34 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+## Three metrics, and the A/C/E/CE comparison
+
+`model_graph_exact`, `model_bound_complete` and `runtime_bound_complete` are scored separately so a host-supplied
+binding is never credited as model target accuracy.
+
+**Measured on the planner, one repeat per cell, same two frozen cases, raw replies kept:**
+
+| condition | graph | model-bound | runtime-bound |
+|---|---|---|---|
+| A original, no binding | 1/2 | 1 | 0 |
+| C examples, no binding | 2/2 | 0 | 0 |
+| E original, Wo binding | 2/2 | 1 | 1 |
+| **CE examples, Wo binding** | **2/2** | 0 | **2/2** |
+
+**CE keeps C's graph correctness and reaches E's runtime binding correctness** - the two improvements compose.
+`model_bound_complete` stays 0 because the model still never names the target under the examples profile, which
+is exactly the attribution the review asked for: a valid composed plan is a runtime result, not a model target
+prediction.
+
+Counters per case keep the sources apart (`model_target`, `wo_resolved`, `missing`, `conflicts`), and
+`rescore_report()` re-derives every metric from the stored replies - which is how the target attribution was
+corrected without another eight calls.
+
+One defect while wiring: `ce_experiment` passed a message list to a completer that expects a prompt string, so
+every call returned HTTP 400 and the first run scored eight zeroes. The stored replies made that visible at once.
+
+---
+
 ## Wo-owned binding, and a corrected cell count
 
 **A correction first.** The re-execution artifact holds **27 cells** (3 models x 3 conditions x 3 repeats), not
