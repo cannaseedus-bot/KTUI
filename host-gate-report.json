@@ -691,7 +691,7 @@
       "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 19:15\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.188
+      "duration_seconds": 0.172
     },
     "extension_summary_before": {
       "command_line": [
@@ -716,10 +716,10 @@
       "timed_out": false,
       "duration_seconds": 0.109
     },
-    "captured_at": "2026-11-24T02:17:27.821196+00:00",
+    "captured_at": "2026-11-24T02:22:41.784956+00:00",
     "health_correlation": {
-      "suite_sha": "84808039938e2148d669d2b4127b91739ec54e80",
-      "health_sha": "84808039938e2148d669d2b4127b91739ec54e80",
+      "suite_sha": "5e677e7be474e4dd460cefb4c416bde6403b0961",
+      "health_sha": "5e677e7be474e4dd460cefb4c416bde6403b0961",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -728,7 +728,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 84808039938e2148d669d2b4127b91739ec54e80"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 5e677e7be474e4dd460cefb4c416bde6403b0961"
       },
       {
         "code": "untracked_files",
@@ -875,7 +875,7 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "84808039938e2148d669d2b4127b91739ec54e80",
+    "tested_commit": "5e677e7be474e4dd460cefb4c416bde6403b0961",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
