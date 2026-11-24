@@ -42,7 +42,7 @@ def _node(identifier: str, kind: str, label: str, **fields) -> dict:
                 fields={key: value for key, value in fields.items() if value is not None})
 
 
-def projection(*, host: dict | None = None) -> dict:
+def projection(*, host: dict | None = None, lifecycle_view: dict | None = None) -> dict:
     """Build the tree from the live registries. Missing or broken inputs degrade to a node, never a crash."""
     nodes: dict[str, dict] = {}
     edges: list[dict] = []
@@ -103,10 +103,15 @@ def projection(*, host: dict | None = None) -> dict:
             current = model_lifecycle.state(declaration, name, host=host)["state"]
         except Exception:
             current = "unknown"
+        # Observed, never initiated: a screen that refreshes must not wake or stop anything.
+        observed = lifecycle_view.get(name, {}) if lifecycle_view else {}
         add(_node(identifier, "model", name, role=entry["role"], port=entry["launch"]["port"],
                   state=current, features=entry["features"],
                   idle_timeout_seconds=entry["idle_timeout_seconds"],
-                  declared_state=entry["state"]))
+                  declared_state=entry["state"],
+                  leases=observed.get("leases"),
+                  owned=observed.get("owned"),
+                  idle_remaining=observed.get("idle_remaining")))
         link("runtime://daemon-bot", "has_model", identifier)
     for micronaut, model in (declaration.get("router", {}).get("routing") or {}).items():
         link(micronaut, "binds_to", f"model://{model}")
@@ -225,7 +230,7 @@ if __name__ == "__main__":
 # Volatile fields would make the screen refresh on every turn (a record count, a timestamp, a latency).
 # The digest covers what the green screen actually claims: structure and declared state.
 VOLATILE_FIELDS = ("records", "last_request_id", "chain_ok", "latency_ms", "recorded_at",
-                   "observed_execution", "tokens")
+                   "observed_execution", "tokens", "idle_remaining")
 
 
 def _semantic(node: dict) -> dict:
@@ -246,9 +251,9 @@ def semantic_digest(tree: dict) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def watch(*, host: dict | None = None) -> dict:
+def watch(*, host: dict | None = None, lifecycle_view: dict | None = None) -> dict:
     """Build a projection and its digest. Pure: it reads the registries and starts nothing."""
-    tree = projection(host=host)
+    tree = projection(host=host, lifecycle_view=lifecycle_view)
     return dict(tree=tree, digest=semantic_digest(tree),
                 counts={kind: sum(1 for node in tree["nodes"] if node["kind"] == kind)
                         for kind in sorted({node["kind"] for node in tree["nodes"]})})

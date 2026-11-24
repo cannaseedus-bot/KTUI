@@ -99,6 +99,12 @@ try:  # the read-only runtime projection behind /runtime
     import runtime_tree
 except ImportError:  # pragma: no cover
     runtime_tree = None
+try:  # one long-lived lifecycle: leases for the streamed path, and the idle sweep
+    import model_lifecycle
+    import inference_session
+except ImportError:  # pragma: no cover
+    model_lifecycle = None
+    inference_session = None
 import math
 import tempfile
 import shlex
@@ -764,6 +770,13 @@ class ChatApp(App):
         self.runtime_digest = None
         self.runtime_polls = 0
         self.runtime_renders = 0
+        # One lifecycle for the whole app: leases, ownership and the idle sweep all live here.
+        self.lifecycle = (model_lifecycle.Lifecycle(model_lifecycle.load())
+                          if model_lifecycle is not None else None)
+        self.waker = (inference_session.Waker(self.lifecycle)
+                      if inference_session is not None and self.lifecycle is not None else None)
+        self.sweeps = 0
+        self.last_sweep = None
         # A short local answer can offer depth: "would you like me to delve deeper?" remembers the
         # original question, so agreeing sends *that* to the model rather than the word "yes".
         self.pending_deep = None
@@ -1360,6 +1373,35 @@ class ChatApp(App):
         block = links.block(query, limit=6, heading=f"Reference links for {query}")
         self.say_system(block or f"no reference links for {query!r}")
 
+    def lease(self, model: str):
+        """A context manager that holds one lease; anything raised inside still releases it."""
+        if self.lifecycle is None:
+            class _Noop:
+                def __enter__(self_inner): return None
+                def __exit__(self_inner, *exc): return False
+            return _Noop()
+
+        class _Lease:
+            def __enter__(self_inner):
+                self_inner.info = self.lifecycle.acquire(model)
+                return self_inner.info
+
+            def __exit__(self_inner, *exc):
+                self.lifecycle.release(model)
+                return False
+
+        return _Lease()
+
+    def sweep_idle(self) -> None:
+        """The tick: stop owned, unleased backends past their idle budget. Never starts anything."""
+        if self.lifecycle is None:
+            return
+        self.sweeps += 1
+        try:
+            self.last_sweep = self.lifecycle.release_idle()
+        except Exception as error:
+            self.last_sweep = dict(error=f"{type(error).__name__}: {error}")
+
     def poll_runtime(self) -> None:
         """Stage 1 reactive projection: poll, compare a semantic digest, render only on change.
 
@@ -1370,7 +1412,9 @@ class ChatApp(App):
             return
         self.runtime_polls += 1
         try:
-            snapshot = runtime_tree.watch()
+            view = (model_lifecycle.observed(self.lifecycle)
+                    if model_lifecycle is not None and self.lifecycle is not None else None)
+            snapshot = runtime_tree.watch(lifecycle_view=view)
         except Exception as error:            # a broken registry is displayed, never fatal
             self.runtime_digest = f"error:{type(error).__name__}"
             return
@@ -1391,6 +1435,7 @@ class ChatApp(App):
 
     def on_mount(self) -> None:
         self.set_interval(2.0, self.poll_runtime)
+        self.set_interval(30.0, self.sweep_idle)
 
     def action_runtime(self) -> None:
         """The runtime projection: what the registries actually say about the running system."""

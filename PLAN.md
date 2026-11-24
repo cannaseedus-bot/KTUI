@@ -97,6 +97,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M57 | The protocol experiment: 27 interleaved cells with recorded provenance - and evidence that condition C must not be promoted | **guard** | `contract_experiment.py`, `data/protocol-experiment*.json`, `data/regression-planner.json`, `tests_host/test_contract_experiment.py` (17 tests) |
 | M58 | Condition D: phase ownership plus registered targets, measured per check - and the finding that target binding, not phase, is the bottleneck | **guard** | `data/context-contract.json`, `plan_graph.context_contract`, `contract_experiment (condition D)`, `data/context-experiment.json`, `evaluation/development-cases.jsonl`, `tests_host/test_contract_experiment.py` (18 tests) |
 | M59 | 36 session cells: C's advantage survives repetition for Qwen and does not transfer to Gemma; the passes rest on omitted targets | **guard** | `session_profile.py`, `data/session-profiles.json` (disjoint examples), `data/session-experiment-36.json`, `tests_host/test_session_profile.py` (13 tests) |
+| M60 | The stream holds the lease: cancellation returns it, cold-start failure takes none, one lifecycle and a 30 s sweep in the app | **guard** | `inference_session.StreamingCall`, `chat_app.lease/sweep_idle`, `model_lifecycle.observed`, `tests_host/test_stream_lease.py` (10 tests) |
 
 ---
 
@@ -188,6 +189,39 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The stream holds the lease (M60)
+
+The lease now covers the **stream**, not the call that opens it. `StreamingCall` takes the lease before the
+first chunk and releases it in `finally`, so a client that stops reading still returns it:
+
+```
+planner · cold start · first token 15 ms · stream 32 ms · total 47 ms · chunks 5 · lease released True
+```
+
+Five boundaries, each guarded:
+
+| boundary | behaviour |
+|---|---|
+| stream completion | lease released, `chunks`/`first_token_ms`/`stream_ms`/`total_ms` kept |
+| **client disconnect** | `close()` after two chunks still releases the lease (`chunks: 2`, `released: True`) |
+| stream error | released, error recorded, exception still propagates |
+| cold-start failure | no dispatch, **no lease taken**, `first_token_ms` stays `None` |
+| concurrent streams | three readers on one cold model → **one launch**, each holds and returns its own lease |
+
+The app now owns **one** lifecycle: `app.lease(model)` is the context manager (a lease is returned even when
+the body raises), `app.sweep_idle()` is the 30-second tick, and the projection reads
+`model_lifecycle.observed()` for `leases`, `owned` and `idle_remaining` - observed, never initiated, so a
+screen that refreshes cannot wake or stop anything. `idle_remaining` is volatile and excluded from the
+semantic digest, so an unchanged system does not repaint.
+
+**Not done, and it is the honest gap:** the app's existing streamed model path does not yet route through
+`StreamingCall` - the mechanism and the app's lease/sweep are in place, but a real model turn still streams
+outside the lease. Wiring it means replacing the client loop in `stream_llm_response` with the
+`StreamingCall` wrapper; everything needed is tested, and the turn-level measurement
+(cold start / first token / stream / total) comes with it.
 
 ---
 
@@ -1950,7 +1984,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 494 tests, OK (M3-M59) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 504 tests, OK (M3-M60) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

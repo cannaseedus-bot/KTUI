@@ -246,3 +246,19 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+def observed(lifecycle: "Lifecycle") -> dict:
+    """What the green screen may display: leases, ownership and idle budget - read, never acted on."""
+    view = {}
+    now = _host_call(lifecycle.host, "clock")
+    for name, entry in lifecycle.declaration["by_name"].items():
+        record = lifecycle.owned.get(name)
+        leases = lifecycle.leases.get(name, 0)
+        last = lifecycle.last_used.get(name) or (record or {}).get("started_at")
+        remaining = None
+        if record and last is not None and not leases:
+            remaining = max(0, int(entry["idle_timeout_seconds"] - (now - last)))
+        view[name] = dict(leases=leases, owned=bool(record),
+                          idle_remaining=("suspended" if leases else remaining))
+    return view
+

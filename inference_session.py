@@ -154,3 +154,86 @@ def summary(outcome: dict) -> str:
             f"inference {outcome.get('inference_latency_ms')} ms · total {outcome.get('total_latency_ms')} ms · "
             f"lease released {outcome.get('lease_released')}"
             + (f" · error {outcome['error']}" if outcome.get("error") else ""))
+
+class StreamingCall:
+    """A stream that holds its lease until iteration ends - including cancellation.
+
+    Iterating opens nothing new; the lease was taken before the first chunk and is released in `finally`,
+    so a client disconnect (which closes the iterator) returns it too. Measurements are filled in as the
+    stream progresses and stay `None` until they happen.
+    """
+
+    def __init__(self, waker: Waker, model: str, conversation: list[dict], open_stream, *,
+                 record: bool = True, request_id: str | None = None):
+        self.waker = waker
+        self.model = model
+        self.conversation = conversation
+        self.open_stream = open_stream
+        self.record = record
+        self.request_id = request_id
+        self.chunks = 0
+        self.first_token_ms = None
+        self.stream_ms = None
+        self.total_ms = None
+        self.model_was_cold = None
+        self.lease_released = False
+        self.error = None
+        self.wake = None
+        self._started = None
+        self._first = None
+
+    def __iter__(self):
+        started = time.monotonic()
+        self._started = started
+        self.wake = self.waker.ensure(self.model)
+        self.model_was_cold = bool(self.wake.get("model_was_cold"))
+        if self.wake.get("state") != "hot":
+            self.error = self.wake.get("note") or "the backend did not become ready"
+            self.total_ms = int(round((time.monotonic() - started) * 1000))
+            raise SessionError(self.error)
+        self.waker.lifecycle.acquire(self.model)
+        try:
+            for chunk in self.open_stream(self.conversation):
+                if self._first is None:
+                    self._first = time.monotonic()
+                self.chunks += 1
+                yield chunk
+        except Exception as problem:                  # noqa: BLE001 - reported, then re-raised
+            self.error = f"{type(problem).__name__}: {problem}"[:200]
+            raise
+        finally:
+            now = time.monotonic()
+            self.first_token_ms = (int(round((self._first - started) * 1000))
+                                   if self._first else None)
+            self.stream_ms = (int(round((now - self._first) * 1000)) if self._first else None)
+            self.total_ms = int(round((now - started) * 1000))
+            try:
+                self.waker.lifecycle.release(self.model)
+                self.lease_released = True
+            except Exception as problem:              # a lease we cannot return is a defect, not a crash
+                self.lease_released = False
+                self.error = (self.error or "") + f" release:{type(problem).__name__}"
+            if self.record:
+                self._record()
+
+    def _record(self) -> None:
+        try:
+            evidence_record.append(evidence_record.build(
+                input_text="", request_id=self.request_id, inference="model", model_id=self.model,
+                latency_ms=self.total_ms, schema_validation=("ok" if not self.error else "error"),
+                operators=[]))
+        except Exception as problem:
+            self.error = (self.error or "") + f" record:{type(problem).__name__}"
+
+    @property
+    def measurements(self) -> dict:
+        return dict(chunks=self.chunks, first_token_ms=self.first_token_ms,
+                    stream_ms=self.stream_ms, total_ms=self.total_ms,
+                    model_was_cold=self.model_was_cold, lease_released=self.lease_released)
+
+    def summary(self) -> str:
+        state = "cold start" if self.model_was_cold else "warm"
+        return (f"{self.model} · {state} · first token {self.first_token_ms} ms · "
+                f"stream {self.stream_ms} ms · total {self.total_ms} ms · "
+                f"chunks {self.chunks} · lease released {self.lease_released}")
+
