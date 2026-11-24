@@ -672,5 +672,30 @@
     }
   },
   "authority": "declaration_only",
-  "execution": false
+  "execution": false,
+  "accounting": {
+    "planned_calls": 27,
+    "attempted_calls": 27,
+    "responses_received": 21,
+    "responses_scored": 21,
+    "groups": {
+      "worker/baseline": 3,
+      "worker/contract": 3,
+      "worker/contract_context": 3,
+      "planner/baseline": 3,
+      "planner/contract": 3,
+      "planner/contract_context": 3,
+      "advisor/baseline": 3,
+      "advisor/contract": 3,
+      "advisor/contract_context": 3
+    },
+    "note": "counted from the artifact itself. An earlier report called this 30 cells; the artifact holds 27 (3 models x 3 conditions x 3 repeats). The 30 was a miscount in my summary, not extra records, and the file keeps its name so existing references stay valid."
+  },
+  "correction": {
+    "claimed": 30,
+    "actual": 27,
+    "where": "commit 791a12e message and the PLAN section about the re-execution",
+    "cause": "I asserted a cell count instead of reading it back; the rescore had already reported 21 scored plus 6 skipped, which is 27",
+    "rule": "count from the artifact, never from the plan"
+  }
 }

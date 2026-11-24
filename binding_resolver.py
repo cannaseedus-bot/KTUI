@@ -130,3 +130,47 @@ def summary(registry: dict) -> str:
     for name, entry in sorted(registry["families"].items()):
         lines.append(f"  {name:22} {entry['mode']:13} {', '.join(entry['allowed']) or '(none)'}")
     return "\n".join(lines)
+
+def apply_binding(binding_record: dict, proposal: dict) -> dict:
+    """The three outcomes, and the one that must never happen.
+
+        correct target supplied   accept it as a model target proposal
+        target omitted            use the Wo-resolved binding, source recorded as wo_resolved
+        wrong target supplied     reject; never silently replace it
+
+    Returns the plan plus `model_target`, `resolved_target` and `binding_source`, because a host-supplied
+    binding must not be credited as a model prediction.
+    """
+    raw = proposal.get("target")
+    resolved = binding_record["allowed"][0] if binding_record["mode"] == "deterministic" else None
+    verdict = check(dict(binding_record, resolved_target=resolved), proposal)
+    model_target = raw
+    if verdict.get("skipped"):
+        return dict(ok=True, plan=dict(proposal), model_target=model_target,
+                    resolved_target=None, binding_source="none", conflict=False,
+                    reason="this family binds no target")
+    if raw is not None and verdict["ok"]:
+        return dict(ok=True, plan=dict(proposal), model_target=model_target,
+                    resolved_target=raw, binding_source="model", conflict=False, reason=None)
+    if raw is None and resolved is not None:
+        # Wo supplies the binding: the plan becomes valid, and the source says who supplied it.
+        plan = dict(proposal, target=resolved)
+        return dict(ok=True, plan=plan, model_target=None, resolved_target=resolved,
+                    binding_source="wo_resolved", conflict=False,
+                    reason="the model omitted a target; Wo resolved the singleton binding")
+    return dict(ok=False, plan=dict(proposal), model_target=model_target,
+                resolved_target=verdict.get("resolved_target"), binding_source="model",
+                conflict=bool(verdict.get("conflict")),
+                reason=verdict.get("reason") or "the target could not be bound")
+
+
+def plan_evidence(binding_record: dict, applied: dict) -> dict:
+    """What the ledger records about a bound plan: both targets, and who supplied the binding."""
+    return dict(schema="kuhul://evidence/bound-plan/v1", family=binding_record.get("family"),
+                mode=binding_record.get("mode"), allowed=list(binding_record.get("allowed") or []),
+                model_target=applied.get("model_target"),
+                resolved_target=applied.get("resolved_target"),
+                binding_source=applied.get("binding_source"),
+                conflict=bool(applied.get("conflict")), accepted=bool(applied.get("ok")),
+                reason=applied.get("reason"), admitted=False, authority="declaration_only")
+

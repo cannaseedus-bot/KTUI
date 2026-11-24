@@ -130,5 +130,63 @@ class BindingTests(unittest.TestCase):
         self.assertEqual(record["source"], "kuhul://targets/v1")
 
 
+class ApplyBindingTests(unittest.TestCase):
+    """Three outcomes, and a host-supplied binding is never credited as a model prediction."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.registry = binding_resolver.load()
+        cls.singleton = binding_resolver.binding(cls.registry, "full_composition")
+
+    def test_a_correct_model_target_is_accepted_as_the_models(self):
+        applied = binding_resolver.apply_binding(self.singleton, dict(target="graph.matches"))
+        self.assertTrue(applied["ok"])
+        self.assertEqual(applied["binding_source"], "model")
+        self.assertEqual(applied["model_target"], "graph.matches")
+        self.assertFalse(applied["conflict"])
+
+    def test_an_omitted_target_is_supplied_by_wo_and_says_so(self):
+        applied = binding_resolver.apply_binding(self.singleton, {})
+        self.assertTrue(applied["ok"])
+        self.assertEqual(applied["binding_source"], "wo_resolved")
+        self.assertIsNone(applied["model_target"])
+        self.assertEqual(applied["resolved_target"], "graph.matches")
+        self.assertEqual(applied["plan"]["target"], "graph.matches")
+
+    def test_a_wrong_target_is_rejected_and_never_replaced(self):
+        applied = binding_resolver.apply_binding(self.singleton, dict(target="gml://relations"))
+        self.assertFalse(applied["ok"])
+        self.assertTrue(applied["conflict"])
+        self.assertEqual(applied["model_target"], "gml://relations")
+        self.assertEqual(applied["plan"]["target"], "gml://relations",
+                         "the plan keeps what the model said; it is not rewritten into a pass")
+        self.assertIn("rejected", applied["reason"])
+
+    def test_a_multi_target_family_does_not_guess(self):
+        constrained = binding_resolver.binding(self.registry, "uri_binding")
+        applied = binding_resolver.apply_binding(constrained, {})
+        self.assertFalse(applied["ok"], "with two allowed targets Wo must not pick one for the model")
+
+    def test_an_unbound_family_binds_nothing(self):
+        unbound = binding_resolver.binding(self.registry, "refusal")
+        applied = binding_resolver.apply_binding(unbound, {})
+        self.assertTrue(applied["ok"])
+        self.assertEqual(applied["binding_source"], "none")
+
+    def test_the_evidence_keeps_both_targets_and_the_source(self):
+        applied = binding_resolver.apply_binding(self.singleton, {})
+        evidence = binding_resolver.plan_evidence(self.singleton, applied)
+        self.assertIsNone(evidence["model_target"])
+        self.assertEqual(evidence["resolved_target"], "graph.matches")
+        self.assertEqual(evidence["binding_source"], "wo_resolved")
+        self.assertFalse(evidence["admitted"])
+        self.assertEqual(evidence["authority"], "declaration_only")
+
+    def test_a_singleton_binding_is_not_a_model_success(self):
+        applied = binding_resolver.apply_binding(self.singleton, {})
+        self.assertEqual(applied["binding_source"], "wo_resolved",
+                         "runtime correctness must not be reported as model target accuracy")
+
+
 if __name__ == "__main__":
     unittest.main()
