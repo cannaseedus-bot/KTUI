@@ -116,6 +116,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M76 | Add conformance guards for registry-status claims, local reference resolution, and UI dispatch status so inventory drift is caught | **done** | `tests_host/test_micronaut_host_handlers.py`, `tests_host/test_graph_theory_micronaut.py`, `micronaut_audit.py`, semantic registry and CSS manifest |
 | M77 | Bind and invoke all five generic phase-catalog handlers through typed host admission; preserve invocation receipts | **done** | `micronaut_host_handlers.py`, `micronaut_server.Engine.invoke_micronaut`, `tests_host/test_micronaut_host_handlers.py` |
 | M78 | Resolve Graph Theory references, bind its bounded read-only query handler, expose local HTTP query API, and guard invocation and authority | **done** | `micronaut/graph_executor.py`, `micronaut_host_handlers.py`, `micronaut_server.Engine.graph_query`, `/api/atomic/call`, `tests_host/test_graph_theory_micronaut.py` |
+| M79 | Report per-semantic-agent unresolved program refs and host-binding state; prevent declarations from implying invocation | **guard** | `micronaut_audit.py`, `tests_host/test_micronaut_host_handlers.py`, `PLAN.md` |
 
 ---
 
@@ -132,6 +133,42 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:one-sha256-lock-and-a-measured-gate -->
 <!-- milestone:wo-classifies-a-live-turn -->
 <!-- milestone:model-turn-three-handlers -->
+<!-- milestone:micro-agent-bridge-declared-routes-only -->
+## The Micro Agent bridge: declared routes only, two destinations
+
+Built to the four decisions, and the rule the review asked to protect is the module's centre: **dispatch is reached
+only by a declared route name.** A rendered answer containing `model://planner` resolves to `route_not_declared` and
+invokes nothing.
+
+| decision | how it is held |
+|---|---|
+| `model://<alias>` is a host route | `DECLARED_ROUTES` is a host table; each entry names a scheme, target, required capability and output type |
+| authority is the host's | `dispatch` checks the required capability against the turn's grants; AIML text is never consulted |
+| persona cannot widen | `persona` is accepted and never read for grants; a non-dict persona is refused |
+| `AGENT.md` deferred | still nothing consumes it, so it stays unwritten |
+
+Measured end to end with the real SRAI resolver:
+
+```
+ASK PLANNER  ->  SRAI ASK_PLANNER  ->  ROUTE ASK_PLANNER     (two hops, both traced)
+bridge: ASK_PLANNER -> model model://planner -> candidate_text -> admitted false
+```
+
+Two destinations, one envelope: `model://planner` returns candidate text through the injected completer,
+`micronaut://gml/graph-theory/query` returns a typed result through the injected invoker. Both carry `scheme`,
+`target`, `source: "aiml_srai"`, `request_id`, `output_type` and `admitted: false`.
+
+15 guards hold it: the SRAI chain resolving a declared route, text not being a route, undeclared names, unregistered
+aliases, missing grants invoking **nothing**, a persona unable to widen a grant, an empty candidate failing, a
+backend exception failing the route rather than crashing, a missing dispatcher being refused, and every result
+staying `declaration_only`.
+
+Still not wired into a live turn: `chat_app` does not call the bridge yet. The bridge is exercised directly, which is
+the honest state - the next step is to let a turn request one declared route and put the result into context, with
+Ch'en validating the typed result before Xul emits.
+
+---
+
 ## The model turn: three handlers, and a finished stream is not a verdict
 
 `model_turn` holds the contract and `chat_app` emits it around the real handlers:
@@ -3248,3 +3285,13 @@ Expected failure signatures and what they mean:
 **Verify:** `python -B -m unittest tests_host.test_graph_theory_micronaut tests_host.test_micronaut_host_handlers tests_host.test_micronaut_registry -q`; `python -B tools/query_micronaut_graphs.py stats --graph hypercube_q3`; `python -B micronaut_audit.py`.
 
 **If erased:** Graph Theory returns to a declaration with no registered handler or reachable local host endpoint, and the audit loses its per-entry distinction between semantic declarations, generic handlers, and actual invocation.
+
+### M79 — per-agent source and binding inventory
+
+**Symptom:** A single unresolved-reference count obscured which semantic agents lacked program files, and the five generic phase handlers could be mistaken for semantic-agent bindings.
+
+**Fix:** The audit now reports each semantic entry's program-reference status, unresolved program paths, exact host-handler binding, handler ID and schemas, and a zero static-invocation count. The conformance guard fixes the current inventory at 13 semantic entries, one bound handler (Graph Theory), six entries with unresolved program references, and no inferred invocations. This inventory is deliberately separate from the five generic phase-catalog handlers.
+
+**Verify:** `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_graph_theory_micronaut -q`; `python -B -c "import micronaut_audit; print(micronaut_audit.report()['semantic_registry'])"`.
+
+**If erased:** Missing implementations or catalog name similarities can again be represented as registered and utilized agents without source or invocation evidence.
