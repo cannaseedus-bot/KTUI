@@ -19,14 +19,24 @@
         "chat",
         "code"
       ]
+    },
+    "planner": {
+      "base_url": "http://127.0.0.1:9041/v1",
+      "role": "structured_planning",
+      "preference": "plan",
+      "features": [
+        "chat",
+        "code",
+        "json"
+      ]
     }
   },
   "routing": {
     "micronaut://v1/aiml": "worker",
     "micronaut://v1/eliza": "worker",
-    "micronaut://v1/relations": "advisor",
+    "micronaut://v1/relations": "planner",
     "micronaut://v1/memory": "worker",
-    "micronaut://v1/compose": "advisor"
+    "micronaut://v1/compose": "planner"
   },
   "preferences": {
     "fast": [
@@ -40,12 +50,17 @@
     "cheap": [
       "worker",
       "advisor"
+    ],
+    "plan": [
+      "planner",
+      "advisor",
+      "worker"
     ]
   },
   "policy": {
     "probe": "/models",
     "timeout_seconds": 2,
     "require_registered": true,
-    "note": "only endpoints declared here are probed; a port that merely responds is not a model"
+    "note": "only endpoints declared here are probed; a port that merely responds is not a model. planner runs qwen3-1.7b with thinking disabled (--reasoning-budget 0)"
   }
 }

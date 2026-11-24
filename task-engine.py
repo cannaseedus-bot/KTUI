@@ -845,7 +845,7 @@ def resolve_executable(config: dict) -> Path:
 
 
 def build_server_argv(config: dict, *, model_path: str | None = None,
-                      port: int | None = None) -> list[str]:
+                      port: int | None = None, no_think: bool = False) -> list[str]:
     """The llama-server command line. Loopback only, and tool calling enabled.
 
     `port` lets a second server run beside the default one - the router addresses backends by port, and
@@ -866,13 +866,17 @@ def build_server_argv(config: dict, *, model_path: str | None = None,
         "-t", str(int(server.get("threads", 4))),
         *[str(arg) for arg in server.get("server_args", [])],
     ]
+    if no_think:
+        # Qwen3 thinks by default; a planning task wants the answer, not the deliberation. The flag is
+        # per launch so the advisor keeps whatever the config declares.
+        argv += ["--reasoning-budget", "0"]
     return argv
 
 
 def start_server(config: dict, *, model_path: str | None = None,
-                 port: int | None = None) -> subprocess.Popen:
+                 port: int | None = None, no_think: bool = False) -> subprocess.Popen:
     """Start llama-server and wait for /health. The model load happens here, so the wait is generous."""
-    argv = build_server_argv(config, model_path=model_path, port=port)
+    argv = build_server_argv(config, model_path=model_path, port=port, no_think=no_think)
     endpoint = (f"http://127.0.0.1:{int(port)}" if port is not None
                 else local_endpoint(config))
     timeout = int(config["server"].get("server_start_timeout_seconds", 180))
@@ -990,7 +994,7 @@ def command_prepare(config: dict, args: argparse.Namespace) -> int:
 
 
 def command_launch(config: dict, args: argparse.Namespace) -> int:
-    process = start_server(config, model_path=args.model, port=args.port)
+    process = start_server(config, model_path=args.model, port=args.port, no_think=args.no_think)
     print(f"server:   started {local_endpoint(config)} (pid {process.pid})")
     try:
         if args.task:
@@ -1142,6 +1146,8 @@ def main(argv: list[str] | None = None) -> int:
     launch.add_argument("--task", nargs=argparse.REMAINDER, help="Task to run once the server is healthy")
     launch.add_argument("--keep-alive", action="store_true", help="Leave the server running until Ctrl+C")
     launch.add_argument("--port", type=int, help="Serve on this port instead of [server].port (default 9032)")
+    launch.add_argument("--no-think", action="store_true",
+                        help="Append --reasoning-budget 0 (Qwen3 plans without deliberating first)")
     chat = sub.add_parser("chat", help="Run one task against an already-running server")
     chat.add_argument("task", nargs=argparse.REMAINDER)
     sub.add_parser("shell", help="Interactive terminal")

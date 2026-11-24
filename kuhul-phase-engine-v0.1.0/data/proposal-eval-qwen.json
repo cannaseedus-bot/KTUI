@@ -1,0 +1,66 @@
+{
+  "schema": "kuhul-proposal-eval.qwen/1",
+  "model": "qwen3-1.7b-q4",
+  "port": 9041,
+  "thinking": "disabled (--reasoning-budget 0)",
+  "budget_tokens": 900,
+  "started_at": "2026-11-24T06:28:49Z",
+  "tasks": {
+    "full_chain": {
+      "parsed": true,
+      "form": "fields",
+      "verdict": "misplaced_accumulate",
+      "nodes": false,
+      "edges": false,
+      "authority": true,
+      "operators": [
+        "accumulate",
+        "reduce"
+      ],
+      "extra": [],
+      "missing": [
+        "filter",
+        "fold",
+        "map"
+      ],
+      "misplaced": [],
+      "tokens": {
+        "total": 107,
+        "reasoning": null,
+        "final_json": null
+      },
+      "finish": "stop",
+      "latency_ms": 11079,
+      "errors": [],
+      "error": null,
+      "text_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"evidence\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"r"
+    },
+    "filter_map": {
+      "parsed": true,
+      "form": "fields",
+      "verdict": "exact",
+      "nodes": true,
+      "edges": true,
+      "authority": true,
+      "operators": [
+        "filter",
+        "map"
+      ],
+      "extra": [],
+      "missing": [],
+      "misplaced": [],
+      "tokens": {
+        "total": 106,
+        "reasoning": null,
+        "final_json": null
+      },
+      "finish": "stop",
+      "latency_ms": 8296,
+      "errors": [],
+      "error": null,
+      "text_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n  "
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false
+}

@@ -84,6 +84,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M44 | Proposal evaluation: can the 1B model produce valid K'UHUL plans? Scored by the existing validators | **guard** | `proposal_eval.py`, `runtime_servers.py`, `data/proposal-eval-live.json`, `tests_host/test_proposal_eval.py` (10 tests) |
 | M45 | Live evidence capture: one request id per turn, digest not prompt, execution distinguished from admission, recording can never break an answer | **guard** | `chat_app.record_turn`, `evidence_record.build`, `/evidence`, `tests_host/test_live_capture.py` (9 tests) |
 | M46 | Composition as a graph: the host resolves edges, never repairs, and scores nodes/edges/authority separately | **guard** | `plan_graph.py`, `proposal_eval.py`, `data/proposal-eval-fair.json`, `tests_host/test_plan_graph.py` (17 tests) |
+| M47 | A third backend: Qwen3-1.7B planner (thinking off) fixes over-generation and is the cheapest of the three, but under-generates the full chain | **guard** | `data/models.json`, `task-engine.py --no-think`, `data/proposal-eval-qwen.json`, `tests_host/test_model_router.py` (20 tests) |
 
 ---
 
@@ -175,6 +176,40 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Three backends, three roles (M47)
+
+```
+advisor  gpt-oss-20b   :9032  chat, tools        complex reasoning
+worker   gemma-3-1b    :9040  chat, code         conversation
+planner  qwen3-1.7b    :9041  chat, code, json   structured planning (thinking off)
+
+relations -> planner · compose -> planner · aiml -> worker · eliza -> worker
+```
+
+Qwen needed a per-launch flag, so `task-engine.py launch --no-think` appends `--reasoning-budget 0` without
+changing what the advisor receives. Verified: the probe replied `OK` in 5 tokens with no
+`reasoning_content`, so thinking really is disabled rather than assumed.
+
+### The same two tasks, the same 900-token budget, the same validator
+
+| task | gemma-3-1B | qwen3-1.7B (no think) | gpt-oss-20B |
+|---|---|---|---|
+| `filter -> map` | `filter,map,reduce,filter` - **extra_operators** | `filter,map` - **exact** | `filter,map` - **exact** |
+| full chain | `filter,map,accumulate,reduce` - **misplaced_accumulate** | `accumulate,reduce` - **misplaced_accumulate, missing 2** | `filter,map,accumulate,reduce` - **misplaced_accumulate** |
+| completion tokens | 245 | **106 / 107** | 815 |
+| latency | 15.3 s | **8.3 / 11.1 s** | 163 s |
+
+Qwen fixes the failure that Gemma had - it does not over-generate the two-step instruction - and it is the
+cheapest and fastest of the three. But it fails the full chain in the **opposite** direction: it emits two
+of the four operators, dropping `filter` and `map` entirely, and it still uses `accumulate` where the graph
+requires `fold`.
+
+So the small-model problem is not "one model is better": Gemma over-generates, Qwen under-generates, and
+both misuse `accumulate`. The instruction says "accumulate evidence", and all three models read that as a
+step. The graph contract is correct; the prompt is the weak link.
 
 ---
 
@@ -1460,7 +1495,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 380 tests, OK (M3-M46) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 383 tests, OK (M3-M47) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

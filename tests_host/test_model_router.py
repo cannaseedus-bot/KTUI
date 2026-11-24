@@ -81,7 +81,7 @@ class ManifestTests(unittest.TestCase):
         router = model_router.load()
         self.assertTrue(router["ok"], router["problems"])
         self.assertEqual(router["authority"], "declaration_only")
-        self.assertEqual(sorted(router["models"]), ["advisor", "worker"])
+        self.assertEqual(sorted(router["models"]), ["advisor", "planner", "worker"])
         self.assertEqual(len(router["routing"]), 5)
 
     def test_a_non_loopback_endpoint_is_refused(self):
@@ -149,6 +149,31 @@ class HealthTests(unittest.TestCase):
             result = model_router.health(router, "worker")
         self.assertFalse(result["ok"])
         self.assertEqual(result["refused"], "no_models_listed")
+
+
+class ShippedRoutingTests(unittest.TestCase):
+    """The shipped manifest: conversation on gemma, structured planning on qwen, analysis on gpt-oss."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.router = model_router.load()
+        cls.probes = {name: {"ok": True, "models": [name]} for name in cls.router["models"]}
+
+    def test_structured_micronauts_route_to_the_planner(self):
+        for micronaut in ("micronaut://v1/relations", "micronaut://v1/compose"):
+            binding = model_router.select(self.router, micronaut, probes=self.probes)
+            self.assertEqual(binding["selected"], "planner", micronaut)
+
+    def test_conversational_micronauts_stay_on_the_worker(self):
+        for micronaut in ("micronaut://v1/aiml", "micronaut://v1/eliza"):
+            binding = model_router.select(self.router, micronaut, probes=self.probes)
+            self.assertEqual(binding["selected"], "worker", micronaut)
+
+    def test_the_plan_preference_falls_back_in_order(self):
+        binding = model_router.select(self.router, "micronaut://v1/compose", preference="plan",
+                                      probes={"planner": {"ok": False, "refused": "unreachable"},
+                                              "advisor": {"ok": True}, "worker": {"ok": True}})
+        self.assertEqual(binding["selected"], "advisor")
 
 
 class SelectionTests(unittest.TestCase):
@@ -234,7 +259,8 @@ class InvocationTests(unittest.TestCase):
             router = router_with(fake.base_url)
             plan = model_router.plan_invocation(router, "explain quantum chromodynamics", granted=READ)
         self.assertTrue(plan["invoke_model"], plan)
-        self.assertEqual(plan["binding"]["selected"], "advisor", "compose routes to the advisor")
+        self.assertEqual(plan["binding"]["selected"], "advisor",
+                         "this temp manifest routes compose to the advisor")
         self.assertFalse(plan["execution"])
 
 
