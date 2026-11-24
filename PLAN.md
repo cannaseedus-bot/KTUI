@@ -123,6 +123,44 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:delivery-integrity-of-the-learning-chain -->
 <!-- milestone:learning-pipeline-closure -->
 <!-- milestone:ce-across-categories-and-full-run-cost -->
+<!-- milestone:a-versus-ce-across-the-frozen-corpus -->
+## A versus CE across the frozen corpus (96 calls, protocol frozen first)
+
+Protocol `f33d9a19` was written **before** the run: 16 frozen cases by id and expectation digest, conditions A and
+CE, three repeats, interleaved by case and repeat, scoring v2 unchanged, live bindings from `kuhul://targets/v1`
+only. Artifact-derived accounting: **96 planned · 96 attempted · 96 received · 96 scored · 0 transport failures ·
+620,562 ms**.
+
+**CE is not a general improvement. It is category-shaped:**
+
+| category | A | CE |
+|---|---|---|
+| full_composition | graph 3/3 · runtime-bound 0 | graph 3/3 · **runtime-bound 3** |
+| operator_pair | graph **6/6** · model-bound 3 | graph 3/6 · runtime-bound 3 |
+| uri_binding | graph 0/6 | graph **3/6** |
+| runtime_introspection | graph **3/3** | graph 0/3 |
+| operator_containment | graph 0/6 · phase 6/6 | graph 0/6 · phase 6/6 |
+| phase_selection | phase 0/3 | phase 0/3 |
+| rest_route · srai_redirect | graph 0 in both | graph 0 in both |
+| refusal · unknown_facts | **refusal 0/6** | **refusal 0/6** |
+
+What this establishes: CE **replicates** its composition advantage at three repeats (A 0, CE 3/3 runtime-bound);
+it **costs** pair exactness (6/6 → 3/6, the over-generation effect) and introspection (3/3 → 0/3); it **helps**
+`uri_binding`; and it changes **nothing** about refusal or unknown-fact behaviour - the model produces plans where
+the correct answer is a refusal or an "unknown", in both conditions, at every repeat.
+
+Two accounting defects found and fixed, both mine:
+
+- `responses_scored` was defined by `verdict`, so the refusal cells (12 per condition) were counted as unscored
+  despite being scored - "96 received, 72 scored, 0 transport failures" is a contradiction a reader would have
+  had to notice. It counts refusal verdicts now.
+- the refusal denominator did not exist in the report at all. It is its own column now, because refusal
+  correctness is neither structure nor binding.
+
+Still internal regression evidence: independent approval is 0/16, so none of these numbers is validated accuracy.
+
+---
+
 ## CE across categories: the harness scales, the full run is costed
 
 The CE runner now selects cases (`--cases all|id,category`) and conditions (`--conditions`) instead of hardcoding
