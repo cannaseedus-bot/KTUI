@@ -87,6 +87,10 @@ try:  # retrieval and composition: the two contracts that were declared but neve
     import compose
 except ImportError:  # pragma: no cover
     compose = None
+try:  # the phase chain as the first routing boundary
+    import phase_routing
+except ImportError:  # pragma: no cover
+    phase_routing = None
 import math
 import tempfile
 import shlex
@@ -742,6 +746,9 @@ class ChatApp(App):
         self.git_write = False
         # The loopback endpoint, when the human starts one (/serve).
         self.server = None
+        # The phase chain's verdict for the last turn, kept so /daemon and /plan can show it.
+        self.last_plan = None
+        self.last_routing = None
         # A short local answer can offer depth: "would you like me to delve deeper?" remembers the
         # original question, so agreeing sends *that* to the model rather than the word "yes".
         self.pending_deep = None
@@ -1047,6 +1054,41 @@ class ChatApp(App):
         return "\n".join(blocks)
 
     # -- user memory: proposals in, admitted writes out ---------------------------------------------
+    def granted_capabilities(self) -> set[str]:
+        """What this session may do, in capability terms the phase chain can name."""
+        granted = {"graph.relations.read"}
+        if user_memory is not None and (self.memory_write or user_memory.writable()):
+            granted.add("memory.write")
+        if self.git_write:
+            granted.add("repo.write")
+        if sandbox.allow_write:
+            granted.add("file.write")
+        return granted
+
+    def phase_route(self, text: str) -> dict | None:
+        """Consult the chain before answering. Returns the verdict, or None if unavailable."""
+        if phase_routing is None:
+            return None
+        try:
+            verdict = phase_routing.route(text, granted=self.granted_capabilities(),
+                                          context={"user": self.user_id})
+        except Exception as error:  # a broken chain must not take the turn down
+            self.last_routing = dict(action="fallback", reason=f"chain unavailable: {error}")
+            return self.last_routing
+        self.last_routing = verdict
+        self.last_plan = verdict.get("plan")
+        return verdict
+
+    def action_plan(self, argument: str = "") -> None:
+        """Show the phase chain's verdict for the last turn, or for a given text."""
+        text = (argument or "").strip()
+        verdict = self.phase_route(text) if text else self.last_routing
+        if not verdict:
+            self.say_system("No phase-chain verdict yet. `/plan <text>` resolves one.")
+            return
+        if phase_routing is not None:
+            self.say_system("```\n" + phase_routing.summary(verdict) + "\n```")
+
     def admit_memory(self, kind: str, argument: str) -> tuple[bool, str]:
         """memquery is read-only; a memory write needs the grant, exactly like /allow."""
         if user_memory is None:
@@ -1405,6 +1447,11 @@ class ChatApp(App):
         only ever *propose* a read-only verb or an admitted plan; the execution below is the same
         code path the model's tools use.
         """
+        verdict = self.phase_route(text) if _depth == 0 else None
+        if verdict is not None and verdict.get("action") == "refuse":
+            # An execution-class capability is required and not granted. No fallback: falling back
+            # would run the same operation through the unrestricted path the grant exists to gate.
+            return "refused", verdict["reason"]
         combined = self.multi_intent_answer(text, _depth)
         if combined:
             return "aiml", combined
@@ -1501,6 +1548,7 @@ class ChatApp(App):
             )
         commands["models"] = ("Models: list local models", self.action_models, "Every alias, fastest first")
         commands["plan"] = ("Plan: list the declared compositions", self.action_plans, "Admitted only from the typed registry")
+        commands["chain"] = ("Chain: the phase-chain verdict for a turn", self.action_plan, "Matches, redirects, capabilities and the fallback reason")
         commands["phase"] = ("Phase: verify the K'UHUL phase banks", self.action_phases, "Digests, cycle order and precedence")
         commands["serve"] = ("Serve: loopback endpoint for micronaut://v1/chat", self.action_serve, "Local answers only; no model, no writes")
         commands["clone"] = ("Git: clone an https repo into the workspace", self.action_clone, "Writes files: needs `/allow` first")
@@ -1676,6 +1724,9 @@ class ChatApp(App):
             return
         if name == "links":
             self.action_links(argument or "")
+            return
+        if name in {"chain", "routing"}:
+            self.action_plan(argument or "")
             return
         if name in {"memory", "remembered"}:
             self.action_memory()

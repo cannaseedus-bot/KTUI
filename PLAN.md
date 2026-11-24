@@ -70,6 +70,8 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M31 | The 58 declared phase operations classified: registered / requires-grant / proposal-only / unbound | **guard** | `kuhul-phase-engine-v0.1.0/phase_ops.py`, `tests/test_phase_ops.py` (10 tests) |
 | M32 | The bridge: walk the manifests with a carried context, dedupe a duplicated binding, visit every phase | **guard** | `phase_chain.py`, `tests_host/test_phase_chain.py` (13 tests) |
 | M33 | The five operators with rank discipline, and URI resolution that navigates without granting | **guard** | `operators.py`, `tests_host/test_operators.py` (14 tests) |
+| M34 | Daemon consumes the phase chain as the first routing boundary, with an explicit fallback policy | **guard** | `phase_routing.py`, `chat_app.py` (`phase_route`, `granted_capabilities`), `tests_host/test_phase_routing.py` |
+| M35 | Grant-aware routing: an absent grant blocks, a present grant permits only its own scope, a match grants nothing | **guard** | `phase_routing.route`, `tests_host/test_phase_routing.py::M35…` (12 tests total) |
 
 ---
 
@@ -161,6 +163,46 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Daemon consumes the chain (M34 / M35)
+
+The review's two guards, implemented. The numbering differs from the review's because M32/M33 are the
+chain bridge and the operators; the substance is what matters.
+
+**M34 - consumption.** `local_answer` now consults `phase_routing.route()` before anything else, keeps
+the verdict (`last_routing`) and the plan (`last_plan`), and the fallback policy is explicit:
+
+```
+who is bill            action=chain    closure=delegated   -> the answer path runs (host has no QUERY verb)
+tell me about my dog   action=chain    closure=delegated   -> compose answers
+hello                  action=fallback closure=none        -> the banks answer
+git status             action=fallback closure=none        -> the tool path answers
+```
+
+`delegated` means a directive matched - **not** that its operation was admitted. The chain is consulted,
+the plan is preserved, and the existing answer path still does the answering.
+
+**M35 - grants.** A route that requires an execution-class capability refuses when the grant is absent,
+and - the rule the review insisted on - **there is no fallback in that case**, because falling back
+would run the same operation through the unrestricted path the grant exists to gate:
+
+```
+COMMIT THE TREE -> GITOP commit, capability repo.write
+  no grant            -> refuse  ("requires repo.write; no fallback runs an operation ...")
+  /allow git          -> chain   ("the required grant is present for this exact scope")
+  /allow memory only  -> refuse  (a different grant does not cover the route)
+  WHO IS * -> QUERY   -> fallback when graph.relations.read is withheld (read-class falls back)
+  WHO IS * with no capability -> chain (a plain binding asks for nothing)
+```
+
+Capability class is decided by name (`*write*`, `*commit*`, `*persist*`, `*execute*` are execution;
+everything else is read), and `granted_capabilities()` names what this session holds
+(`graph.relations.read` always; `memory.write` only after `/allow memory`; `repo.write` only after
+`/allow git`; `file.write` only after `/allow`).
+
+`/chain <text>` shows the verdict for any input, including the reason it fell back or refused.
 
 ---
 
@@ -989,7 +1031,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 221 tests, OK (M3-M33) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 233 tests, OK (M3-M35) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
