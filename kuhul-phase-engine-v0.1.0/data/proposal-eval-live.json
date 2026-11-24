@@ -1,0 +1,220 @@
+{
+  "schema": "kuhul-proposal-eval/1.live",
+  "runs": 1,
+  "tasks": [
+    "full_chain",
+    "filter_map"
+  ],
+  "started_at": "2026-11-24T06:06:56Z",
+  "models": {
+    "worker": {
+      "model": "C:\\Users\\canna\\.models\\gemma-3-1B-it-QAT-Q4_0.gguf",
+      "replies": 2,
+      "parsed": 2,
+      "unparseable": 0,
+      "valid_proposals": 8,
+      "invalid_proposals": 0,
+      "order_ok": 1,
+      "order_measured": 2,
+      "authority_violations": 0,
+      "binding_ok": 2,
+      "binding_measured": 2,
+      "completion_tokens": 492,
+      "tokens_measured": true,
+      "latency_mean_ms": 12914,
+      "scores": [
+        {
+          "task": "full_chain",
+          "model": "C:\\Users\\canna\\.models\\gemma-3-1B-it-QAT-Q4_0.gguf",
+          "latency_ms": 12937,
+          "prompt_tokens": 152,
+          "completion_tokens": 245,
+          "parsed": true,
+          "proposals": [
+            {
+              "phase": "Sek",
+              "operator": "filter",
+              "target": "graph.matches",
+              "binding": "graph.matches",
+              "next": "accumulate",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "map",
+              "target": "graph.matches",
+              "binding": "graph.matches",
+              "next": "accumulate",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "accumulate",
+              "target": "graph.matches",
+              "binding": "graph.matches",
+              "next": "reduce",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "reduce",
+              "target": "graph.matches",
+              "binding": "graph.matches",
+              "next": "accumulate",
+              "authority": "proposal"
+            }
+          ],
+          "valid": 4,
+          "invalid": 0,
+          "order_ok": true,
+          "binding_ok": true,
+          "authority_ok": true,
+          "errors": [
+            "chain_mismatch"
+          ],
+          "operators": [
+            "filter",
+            "map",
+            "accumulate",
+            "reduce"
+          ],
+          "run": 0
+        },
+        {
+          "task": "filter_map",
+          "model": "C:\\Users\\canna\\.models\\gemma-3-1B-it-QAT-Q4_0.gguf",
+          "latency_ms": 12891,
+          "prompt_tokens": 144,
+          "completion_tokens": 247,
+          "parsed": true,
+          "proposals": [
+            {
+              "phase": "Sek",
+              "operator": "filter",
+              "target": "graph.matches",
+              "binding": "graph.matches",
+              "next": "map",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "map",
+              "target": "gml://relations",
+              "binding": "gml://relations",
+              "next": "fold",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "reduce",
+              "target": "gml://relations",
+              "binding": "gml://relations",
+              "next": "filter",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "filter",
+              "target": "gml://relations",
+              "binding": "gml://relations",
+              "next": "map",
+              "authority": "proposal"
+            }
+          ],
+          "valid": 4,
+          "invalid": 0,
+          "order_ok": false,
+          "binding_ok": true,
+          "authority_ok": true,
+          "errors": [
+            "chain_mismatch"
+          ],
+          "operators": [
+            "filter",
+            "map",
+            "reduce",
+            "filter"
+          ],
+          "run": 0
+        }
+      ]
+    },
+    "advisor": {
+      "model": "C:\\Users\\canna\\.models\\gpt-oss-20b-MXFP4.gguf",
+      "replies": 2,
+      "parsed": 1,
+      "unparseable": 1,
+      "valid_proposals": 2,
+      "invalid_proposals": 0,
+      "order_ok": 1,
+      "order_measured": 1,
+      "authority_violations": 0,
+      "binding_ok": 1,
+      "binding_measured": 1,
+      "completion_tokens": 734,
+      "tokens_measured": true,
+      "latency_mean_ms": 90750,
+      "scores": [
+        {
+          "task": "full_chain",
+          "model": "C:\\Users\\canna\\.models\\gpt-oss-20b-MXFP4.gguf",
+          "latency_ms": 111797,
+          "prompt_tokens": 214,
+          "completion_tokens": 400,
+          "parsed": false,
+          "proposals": [],
+          "valid": 0,
+          "invalid": 0,
+          "order_ok": null,
+          "binding_ok": null,
+          "authority_ok": null,
+          "errors": [
+            "truncated"
+          ],
+          "truncated": true,
+          "run": 0
+        },
+        {
+          "task": "filter_map",
+          "model": "C:\\Users\\canna\\.models\\gpt-oss-20b-MXFP4.gguf",
+          "latency_ms": 69703,
+          "prompt_tokens": 206,
+          "completion_tokens": 334,
+          "parsed": true,
+          "proposals": [
+            {
+              "phase": "Sek",
+              "operator": "filter",
+              "target": "graph.matches",
+              "binding": "valid",
+              "next": "map",
+              "authority": "proposal"
+            },
+            {
+              "phase": "Sek",
+              "operator": "map",
+              "target": "graph.matches",
+              "binding": "transform",
+              "next": null,
+              "authority": "proposal"
+            }
+          ],
+          "valid": 2,
+          "invalid": 0,
+          "order_ok": true,
+          "binding_ok": true,
+          "authority_ok": true,
+          "errors": [],
+          "operators": [
+            "filter",
+            "map"
+          ],
+          "run": 0
+        }
+      ]
+    }
+  },
+  "note": "smoke-scale live run: 2 tasks x 1 run per model; scored with proposal.validate_all",
+  "execution": false,
+  "authority": "declaration_only"
+}
