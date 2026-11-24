@@ -68,6 +68,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M29 | `kuhul-phases/v1` manifests: one JSON file per phase, chained by schema URI, regulated by a loader that executes nothing | **guard** | `core/phase_manifest.py`, `phases/json/*.json`, `tests/test_phase_manifest.py` (16 tests) |
 | M30 | `phase.resolve_aiml`: one input, one typed six-phase plan - evidence, delegation, no execution | **guard** | `phase_resolve.py`, `tests_host/test_phase_resolve.py` (15 tests) |
 | M31 | The 58 declared phase operations classified: registered / requires-grant / proposal-only / unbound | **guard** | `kuhul-phase-engine-v0.1.0/phase_ops.py`, `tests/test_phase_ops.py` (10 tests) |
+| M32 | The bridge: walk the manifests with a carried context, dedupe a duplicated binding, visit every phase | **guard** | `phase_chain.py`, `tests_host/test_phase_chain.py` (13 tests) |
 
 ---
 
@@ -159,6 +160,47 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The phase chain bridge (M32)
+
+The two declaration layers now meet in one read-only resolver: the AIML banks supply recognition, the
+JSON manifests supply identity, order, bindings and capabilities, and the plan carries context from
+Pop to Xul.
+
+```
+python phase_chain.py "who is bill"
+phase chain · 'who is bill' · 6 phase(s)
+  chain: Pop -> Wo -> Yax -> Sek -> Ch'en -> Xul
+  Pop    WHO IS * -> WHAT IS bill
+  Wo     no match
+  Yax    WHAT IS * -> QUERY bill
+  Sek    no match
+  Ch'en  no match
+  Xul    (no bindings)
+  closure: delegated - a directive was matched; the host owns the execution
+  capabilities required: graph.relations.read
+  (execution false · authority declaration_only)
+```
+
+The review's two details, as behaviour:
+
+1. **The duplicated redirect.** `python phase_chain.py "who is bill" --original` re-tests every phase
+   against the original input, and the duplicate becomes visible instead of merely present:
+   `duplicate: WHO IS * applied in Pop, declared again in Wo`, with Wo's copy *shadowed* and never
+   re-run. In the default mode the input advances with the redirect, so the second copy cannot fire at
+   all - both facts are asserted.
+2. **A visit is not a match.** All six phases appear in every plan. A phase with nothing to match is
+   recorded as `no_match` with the context intact, so the chain is operationally connected rather than
+   silently skipping.
+
+Capabilities are collected only where declared (`graph.relations.read` on Yax and Sek, nothing on Xul),
+and the closure is always a proposal: `delegated` for a directive, `redirected` for an SRAI, `none`
+when nothing matched. Nothing executes.
+
+Bug found while writing the guards: directive targets did not substitute captures, so
+`QUERY {star:1}` reached the closure unrendered instead of `QUERY bill`.
 
 ---
 
@@ -909,7 +951,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 194 tests, OK (M3-M31) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 207 tests, OK (M3-M32) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
