@@ -362,7 +362,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
 host guards    : 63 tests, OK (M3-M16: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8)
-evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
+evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
 Merge order used: **F14 → F14.1 → M2 → M2.1 → base suite → `base_health()` → `extension_summary()`

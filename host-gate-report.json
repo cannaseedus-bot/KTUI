@@ -714,12 +714,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.125
+      "duration_seconds": 0.094
     },
-    "captured_at": "2026-11-24T01:26:14.714169+00:00",
+    "captured_at": "2026-11-24T01:26:47.965415+00:00",
     "health_correlation": {
-      "suite_sha": "07b91f539cf5044be412e931df5ba940034a1bd6",
-      "health_sha": "07b91f539cf5044be412e931df5ba940034a1bd6",
+      "suite_sha": "9a9f3f7be221cc1206266876faf470c0c48a54c4",
+      "health_sha": "9a9f3f7be221cc1206266876faf470c0c48a54c4",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -728,11 +728,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 07b91f539cf5044be412e931df5ba940034a1bd6"
-      },
-      {
-        "code": "working_tree_dirty",
-        "detail": "captured with tracked changes; recorded, not rejected"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 9a9f3f7be221cc1206266876faf470c0c48a54c4"
       },
       {
         "code": "untracked_files",
@@ -879,8 +875,8 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "07b91f539cf5044be412e931df5ba940034a1bd6",
-    "captured_clean": false,
+    "tested_commit": "9a9f3f7be221cc1206266876faf470c0c48a54c4",
+    "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
     "note": "evidence_satisfied describes the recorded evidence; it grants no permission"
