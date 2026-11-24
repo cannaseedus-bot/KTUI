@@ -117,6 +117,31 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+<!-- milestone:wo-instrumentation-and-write-verification -->
+## Wo is instrumented, and writes are verified
+
+**Wo is a real host handler now**, not a label: `binding(..., request_id=...)` emits `phase_enter` / `phase_exit`
+around the actual resolution through `kuhul://targets/v1`, preserves the resolver's return value and exception
+behaviour exactly, and ends the phase with outcome `failed` or `cancelled` on the way out. Without a request id it
+emits nothing.
+
+The two guards the review asked for:
+
+| guard | how it holds |
+|---|---|
+| interleaved Wo requests | independent request ids, per-request monotonic sequences, no borrowed events |
+| partial failure | Pop exits, Wo exits failed, and **Yax / Sek / Ch'en / Xul are not synthesised** afterwards |
+
+**Write verification**, from the PLAN no-op lesson: `plan_edit.insert_section` writes a stable
+`<!-- milestone:slug -->` marker, refuses a doubled marker before writing, and verifies afterwards that the
+marker occurs **exactly once** and the byte count moved. A stale anchor appends rather than silently doing
+nothing, and the milestone identity is the marker rather than an `M-number` that another table may already use.
+
+Still uninstrumented by choice: Yax, Sek, Ch'en and Xul, and still no synthetic events to make the display look
+complete.
+
+---
+
 ## Phase events: failures, cancellations, bounds
 
 The observation stream gained the four behaviours the review asked for, without inventing activity:
