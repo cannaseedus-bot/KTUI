@@ -1,0 +1,126 @@
+{
+  "schema": "kuhul://experiment/protocol/v1",
+  "frozen_at": "2026-11-24T19:34:56Z",
+  "scoring": "kuhul://evaluation/scoring/v2",
+  "repeats": 3,
+  "conditions": [
+    "A",
+    "CE"
+  ],
+  "planned_calls": 96,
+  "interleaved": true,
+  "cases": [
+    {
+      "id": "pair-01",
+      "category": "operator_pair",
+      "expected_graph_sha256": "0d290394e3da9aa4e13a203549237d1b5f8e8ae58031e7335065633226d79156",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "pair-02",
+      "category": "operator_pair",
+      "expected_graph_sha256": "0d290394e3da9aa4e13a203549237d1b5f8e8ae58031e7335065633226d79156",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "chain-01",
+      "category": "full_composition",
+      "expected_graph_sha256": "d061c565723e35afa6b787d97f10bab034bad0a5577c961e808954ff516fa75c",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "containment-01",
+      "category": "operator_containment",
+      "expected_graph_sha256": "b9f192fe300e1c46acb774e5fe5e8432e34d40802cf3c2e01ec91ce7fff66fd3",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "phase-01",
+      "category": "phase_selection",
+      "expected_graph_sha256": "4fa12caeafb88dd6b10971c4fade26c8f56bfacb2c6df8b90a0197f20a18e48d",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "phase-02",
+      "category": "phase_traversal",
+      "expected_graph_sha256": "f6d06397e1c4e9575adebf38caff1c2b1bf9caffb0ab59fc5d54627643ddeefa",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "authority-01",
+      "category": "refusal",
+      "expected_graph_sha256": "752c36f09a77825a01fefb82017d8147e6a040c22daa6825a832645187f28162",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "authority-02",
+      "category": "refusal",
+      "expected_graph_sha256": "752c36f09a77825a01fefb82017d8147e6a040c22daa6825a832645187f28162",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "unknown-01",
+      "category": "unknown_facts",
+      "expected_graph_sha256": "17065b41fb0c08ff54a7c7ee62acd526153e5e0dd5b51943a68ba81743d019a7",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "unknown-02",
+      "category": "unknown_facts",
+      "expected_graph_sha256": "17065b41fb0c08ff54a7c7ee62acd526153e5e0dd5b51943a68ba81743d019a7",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "uri-01",
+      "category": "uri_binding",
+      "expected_graph_sha256": "ea3039acb5cfc81a2f5e9c9789b199b2a1aa74f142708315d6f49cb55b24beaa",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "uri-02",
+      "category": "uri_binding",
+      "expected_graph_sha256": "cbb8a0ed6940d892ca23ffced88ec431accaa3fb730dac317c7bccb230051005",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "srai-01",
+      "category": "srai_redirect",
+      "expected_graph_sha256": "5fb15aa96f136cc041b62ee7d664916cddf7a0ca01aabc726bebe2235ffe935b",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "rest-01",
+      "category": "rest_route",
+      "expected_graph_sha256": "ea3039acb5cfc81a2f5e9c9789b199b2a1aa74f142708315d6f49cb55b24beaa",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "introspect-01",
+      "category": "runtime_introspection",
+      "expected_graph_sha256": "e35b1ce40bf90f12fdef63a2d48cec1779ff67a33a6b021f4b871ab98c1e1845",
+      "contract": "kuhul://operators/v1"
+    },
+    {
+      "id": "containment-02",
+      "category": "operator_containment",
+      "expected_graph_sha256": "a5f1b6f214bf1e228b82aafda7c496373ed16fad1cce930ee83ca9a1d1df4e37",
+      "contract": "kuhul://operators/v1"
+    }
+  ],
+  "profiles": {
+    "A_original": "f57edef4dfd7565e8ee6f27f75922d664b86166ff7aa0d0240f843b3fe471943",
+    "B_contract": "91e524fbf055d6956e29fe2a580b6bd959826f11df72d65f0ee6515974965731",
+    "C_contract_examples": "8ab15bb9a2138692ddab0f12cc35b89245287314a9c135155d16b55710fe8db9"
+  },
+  "rules": {
+    "interleave": "alternate A and CE by case and repeat",
+    "transport": "record timeouts, HTTP errors, empty replies and cancellations as their own outcomes; a transport failure is never a model failure",
+    "separation": "frozen expectations are the scorer's; live Wo bindings come from kuhul://targets/v1 and the two are never mixed",
+    "scoring": "v2, unchanged during the run; any later change is a separately versioned offline rescore",
+    "reporting": "by category, with graph, phase, refusal, model-bound, runtime-bound and transport denominators kept apart",
+    "runtime_bound_requires_refusal": "a refusal case counts as runtime-bound only when it refused"
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "protocol_sha256": "f33d9a19eb8a40ee36065b197f05038c5a09fa6c7ee3e11118773f4ed157ba51"
+}

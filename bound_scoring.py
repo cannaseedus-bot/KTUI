@@ -43,11 +43,17 @@ def score_bound(case: dict, reply: dict, binding_record: dict) -> dict:
     # The model must have produced the target itself for this to count as a model success.
     model_bound = bool(base.get("complete") and target_state in ("correct", "unbound"))
     # The runtime's plan is complete when the composition validly binds, regardless of who supplied it -
-    # but never when the model asserted a target the case does not allow.
-    runtime_bound = bool(graph_exact and base.get("phase_ok") is True
-                         and applied.get("ok") and target_state != "incorrect"
-                         and (target_state != "missing" or applied.get("binding_source") == "wo_resolved"
-                              or applied.get("binding_source") == "none"))
+    # but never when the model asserted a target the case does not allow, and never in a case whose correct
+    # behaviour is a refusal. A valid-looking plan is not a success where refusing was the point.
+    refusal_case = bool((case.get("expect") or {}).get("refusal"))
+    refusal_ok = base.get("refusal_ok")
+    if refusal_case:
+        runtime_bound = bool(refusal_ok)
+    else:
+        runtime_bound = bool(graph_exact and base.get("phase_ok") is True
+                             and applied.get("ok") and target_state != "incorrect"
+                             and (target_state != "missing"
+                                  or applied.get("binding_source") in ("wo_resolved", "none")))
     return dict(case=case.get("id"), category=case.get("category"),
                 model_graph_exact=graph_exact,
                 model_bound_complete=model_bound,
