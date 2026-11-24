@@ -21,7 +21,7 @@
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
     "MICRO-AGENT-BRIDGE.md": "a530c33ceaf4f2b56600afd21f29931068b7b725f52183a74df34e3d92cb3e51",
-    "PLAN.md": "67677dd22a3bbd08c80b91c6c1fa4318ca34cd1c45c559d511b53d1a49a021cd",
+    "PLAN.md": "f622e8caaa8049f1dd9ef91d9d572c8e7c09cf0f2c4d3375112b5e7586b69363",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -432,16 +432,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "bf7207ef02b723f1b12db974e263c1fdb91947b9534d269894bd9c77f46b1029",
+  "hash": "e21979cd8a5118e1b65aae7904d0cc230c662b1f08a1f5b559bf1807327b9c77",
   "locked": true,
-  "note": "re-lock after the bridge test fix",
+  "note": "re-lock after the PLAN section",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
-    "count": 412,
-    "hash": "7290d00f9af26b86aace7a59631600b9343ab881796f0d0a8695bb65fa23d5e6",
-    "updated_at": "2026-11-24T23:13:16Z"
+    "count": 413,
+    "hash": "bf7207ef02b723f1b12db974e263c1fdb91947b9534d269894bd9c77f46b1029",
+    "updated_at": "2026-11-24T23:15:57Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T23:15:57Z"
+  "updated_at": "2026-11-24T23:18:34Z"
 }

@@ -144,6 +144,35 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:micro-agent-bridge-declared-routes-only -->
 <!-- milestone:one-live-turn-uses-the-bridge -->
 <!-- milestone:mcp-read-only-handlers-exposed -->
+<!-- milestone:both-destinations-are-live -->
+## Both destinations are live
+
+`QUERY RELATIONS` now dispatches through the **existing engine**, next to `ASK PLANNER` through the model manager.
+The bridge is the same; only the destination differs.
+
+| case | behaviour |
+|---|---|
+| granted | six phases · typed result `kuhul://schema/candidates/v1` from `phase_resolve.resolve_aiml.pop.v1` |
+| no grant | refused before the engine is called - **zero** engine calls |
+| unregistered | bridge authorizes by capability, the **engine refuses by registration**, Ch'en fails, Xul closes refused |
+
+The three things the review asked to verify, measured rather than asserted:
+
+- **engine lifetime** - a counting subclass proves exactly one `Engine` is constructed across two turns;
+- **admission semantics** - the bridge's capability check and the engine's own admission both run, and the
+  unregistered case proves the bridge cannot override the engine;
+- **result semantics** - the payload keeps `$schema` and `items`; Ch'en compares the declared `output_schema`
+  against the actual `$schema` instead of accepting any completed call.
+
+The declared target also changed to a **registered** handler with its real contracts (`micronaut://v1/aiml`:
+utterance in, candidates out). The previous URI was invented, and an invented URI is a route the engine can only
+refuse - so that case is now declared on purpose as `QUERY_UNREGISTERED`.
+
+`AGENT.md` stays deferred, as agreed: both destinations work, and it becomes meaningful only as a declaration
+against this consumer - never as a source of grants.
+
+---
+
 ## MCP: the read-only handlers, exposed and nothing more
 
 `mcp_host.py` exposes the registered Micronaut handlers over the Model Context Protocol, speaking whichever SDK is
