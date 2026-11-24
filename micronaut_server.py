@@ -133,9 +133,15 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 import rest_adapter
                 query = self._query()
-                caller = query.get("as") or self.headers.get("X-User") or ""
+                if "as" in query:
+                    # Identity comes from the transport, never from the request's own text.
+                    self._send(400, dict(error="identity may not be asserted in the query; use the "
+                                                "Authorization header"))
+                    return
+                grant = self.headers.get("Authorization") or ""
+                token = grant.split(" ", 1)[1].strip() if grant.lower().startswith("bearer ") else ""
                 granted = set(self.engine.capabilities()) if hasattr(self.engine, "capabilities") else set()
-                result = rest_adapter.handle("GET", self.path, caller=caller, granted=granted)
+                result = rest_adapter.handle("GET", self.path, token=token, granted=granted)
             except Exception as error:  # a broken adapter is a 500, not a dropped connection
                 self._send(500, dict(error=f"{type(error).__name__}: {error}"))
                 return

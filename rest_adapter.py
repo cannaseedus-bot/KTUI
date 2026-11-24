@@ -20,6 +20,7 @@ does not stop the trusted HTTP host from performing an explicitly authorized rea
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -36,6 +37,7 @@ import phase_manifest  # noqa: E402
 import user_memory  # noqa: E402
 
 MANIFEST = PACKAGE / "data" / "rest-routes.json"
+IDENTITIES = PACKAGE / "data" / "identities.json"
 SCHEMA = "kuhul-rest/v1"
 METHODS = ("GET",)
 TARGET_SCHEMES = ("gml://", "kuhul://", "aiml://", "srai://")
@@ -52,6 +54,37 @@ class RouteError(ValueError):
 
 
 # -- manifest ----------------------------------------------------------------------------------------
+def load_identities(path: Path = IDENTITIES) -> dict:
+    """Fixture identities: a token hash maps to an identity, its capabilities and its scope."""
+    try:
+        document = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return dict(ok=False, by_hash={}, problems=[dict(code="unreadable", detail=str(path))])
+    by_hash, problems = {}, []
+    for entry in document.get("identities") or []:
+        token_hash = str(entry.get("token_sha256") or "")
+        identity = str(entry.get("identity") or "")
+        if len(token_hash) != 64 or not identity:
+            problems.append(dict(code="identity", detail=str(entry)[:80]))
+            continue
+        by_hash[token_hash] = dict(identity=identity,
+                                   capabilities=set(entry.get("capabilities") or []),
+                                   scope=set(entry.get("scope") or []))
+    return dict(ok=not problems, by_hash=by_hash, problems=problems)
+
+
+def identity_for_token(token: str, registry: dict | None = None) -> dict | None:
+    """Resolve an authenticated identity from a bearer token.
+
+    The transport supplies the token; a caller may never assert identity in a query parameter.
+    """
+    registry = registry or load_identities()
+    if not registry.get("ok"):
+        return None
+    digest = hashlib.sha256(str(token or "").encode("utf-8")).hexdigest()
+    return registry["by_hash"].get(digest)
+
+
 def load(path: Path = MANIFEST) -> dict:
     """Parse and validate the route manifest. Declarations that could execute are refused."""
     path = Path(path)
@@ -163,15 +196,30 @@ def _resolve_capability(capability: str, granted: set) -> str | None:
     return None
 
 
-def _authorize(route: dict, params: dict, *, caller: str, granted: set) -> dict:
-    if _resolve_capability(route["capability"], granted) is None:
-        return dict(ok=False, status=403, reason=f"capability {route['capability']} is not granted")
+def _authorize(route: dict, params: dict, *, identity: dict, granted: set) -> dict:
+    """Bind the authenticated caller, the requested resource and the capability in one decision.
+
+    `granted` are the engine's grants; `identity` is who the transport authenticated. The engine's
+    grants may widen what the *host* can do - they never widen what this caller may see.
+    """
+    if not identity:
+        return dict(ok=False, status=403, reason="no authenticated identity")
+    caller = identity["identity"]
+    capability = _resolve_capability(route["capability"], identity["capabilities"])
+    if capability is None:
+        capability = _resolve_capability(route["capability"], granted)
+        if capability is None:
+            return dict(ok=False, status=403,
+                        reason=f"capability {route['capability']} is not granted to {caller!r}")
+        # The engine holds it, the caller does not: that is a confused deputy, not a permission.
+        return dict(ok=False, status=403,
+                    reason=f"capability {route['capability']} is engine-wide, not granted to {caller!r}")
     identifier = params.get(route["param"] or "")
     if route["target"].startswith("gml://users/") and identifier != caller:
-        if "users.read.any" not in granted:
+        if "users.read.any" not in identity["scope"]:
             return dict(ok=False, status=403,
                         reason=f"caller {caller!r} may not read {identifier!r}")
-    return dict(ok=True, status=200, identifier=identifier)
+    return dict(ok=True, status=200, identifier=identifier, caller=caller)
 
 
 def _project_users(identifier: str, projection: list[str]) -> dict:
@@ -209,34 +257,45 @@ def _project_phase(name: str, projection: list[str]) -> dict:
                 withheld=sorted(set(manifest) - set(body)))
 
 
-def handle(method: str, path: str, *, caller: str = "", granted: set | None = None,
-           manifest: dict | None = None) -> dict:
-    """The whole lifecycle for one request: confine, authorize, project, and never invent."""
+def handle(method: str, path: str, *, identity: dict | None = None, token: str | None = None,
+           granted: set | None = None, manifest: dict | None = None,
+           registry: dict | None = None) -> dict:
+    """The whole lifecycle for one request: confine, authorize, project, and never invent.
+
+    Identity comes from the transport (`token`, resolved here) or from an already-authenticated
+    `identity` document. A query parameter may not assert identity: `?as=42` is refused by the server
+    before this function is reached, and there is no `caller=` argument to fall back on.
+    """
     manifest = manifest or load()
     if not manifest["ok"]:
         return dict(status=500, error="route manifest is invalid",
                     problems=manifest["problems"], execution=False)
-    granted = set(granted or ())
+    if identity is None and token:
+        identity = identity_for_token(token, registry or load_identities())
+    denied = dict(execution=False, mutation=False, persistence=False,
+                  authority="declaration_only")
     routed = match(manifest, method, path)
     if routed["status"] != 200:
-        return dict(routed, execution=False, mutation=False, persistence=False,
-                    authority="declaration_only")
+        return dict(denied, **routed)
     route, params = routed["route"], routed["params"]
-    authorization = _authorize(route, params, caller=caller or "", granted=granted)
+    authorization = _authorize(route, params, identity=identity, granted=set(granted or ()))
     if not authorization["ok"]:
-        return dict(status=authorization["status"], error=authorization["reason"], route=route["path"],
-                    execution=False, mutation=False, persistence=False,
-                    authority="declaration_only")
+        # A denial says what was refused and nothing else: no field list, no record existence.
+        return dict(denied, status=authorization["status"], error=authorization["reason"],
+                    route=route["path"], method=route["method"])
     identifier = authorization["identifier"]
     allowed = manifest["projections"][route["projection"]]
     if route["target"].startswith("gml://users/"):
         projected = _project_users(str(identifier), allowed)
     else:
         projected = _project_phase(str(identifier), allowed)
+    if projected["status"] != 200:
+        return dict(denied, status=projected["status"], error=projected.get("reason"),
+                    route=route["path"], method=route["method"])
     return dict(status=projected["status"], route=route["path"], method=route["method"],
-                projection=route["projection"], allowed=projected.get("allowed", []),
-                returned=projected.get("returned", []), withheld=projected.get("withheld", []),
-                body=projected.get("body"), error=projected.get("reason"),
+                caller=authorization["caller"], projection=route["projection"],
+                allowed=projected.get("allowed", []), returned=projected.get("returned", []),
+                withheld=projected.get("withheld", []), body=projected.get("body"),
                 pipeline=projected.get("pipeline"),
                 execution=False, mutation=False, persistence=False,
                 authority="declaration_only")
@@ -262,10 +321,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Serve-free check of a kuhul-rest/v1 request.")
     parser.add_argument("path", help="e.g. /api/users/42")
     parser.add_argument("--method", default="GET")
-    parser.add_argument("--caller", default="")
+    parser.add_argument("--token", default="")
     parser.add_argument("--grant", action="append", default=[])
     args = parser.parse_args(argv)
-    result = handle(args.method, args.path, caller=args.caller, granted=set(args.grant))
+    result = handle(args.method, args.path, token=args.token, granted=set(args.grant))
     print(json.dumps(result, indent=2, ensure_ascii=False))
     return 0 if result["status"] == 200 else 1
 

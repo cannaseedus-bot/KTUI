@@ -1,0 +1,35 @@
+{
+  "schema": "kuhul-rest/identities/1",
+  "note": "Fixture identities for the loopback adapter. Tokens are stored as sha256 and are not secrets: this file is a test fixture, not an authentication system.",
+  "identities": [
+    {
+      "identity": "42",
+      "token_sha256": "7a1d28fd992339b93c4cf65f8a79beb27450b09a9d4889fd04752ffede71a194",
+      "capabilities": [
+        "graph.relations.read"
+      ],
+      "scope": [
+        "users.read.self"
+      ]
+    },
+    {
+      "identity": "7",
+      "token_sha256": "e7c9583f202a49ecd684b04f6435a3cfa6788f8f541e9c09965a857802757b17",
+      "capabilities": [
+        "graph.relations.read"
+      ],
+      "scope": [
+        "users.read.self",
+        "users.read.any"
+      ]
+    },
+    {
+      "identity": "9",
+      "token_sha256": "b97607173d82f4f5fc71f828aa26f14cfff17ac6f3f6d4a248fa85be851896d1",
+      "capabilities": [],
+      "scope": [
+        "users.read.self"
+      ]
+    }
+  ]
+}

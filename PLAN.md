@@ -74,6 +74,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M35 | Grant-aware routing: an absent grant blocks, a present grant permits only its own scope, a match grants nothing | **guard** | `phase_routing.route`, `tests_host/test_phase_routing.py::M35…` (12 tests total) |
 | M36 | Operation proposals: a six-field prediction the host validates, converts and still does not admit | **guard** | `proposal.py`, `tests_host/test_proposal.py` (14 tests) |
 | M37 | `kuhul-rest/v1`: a declarative route manifest and a read-only adapter with four guards | **guard** | `rest_adapter.py`, `data/rest-routes.json`, `micronaut_server.py`, `tests_host/test_rest.py` (15 tests) |
+| M38 | Per-request identity and scope: the transport authenticates, an engine-wide grant cannot widen a caller | **guard** | `rest_adapter.py` (`identity_for_token`, `_authorize`), `data/identities.json`, `tests_host/test_rest.py::M38…` (22 tests total) |
 
 ---
 
@@ -165,6 +166,38 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Per-request identity (M38)
+
+The confused-deputy gap the review named, closed. Identity now comes from the **transport**, not from
+the request's text:
+
+```
+GET /api/users/42   Authorization: Bearer token-42   -> 200  {"id": "42", "name": "Bill", "status": "active"}
+GET /api/users/42   (no header)                      -> 403  no authenticated identity
+GET /api/users/42?as=42  Bearer token-42             -> 400  identity may not be asserted in the query
+GET /api/users/7    Bearer token-42                  -> 403  caller '42' may not read '7'
+GET /api/users/42   Bearer token-42-forged           -> 403  no authenticated identity
+```
+
+Three properties hold, each with a guard:
+
+- **a forged identity cannot override** - `?as=` is refused outright (400), and there is no `caller=`
+  argument left in the adapter to fall back on;
+- **an engine-wide grant cannot widen a caller** - `granted` is the host's own capability set, and
+  `_authorize` checks the *identity's* capabilities first: if the engine holds the capability and the
+  caller does not, the answer is 403 with "engine-wide, not granted to …". Identity 7 carries
+  `users.read.any` in its own scope and may read 42; caller 42 cannot read 7 even when the engine is
+  granted `users.read.any`;
+- **a denial leaks nothing** - 403/404/400 responses carry `status`, `error`, `route`, `method` and the
+  three effect flags only: no `body`, no `allowed`, no `returned`, no `withheld`, no field names, no
+  trace of whether the record exists.
+
+The fixture registry stores **sha256 of each token**, not the token, and says in the file that it is a
+test fixture rather than an authentication system. That is the remaining honest limit: loopback, fixture
+identities, no TLS - the boundary is now explicit rather than assumed.
 
 ---
 
@@ -1098,7 +1131,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 262 tests, OK (M3-M37) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 269 tests, OK (M3-M38) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
