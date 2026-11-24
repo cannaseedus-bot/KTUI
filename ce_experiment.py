@@ -36,15 +36,33 @@ CONDITIONS = {
 }
 
 
-def run(corpus: dict, *, complete_for, repeats: int = 1, conditions=tuple(CONDITIONS)) -> dict:
+def cases_for(corpus: dict, selection: str | None = None) -> list[str]:
+    """`all` scores every frozen case; a comma list names categories or case ids explicitly."""
+    if not selection or selection == "default":
+        return list(CASES)
+    if selection == "all":
+        return [case["id"] for case in corpus.get("cases") or []
+                if case.get("review_status") == "frozen"]
+    wanted = [part.strip() for part in selection.split(",") if part.strip()]
+    chosen = []
+    for part in wanted:
+        for case in corpus.get("cases") or []:
+            if part in (case.get("id"), case.get("category")):
+                chosen.append(case["id"])
+    return chosen
+
+
+def run(corpus: dict, *, complete_for, repeats: int = 1, conditions=tuple(CONDITIONS),
+        cases: list[str] | None = None) -> dict:
     profiles = session_profile.load()
     registry = binding_resolver.load()
+    case_ids = list(cases) if cases else list(CASES)
     results: dict[str, dict] = {}
     for name in conditions:
         spec = CONDITIONS[name]
         profile = profiles["profiles"][spec["profile"]]
         scores = []
-        for case_id in CASES:
+        for case_id in case_ids:
             case = corpus["by_id"][case_id]
             binding = binding_resolver.binding(registry, case["category"])
             conversation = session_profile.messages(profile, case["input"])
@@ -63,7 +81,7 @@ def run(corpus: dict, *, complete_for, repeats: int = 1, conditions=tuple(CONDIT
         results[name] = dict(condition=name, profile=spec["profile"], binding=spec["binding"],
                              note=spec["note"], summary=bound_scoring.summarise(scores),
                              scores=scores)
-    return dict(schema=SCHEMA, cases=list(CASES), repeats=int(repeats),
+    return dict(schema=SCHEMA, cases=case_ids, repeats=int(repeats),
                 started_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                 profiles={name: session_profile.profile_digest(profile)
                           for name, profile in profiles["profiles"].items()},
@@ -94,6 +112,10 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Compare profile and binding independently.")
     parser.add_argument("--model", default="planner")
     parser.add_argument("--repeats", type=int, default=1)
+    parser.add_argument("--cases", default="default",
+                        help="default (pair-01, chain-01), all (every frozen case), or a comma list of "
+                             "case ids / categories")
+    parser.add_argument("--conditions", default="A,C,E,CE")
     parser.add_argument("--out", default=str(PACKAGE / "data" / "ce-experiment.json"))
     args = parser.parse_args(argv)
     corpus = evaluation_harness.load()
@@ -104,7 +126,17 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     # A session profile is a message list, so the completer must accept one; live_complete expects a prompt.
     complete = session_profile.complete(entry["base_url"], timeout=420)
-    report = run(corpus, complete_for=complete, repeats=args.repeats)
+    chosen = cases_for(corpus, args.cases)
+    if not chosen:
+        print(f"no frozen cases match {args.cases!r}")
+        return 2
+    conditions = tuple(part.strip() for part in args.conditions.split(",") if part.strip())
+    unknown = [name for name in conditions if name not in CONDITIONS]
+    if unknown:
+        print(f"unknown conditions: {unknown}")
+        return 2
+    report = run(corpus, complete_for=complete, repeats=args.repeats, conditions=conditions,
+                 cases=chosen)
     Path(args.out).write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(summary(report))
     print(f"written: {args.out}")

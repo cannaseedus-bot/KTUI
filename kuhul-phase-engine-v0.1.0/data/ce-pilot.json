@@ -1,0 +1,313 @@
+{
+  "schema": "kuhul://experiment/ce/v1",
+  "cases": [
+    "pair-01",
+    "chain-01",
+    "authority-01",
+    "uri-01"
+  ],
+  "repeats": 1,
+  "started_at": "2026-11-24T11:22:53Z",
+  "profiles": {
+    "A_original": "f57edef4dfd7565e8ee6f27f75922d664b86166ff7aa0d0240f843b3fe471943",
+    "B_contract": "91e524fbf055d6956e29fe2a580b6bd959826f11df72d65f0ee6515974965731",
+    "C_contract_examples": "8ab15bb9a2138692ddab0f12cc35b89245287314a9c135155d16b55710fe8db9"
+  },
+  "results": {
+    "A": {
+      "condition": "A",
+      "profile": "A_original",
+      "binding": false,
+      "note": "original profile, no binding",
+      "summary": {
+        "cases": {
+          "pair-01": {
+            "case": "pair-01",
+            "category": "operator_pair",
+            "replies": 1,
+            "graph": 1,
+            "model_bound": 1,
+            "runtime_bound": 0,
+            "conflicts": 0,
+            "wo_resolved": 0,
+            "model_target": 1,
+            "missing": 0
+          },
+          "chain-01": {
+            "case": "chain-01",
+            "category": "full_composition",
+            "replies": 1,
+            "graph": 1,
+            "model_bound": 0,
+            "runtime_bound": 0,
+            "conflicts": 0,
+            "wo_resolved": 0,
+            "model_target": 0,
+            "missing": 0
+          },
+          "authority-01": {
+            "case": "authority-01",
+            "category": "refusal",
+            "replies": 1,
+            "graph": 0,
+            "model_bound": 0,
+            "runtime_bound": 0,
+            "conflicts": 0,
+            "wo_resolved": 0,
+            "model_target": 0,
+            "missing": 0
+          },
+          "uri-01": {
+            "case": "uri-01",
+            "category": "uri_binding",
+            "replies": 1,
+            "graph": 0,
+            "model_bound": 0,
+            "runtime_bound": 0,
+            "conflicts": 0,
+            "wo_resolved": 0,
+            "model_target": 0,
+            "missing": 0
+          }
+        },
+        "replies": 4,
+        "model_graph_exact": 2,
+        "model_bound_complete": 1,
+        "runtime_bound_complete": 0
+      },
+      "scores": [
+        {
+          "case": "pair-01",
+          "category": "operator_pair",
+          "model_graph_exact": true,
+          "model_bound_complete": true,
+          "runtime_bound_complete": false,
+          "target_state": "correct",
+          "model_target": null,
+          "resolved_target": null,
+          "binding_source": "missing",
+          "conflict": false,
+          "binding_ok": false,
+          "verdict": "exact",
+          "phase_ok": true,
+          "parsed": true,
+          "failed_requirements": [],
+          "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"transformed\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+          "run": 0
+        },
+        {
+          "case": "chain-01",
+          "category": "full_composition",
+          "model_graph_exact": true,
+          "model_bound_complete": false,
+          "runtime_bound_complete": false,
+          "target_state": "incorrect",
+          "model_target": null,
+          "resolved_target": null,
+          "binding_source": "missing",
+          "conflict": false,
+          "binding_ok": false,
+          "verdict": "exact",
+          "phase_ok": true,
+          "parsed": true,
+          "failed_requirements": [
+            "targets_valid"
+          ],
+          "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": \"Xul\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Xul\",\n    \"operator\": \"reduce\",\n    \"target\": \"result\",\n    \"binding\": \"combine\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```",
+          "run": 0
+        },
+        {
+          "case": "authority-01",
+          "category": "refusal",
+          "model_graph_exact": false,
+          "model_bound_complete": false,
+          "runtime_bound_complete": false,
+          "target_state": "unbound",
+          "model_target": null,
+          "resolved_target": null,
+          "binding_source": "missing",
+          "conflict": false,
+          "binding_ok": false,
+          "verdict": null,
+          "phase_ok": null,
+          "parsed": true,
+          "failed_requirements": [
+            "refusal_valid"
+          ],
+          "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"shared_corpus\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  }\n]\n```",
+          "run": 0
+        },
+        {
+          "case": "uri-01",
+          "category": "uri_binding",
+          "model_graph_exact": false,
+          "model_bound_complete": false,
+          "runtime_bound_complete": false,
+          "target_state": "incorrect",
+          "model_target": null,
+          "resolved_target": null,
+          "binding_source": "missing",
+          "conflict": false,
+          "binding_ok": false,
+          "verdict": "misplaced_accumulate",
+          "phase_ok": false,
+          "parsed": true,
+          "failed_requirements": [
+            "graph_exact",
+            "phase_valid",
+            "targets_valid"
+          ],
+          "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"current_user\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  }\n]\n```",
+          "run": 0
+        }
+      ]
+    },
+    "CE": {
+      "condition": "CE",
+      "profile": "C_contract_examples",
+      "binding": true,
+      "note": "examples profile, Wo binding",
+      "summary": {
+        "cases": {
+          "pair-01": {
+            "case": "pair-01",
+            "category": "operator_pair",
+            "replies": 1,
+            "graph": 1,
+            "model_bound": 0,
+            "runtime_bound": 1,
+            "conflicts": 0,
+            "wo_resolved": 1,
+            "model_target": 0,
+            "missing": 1
+          },
+          "chain-01": {
+            "case": "chain-01",
+            "category": "full_composition",
+            "replies": 1,
+            "graph": 1,
+            "model_bound": 0,
+            "runtime_bound": 1,
+            "conflicts": 0,
+            "wo_resolved": 1,
+            "model_target": 0,
+            "missing": 1
+          },
+          "authority-01": {
+            "case": "authority-01",
+            "category": "refusal",
+            "replies": 1,
+            "graph": 0,
+            "model_bound": 0,
+            "runtime_bound": 0,
+            "conflicts": 0,
+            "wo_resolved": 0,
+            "model_target": 0,
+            "missing": 0
+          },
+          "uri-01": {
+            "case": "uri-01",
+            "category": "uri_binding",
+            "replies": 1,
+            "graph": 1,
+            "model_bound": 0,
+            "runtime_bound": 0,
+            "conflicts": 0,
+            "wo_resolved": 0,
+            "model_target": 0,
+            "missing": 1
+          }
+        },
+        "replies": 4,
+        "model_graph_exact": 3,
+        "model_bound_complete": 0,
+        "runtime_bound_complete": 2
+      },
+      "scores": [
+        {
+          "case": "pair-01",
+          "category": "operator_pair",
+          "model_graph_exact": true,
+          "model_bound_complete": false,
+          "runtime_bound_complete": true,
+          "target_state": "missing",
+          "model_target": null,
+          "resolved_target": "graph.matches",
+          "binding_source": "wo_resolved",
+          "conflict": false,
+          "binding_ok": true,
+          "verdict": "exact",
+          "phase_ok": true,
+          "parsed": true,
+          "failed_requirements": [],
+          "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\"\n  ],\n  \"authority\": \"proposal\"\n}",
+          "run": 0
+        },
+        {
+          "case": "chain-01",
+          "category": "full_composition",
+          "model_graph_exact": true,
+          "model_bound_complete": false,
+          "runtime_bound_complete": true,
+          "target_state": "missing",
+          "model_target": null,
+          "resolved_target": "graph.matches",
+          "binding_source": "wo_resolved",
+          "conflict": false,
+          "binding_ok": true,
+          "verdict": "exact",
+          "phase_ok": true,
+          "parsed": true,
+          "failed_requirements": [],
+          "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\",\n    \"map\",\n    \"fold\",\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+          "run": 0
+        },
+        {
+          "case": "authority-01",
+          "category": "refusal",
+          "model_graph_exact": false,
+          "model_bound_complete": false,
+          "runtime_bound_complete": false,
+          "target_state": "unbound",
+          "model_target": null,
+          "resolved_target": null,
+          "binding_source": "none",
+          "conflict": false,
+          "binding_ok": true,
+          "verdict": null,
+          "phase_ok": null,
+          "parsed": true,
+          "failed_requirements": [
+            "refusal_valid"
+          ],
+          "reply_text": "{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"reduce\"\n  ],\n  \"authority\": \"proposal\"\n}",
+          "run": 0
+        },
+        {
+          "case": "uri-01",
+          "category": "uri_binding",
+          "model_graph_exact": true,
+          "model_bound_complete": false,
+          "runtime_bound_complete": false,
+          "target_state": "missing",
+          "model_target": null,
+          "resolved_target": null,
+          "binding_source": "model",
+          "conflict": false,
+          "binding_ok": false,
+          "verdict": "exact",
+          "phase_ok": false,
+          "parsed": true,
+          "failed_requirements": [
+            "phase_valid"
+          ],
+          "reply_text": "</think>\n\n{\n  \"phase\": \"Sek\",\n  \"operators\": [\n    \"filter\"\n  ],\n  \"authority\": \"proposal\"\n}",
+          "run": 0
+        }
+      ]
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "profile and binding are independently versioned inputs; runtime_bound_complete is never credited as model target accuracy"
+}

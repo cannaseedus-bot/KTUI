@@ -110,10 +110,11 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M70 | Four distinct attestation outcomes, and independence that needs an authorized onboarding record rather than a flag | **guard** | `review_attestations.registry/independence`, `evaluation/reviewers.json` (onboarding + policy), `tests_host/test_review_attestations.py` (19 tests) |
 | M71 | The first-review packet and the three separate counts - the artifact a reviewer signs, containing expectations only | **guard** | `review_attestations.status`, `review_packet.py`, `evaluation/review-packet/`, `tests_host/test_review_packet.py` (13 tests) |
 | M72 | Reconcile declared Micronauts, registration claims, route declarations, and observable host invocation without conflating proposals with execution | **done** | `micronaut_audit.py`, `data/micronauts/README-semantic-registry.md` |
-| M73 | Resolve Micronaut program references against maintained source or mark them unresolved; verify Graph Theory registration from host evidence | **open** | `micronaut_audit.py`, `data/micronauts/kuhul-micronaut-registry.json`, `data/micronauts/graph-theory-micronaut.v1.json` |
+| M73 | Resolve Micronaut program references against maintained source or mark them unresolved; verify Graph Theory registration from host evidence | **done** | `micronaut_audit.py`, `data/micronauts/kuhul-micronaut-registry.json`, `data/micronauts/graph-theory-micronaut.v1.json` |
 | M74 | Document the distinct scope of the semantic catalog and generic route catalog; do not infer aliases or count both as implemented agents | **done** | `data/micronauts/README-semantic-registry.md`, `micronaut_audit.py` |
 | M75 | Bind declared UI/Graph Theory routes to concrete host handlers only where source and capability admission exist; capture invocation evidence separately | **open** | `data/manifest/css.manifest.json`, `data/alice/Bindings.aiml`, host dispatcher, `micronaut_audit.py` |
-| M76 | Add conformance guards for registry-status claims, local reference resolution, and UI dispatch status so inventory drift is caught | **open** | `tests_host/test_micronaut_registry.py`, `micronaut_audit.py`, semantic registry and CSS manifest |
+| M76 | Add conformance guards for registry-status claims, local reference resolution, and UI dispatch status so inventory drift is caught | **done** | `tests_host/test_micronaut_host_handlers.py`, `micronaut_audit.py`, semantic registry and CSS manifest |
+| M77 | Bind and invoke all five generic phase-catalog handlers through typed host admission; preserve invocation receipts | **done** | `micronaut_host_handlers.py`, `micronaut_server.Engine.invoke_micronaut`, `tests_host/test_micronaut_host_handlers.py` |
 
 ---
 
@@ -121,6 +122,42 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:learning-chain-end-to-end -->
 <!-- milestone:delivery-integrity-of-the-learning-chain -->
 <!-- milestone:learning-pipeline-closure -->
+<!-- milestone:ce-across-categories-and-full-run-cost -->
+## CE across categories: the harness scales, the full run is costed
+
+The CE runner now selects cases (`--cases all|id,category`) and conditions (`--conditions`) instead of hardcoding
+the pair/chain pair. A four-category pilot, A versus CE, one repeat each (8 calls):
+
+| condition | graph | model-bound | runtime-bound |
+|---|---|---|---|
+| A | 2/4 | 1 | 0 |
+| CE | **3/4** | 0 | **2** |
+
+Two results worth keeping, both honest rather than encouraging:
+
+- **CE helps structure beyond pairs and chains**: `uri-01` gained an exact graph under CE that A did not produce,
+  and the two composition cases reached runtime-bound plans.
+- **A missing target in a constrained family binds nothing.** `uri_binding` allows two targets, so Wo must not
+  guess; with the model silent the plan is neither model-bound nor runtime-bound. That is the correct outcome and
+  it shows in the counters rather than being smoothed into a completion rate.
+- **The refusal case fails in both conditions** (`authority-01` graph 0/1): the model produced a plan where the
+  expectation is a refusal. Refusal behaviour is a separate axis from structure and binding, and it is not
+  improved by the examples profile.
+
+**Measured cost of the controlled experiment the review asked for**, from the observed planner latencies
+(11-17 s per call, one chunk):
+
+| protocol | calls | wall clock |
+|---|---|---|
+| 16 frozen cases x 3 repeats x 4 conditions | 192 | ~35-55 min |
+| staged: 16 cases x 3 repeats, A vs CE | 96 | ~20-30 min |
+
+I have not run either: they are long enough that starting one should be a deliberate choice, and the artifact would
+be a **measured internal regression rate**, not an independently validated accuracy claim - the review still stands
+at 0/16.
+
+---
+
 ## Learning-u: closed, with its limits stated
 
 The pipeline is **frozen** at `7c9edd2`. What closure means here, in the terms the project has been using:
@@ -2899,6 +2936,7 @@ Expected failure signatures and what they mean:
 **Verify:** `python micronaut_audit.py` from the `.aiml` root. It reports 13 semantic entries, five route-catalog entries, six declaration-only edges, four CSS bindings, one registered-capability claim, and 17 unresolved local program/module references. Inspect the JSON output for the per-entry details.
 
 **If erased:** Registration claims, missing source references, and non-invoked UI bindings can again be confused with handlers that actually ran.
+
 ### M74 — keep catalog scopes distinct
 
 **Symptom:** The 13-entry semantic registry and five-entry phase-engine route catalog could be mistaken for one list of 18 executable agents.
@@ -2908,3 +2946,43 @@ Expected failure signatures and what they mean:
 **Verify:** `python micronaut_audit.py` reports the catalogs separately; read the “Separate catalogs are not aliases” section in `data/micronauts/README-semantic-registry.md`.
 
 **If erased:** Registry counts and status claims can imply implementations that have no handler binding.
+
+### M73 — resolve references and verify Graph Theory claims
+
+**Symptom:** Declared program references could appear implemented when the corresponding modules were absent; a descriptor's `registered: true` could be mistaken for active-host evidence.
+
+**Fix:** The audit resolves each local source/grammar/contract reference against this maintained checkout, recognizes moved vendor assets, and lists unresolved references explicitly. It compares Graph Theory's declared entry points against actual host handler IDs; its current Python program refs remain unresolved and it has no registered host binding in this process. The descriptor's registration claim is therefore not promoted to runtime status.
+
+**Verify:** `python micronaut_audit.py`; `python -B -m unittest tests_host.test_micronaut_host_handlers -v` checks unresolved Graph Theory refs and the absence of a Graph Theory host binding.
+
+**If erased:** Missing program modules can be represented as registered merely because the JSON descriptor says so.
+
+### M75 — connect semantic/UI agents only when their host path exists
+
+**Symptom:** The semantic Micronaut entries and CSS/AIML routes overlap with host capabilities, but they do not yet have matching handler bindings and XCFE admission.
+
+**State:** Open. The generic phase-engine catalog now has five typed read-only handlers, but these are a separate catalog. The Graph Theory UI route, ADVISOR, CFPC, CODEX, ELIZA, LEARNING, QUESTION_ENGINE and SNOBOL references remain unbound where their source or live host path is absent. Do not infer that the generic handlers satisfy M75.
+
+**Verify:** `python micronaut_audit.py`; inspect `phase_engine_registry.host_handler_bindings` separately from `graph_theory` and `css_binding_declarations`.
+
+**If erased:** A safe generic handler binding can be misreported as live dispatch for unrelated UI or semantic agents.
+
+### M76 — guard registration, reference, and dispatch status claims
+
+**Symptom:** Static declarations could drift or overstate active handler invocation.
+
+**Fix:** Conformance tests require every phase-catalog declaration to have an exact input/output handler binding; they exercise each handler through declared transitions, reject missing capabilities, forged identity/authority, changed payloads, reused tickets, and unadmitted calls. The audit test keeps static invocation status unverified, Graph Theory unbound while its modules are missing, and CSS routes at their current non-invoked status.
+
+**Verify:** `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_micronaut_registry -v`.
+
+**If erased:** Registry registration, invocation, and dispatch status can silently collapse into one claim.
+
+### M77 — typed, read-only phase-catalog handler invocation
+
+**Symptom:** The generic phase catalog could route declarations but had no concrete host call path or evidence that its functions ran.
+
+**Fix:** `micronaut_host_handlers.py` binds AIML Pop, relation retrieval, user-memory graph projection, ELIZA field extraction, and verified composition to existing functions. `Engine.invoke_micronaut` supplies the host identity and capability set, checks an explicit host policy, accepts only declared edge transitions, and consumes a single-use admission bound to the payload digest. Receipts identify the handler and schemas; the typed payload is kept separate. The handlers are read-only and the catalog still does not grant admission. This is not Graph Theory/UI dispatch and is not an XCFE implementation.
+
+**Verify:** `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_micronaut_registry -v`.
+
+**If erased:** The phase-engine registry again becomes a declaration-only display with no enforceable handler or invocation evidence.
