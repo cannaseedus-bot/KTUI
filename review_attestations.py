@@ -130,13 +130,39 @@ def load(path: Path | None = None) -> list[dict]:
 
 
 def registry(path: Path | None = None) -> dict:
-    """The reviewer registry: role, independence and the public key that signs their attestations."""
+    """The reviewer registry: role, onboarding, independence and the public key that signs reviews.
+
+    A registry that cannot be read is a *configuration* failure, not a policy decision: the caller must be
+    able to tell `reviewer_registry_unavailable` from `reviewer_not_registered`.
+    """
     path = Path(path or (HOST_ROOT / "evaluation" / "reviewers.json"))
     try:
         record = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as error:
-        return dict(ok=False, by_id={}, problems=[dict(code="reviewers", detail=str(error))])
-    return dict(ok=True, by_id=record.get("reviewers") or {}, problems=[])
+        return dict(ok=False, available=False, by_id={}, path=str(path),
+                    problems=[dict(code="reviewer_registry_unavailable", detail=f"{path}: {error}")])
+    reviewers = record.get("reviewers")
+    if not isinstance(reviewers, dict):
+        return dict(ok=False, available=False, by_id={}, path=str(path),
+                    problems=[dict(code="reviewer_registry_unavailable",
+                                   detail=f"{path}: no reviewers object")])
+    return dict(ok=True, available=True, by_id=reviewers, path=str(path), problems=[])
+
+
+def independence(entry: dict) -> dict:
+    """Independence needs an authorized onboarding record, not a flag someone edited into the file."""
+    onboarding = (entry or {}).get("onboarding") or {}
+    if not onboarding:
+        return dict(independent=False, reason="onboarding_missing")
+    if str(onboarding.get("authorized_by") or "") == str((entry or {}).get("reviewer") or ""):
+        return dict(independent=False, reason="self_onboarded")
+    if onboarding.get("independent") is not True:
+        return dict(independent=False, reason="onboarding_not_independent")
+    if not str(onboarding.get("authorized_by") or "").strip():
+        return dict(independent=False, reason="onboarding_unauthorized")
+    return dict(independent=True, reason=None,
+                authorized_by=str(onboarding["authorized_by"]),
+                authorized_at=onboarding.get("authorized_at"))
 
 
 def check(corpus: dict, attestations: list[dict], registry_record: dict | None = None) -> dict:
@@ -152,7 +178,9 @@ def check(corpus: dict, attestations: list[dict], registry_record: dict | None =
                        decision=attestation.get("decision"), ok=False, reasons=[])
         if case is None:
             verdict["reasons"].append("case_not_in_corpus")
-        if entry is None:
+        if registry_record.get("available") is False:
+            verdict["reasons"].append("reviewer_registry_unavailable")
+        elif entry is None:
             verdict["reasons"].append("reviewer_not_registered")
         if attestation.get("schema") != SCHEMA:
             verdict["reasons"].append("schema_mismatch")
@@ -164,11 +192,21 @@ def check(corpus: dict, attestations: list[dict], registry_record: dict | None =
         if entry is not None:
             signature = verify(attestation, entry.get("public_key") or "")
             if not signature["ok"]:
-                verdict["reasons"].append(signature["reason"] or "signature_invalid")
-        # Independence is a registry decision, not a signature property.
-        verdict["independent"] = bool(entry and entry.get("independent")
-                                      and attestation.get("decision") == "approved")
+                verdict["reasons"].append("signature_invalid")
+                verdict["signature_reason"] = signature.get("reason")
+        # Independence is an onboarding decision, not a signature property and not a file flag.
+        standing = independence(entry or {})
+        # Independence is separate from verification: a valid author signature is *verified* evidence and
+        # still not benchmark-eligible. It must not turn into a refusal.
+        eligibility = independence(entry or {})
+        verdict["independence_reason"] = eligibility["reason"]
+        verdict["independent"] = bool(standing["independent"]
+                                      and attestation.get("decision") == "approved"
+                                      and not verdict["reasons"])
         verdict["ok"] = (not verdict["reasons"]) and attestation.get("decision") == "approved"
+        verdict["status"] = ("verified_independent" if verdict["independent"] else
+                             "verified_not_independent" if verdict["ok"] else
+                             "rejected_decision" if not verdict["reasons"] else "refused")
         results.append(verdict)
     verified = [verdict for verdict in results if verdict["ok"]]
     independent = [verdict for verdict in verified if verdict["independent"]]

@@ -46,9 +46,13 @@ class SignatureTests(unittest.TestCase):
         self.folder.cleanup()
 
     def registry(self, *, independent: bool = False, reviewer: str = "reviewer://test") -> dict:
-        return dict(ok=True, by_id={reviewer: dict(role="independent" if independent else "author",
-                                                    independent=independent,
-                                                    public_key=self.pair["public_key"])})
+        # Independence needs an onboarding decision now, not a flag: the synthetic independent reviewer
+        # carries one authorized by someone else.
+        entry = dict(role="independent" if independent else "author",
+                     public_key=self.pair["public_key"],
+                     onboarding=dict(authorized_by="human://project-owner", independent=independent,
+                                     authorized_at="2026-11-24"))
+        return dict(ok=True, available=True, by_id={reviewer: entry}, problems=[])
 
     def test_a_signed_attestation_verifies(self):
         signed = review_attestations.sign(attestation(self.case, "reviewer://test"), self.pair["private_path"])
@@ -132,6 +136,89 @@ class CorpusAttestationTests(unittest.TestCase):
         for row in attestations:
             self.assertEqual(row["schema"], review_attestations.SCHEMA)
             self.assertIn(row["decision"], review_attestations.DECISIONS)
+
+
+class FailureClassTests(unittest.TestCase):
+    """Four outcomes that must never be confused: unavailable, unregistered, invalid, verified-not-independent."""
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.keys = Path(self.folder.name)
+        self.pair = keypair(self.keys)
+        self.corpus = evaluation_harness.load()
+        self.case = self.corpus["by_id"]["pair-01"]
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def entry(self, **overrides) -> dict:
+        base = dict(reviewer="reviewer://test", role="independent",
+                    public_key=self.pair["public_key"],
+                    onboarding=dict(authorized_by="human://project-owner",
+                                    authorized_at="2026-11-24", independent=True,
+                                    declaration="reviewed independently"))
+        base.update(overrides)
+        return dict(ok=True, available=True, by_id={"reviewer://test": base}, problems=[])
+
+    def test_a_missing_registry_is_a_configuration_error(self):
+        signed = review_attestations.sign(attestation(self.case, "reviewer://test"),
+                                          self.pair["private_path"])
+        report = review_attestations.check(dict(by_id={self.case["id"]: self.case}), [signed],
+                                           review_attestations.registry(self.keys / "absent.json"))
+        verdict = report["verdicts"][0]
+        self.assertIn("reviewer_registry_unavailable", verdict["reasons"])
+        self.assertNotIn("reviewer_not_registered", verdict["reasons"],
+                         "an unreadable registry must not read as a policy decision")
+
+    def test_an_unregistered_reviewer_is_distinct_from_an_unavailable_registry(self):
+        signed = review_attestations.sign(attestation(self.case, "reviewer://test"),
+                                          self.pair["private_path"])
+        report = review_attestations.check(dict(by_id={self.case["id"]: self.case}), [signed],
+                                           dict(ok=True, available=True, by_id={}, problems=[]))
+        self.assertIn("reviewer_not_registered", report["verdicts"][0]["reasons"])
+
+    def test_a_valid_signature_is_verified_even_without_independence(self):
+        registry = self.entry(onboarding=None)
+        signed = review_attestations.sign(attestation(self.case, "reviewer://test"),
+                                          self.pair["private_path"])
+        report = review_attestations.check(dict(by_id={self.case["id"]: self.case}), [signed], registry)
+        verdict = report["verdicts"][0]
+        self.assertTrue(verdict["ok"], verdict["reasons"])
+        self.assertEqual(verdict["status"], "verified_not_independent")
+        self.assertEqual(verdict["independence_reason"], "onboarding_missing")
+        self.assertEqual(report["independently_reviewed_cases"], [])
+
+    def test_onboarding_makes_it_independent(self):
+        signed = review_attestations.sign(attestation(self.case, "reviewer://test"),
+                                          self.pair["private_path"])
+        report = review_attestations.check(dict(by_id={self.case["id"]: self.case}), [signed],
+                                           self.entry())
+        self.assertEqual(report["verdicts"][0]["status"], "verified_independent")
+        self.assertEqual(report["independently_reviewed_cases"], [self.case["id"]])
+
+    def test_a_reviewer_cannot_onboard_themselves(self):
+        registry = self.entry(onboarding=dict(authorized_by="reviewer://test", independent=True))
+        signed = review_attestations.sign(attestation(self.case, "reviewer://test"),
+                                          self.pair["private_path"])
+        report = review_attestations.check(dict(by_id={self.case["id"]: self.case}), [signed], registry)
+        self.assertEqual(report["verdicts"][0]["independence_reason"], "self_onboarded")
+        self.assertEqual(report["independent"], 0)
+
+    def test_an_onboarding_record_marked_not_independent_stays_unverified_for_the_headline(self):
+        registry = self.entry(onboarding=dict(authorized_by="human://owner", independent=False))
+        signed = review_attestations.sign(attestation(self.case, "reviewer://test"),
+                                          self.pair["private_path"])
+        report = review_attestations.check(dict(by_id={self.case["id"]: self.case}), [signed], registry)
+        self.assertEqual(report["verdicts"][0]["independence_reason"], "onboarding_not_independent")
+        self.assertFalse(report["verdicts"][0]["independent"])
+
+    def test_the_shipped_registry_records_an_onboarding_decision(self):
+        registry = review_attestations.registry()
+        self.assertTrue(registry["available"])
+        entry = registry["by_id"]["agent://session-author"]
+        self.assertIn("onboarding", entry)
+        self.assertEqual(entry["onboarding"]["authorized_by"], "human://project-owner")
+        self.assertFalse(entry["onboarding"]["independent"])
 
 
 if __name__ == "__main__":

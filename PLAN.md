@@ -107,6 +107,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M67 | Condition E: Wo resolves the allowed target before inference - targets fixed 1/2 -> 2/2 for the planner with the graph untouched | **guard** | `data/targets.json`, `binding_resolver.py`, `data/binding-experiment.json`, `tests_host/test_binding_resolver.py` (13 tests) |
 | M68 | Scoring v2 (correct / incorrect / missing) and the re-score of 36 saved replies - which demotes Qwen C from 6/6 to 0/6 bound | **guard** | `evaluation/scoring-contract-v2.json`, `evaluation_harness.scoring_v2`, `rescore.py`, `data/session-experiment-36.rescored.json`, `tests_host/test_protocol_rescore.py` (24 tests) |
 | M69 | The real streaming path holds the lease: one acquire/release per turn, cancellation safe, and time-to-first-token measured separately from the wake | **guard** | `chat_app.stream_llm_response`, `inference_session.StreamingCall.begin/note_chunk/end`, `tests_host/test_app_stream_turn.py` (7 tests) |
+| M70 | Four distinct attestation outcomes, and independence that needs an authorized onboarding record rather than a flag | **guard** | `review_attestations.registry/independence`, `evaluation/reviewers.json` (onboarding + policy), `tests_host/test_review_attestations.py` (19 tests) |
 
 ---
 
@@ -198,6 +199,41 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Four outcomes, and onboarding that is not a flag (M70)
+
+A verification result now says exactly which thing failed, so an infrastructure problem cannot masquerade as a
+policy decision:
+
+| outcome | meaning |
+|---|---|
+| `reviewer_registry_unavailable` | the registry could not be read - status cannot be established |
+| `reviewer_not_registered` | the registry loaded and this signer is not in it |
+| `signature_invalid` | the signed payload failed cryptographic verification |
+| `verified_not_independent` | valid signature, benchmark eligibility denied |
+| `verified_independent` | valid signature plus an onboarding record that grants independence |
+
+**Independence is now an onboarding decision, not a boolean.** `evaluation/reviewers.json` carries an
+`onboarding` block - `authorized_by`, `authorized_at`, `independent`, `declaration` - plus the policy that
+reads it:
+
+```
+onboarding_policy:
+  requires_authorization   authorized_by must name the human who approved the role
+  no_self_onboarding       a reviewer may not authorize their own independence
+  independence_declared    onboarding.independent must be true for benchmark eligibility
+  not_the_author           the record must state the reviewer did not author the cases
+```
+
+The shipped registry records the author as `authorized_by: human://project-owner` with `independent: false`, so
+the corpus still reports **3 verified, 0 independent** - and now it can say *why* every case is ineligible
+(`onboarding_not_independent`) instead of resting on a missing boolean.
+
+One correction while wiring: independence initially fed `reasons`, so a perfectly valid author signature became a
+*refusal* (`verified: 0`). It is not - it is verified evidence that is not benchmark-eligible. The two are
+separate fields, and the guard for `verified_not_independent` pins that.
 
 ---
 

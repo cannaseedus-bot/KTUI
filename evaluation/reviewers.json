@@ -1,12 +1,25 @@
 {
-  "schema": "kuhul-eval-reviewers/1",
-  "note": "Provenance is checked against this registry: a case claiming method=independent is refused unless its reviewer is listed here as independent, and only an independent review counts toward the headline benchmark.",
+  "schema": "kuhul-eval-reviewers/2",
+  "note": "Provenance is checked against this registry, and independence needs an onboarding record: a reviewer cannot become independent by editing a boolean, and cannot onboard themselves.",
   "reviewers": {
     "agent://session-author": {
       "role": "author",
       "independent": false,
       "note": "wrote these cases and reviews them; a verified author attestation proves the payload was not altered, not that anyone independent looked at it",
-      "public_key": "MQLkgGskxBysaVNpJzCFoKdcQbG8qcflp6tDYz2Yrig="
+      "public_key": "MQLkgGskxBysaVNpJzCFoKdcQbG8qcflp6tDYz2Yrig=",
+      "reviewer": "agent://session-author",
+      "onboarding": {
+        "authorized_by": "human://project-owner",
+        "authorized_at": "2026-11-24",
+        "independent": false,
+        "declaration": "wrote the cases; an author review is not independent"
+      }
     }
+  },
+  "onboarding_policy": {
+    "requires_authorization": "onboarding.authorized_by must name the human who approved the role",
+    "no_self_onboarding": "a reviewer may not authorize their own independence",
+    "independence_declared": "onboarding.independent must be true for benchmark eligibility",
+    "not_the_author": "the onboarding record must state that the reviewer did not author the cases"
   }
 }
