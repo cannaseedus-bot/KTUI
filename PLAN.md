@@ -80,6 +80,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M41 | Shared corpus resolver: authorized retrieval, typed evidence, per-agent projection; retrieval ≠ learning ≠ training | **guard** | `corpus.py`, `data/corpus.json`, `tests_host/test_corpus.py` (15 tests) |
 | M42 | Model router: registered endpoints only, AIML answers first, a binding is not an invocation | **guard** | `model_router.py`, `data/models.json`, `tests_host/test_model_router.py` (17 tests) |
 | M42.1 | Two live backends (advisor 9032, worker 9040), `--port` on the launcher, explicit preference outranks the declared default | **guard** | `model_router.select`, `task-engine.py --port`, `data/models.json` |
+| M43 | Inference evidence records and the three-path comparison: what the corpus saves, with unmeasured values left None | **guard** | `evidence_record.py`, `tests_host/test_evidence_record.py` (14 tests) |
 
 ---
 
@@ -171,6 +172,42 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Inference evidence (M43)
+
+The measurement the review asked for, with the honesty constraint built in: **unmeasured is `None`, not
+zero**.
+
+```
+aiml_only      corpus=1  model=0  route_ok=1     (1 of 4 turns resolved without a model)
+aiml_worker    corpus=1  model=3  route_ok=4     (3 turns need a backend; worker selected)
+aiml_advisor   corpus=1  model=3  route_ok=4     (the same 3 turns, advisor selected)
+eliminated: 1 of 4
+```
+
+A record carries every field the review listed - closure, action, micronaut, binding, reported model id,
+retrieval counts, operators, schema validation, admission, tokens, latency - and two properties are
+enforced rather than described:
+
+- **measurements are measurements**: `tokens: None` when nobody counted (a test forbids 0), `latency_ms`
+  is integer milliseconds because the log is chained through the ledger, whose canonical form refuses
+  floats;
+- **records observe, they never admit**: every record says `admitted: false`,
+  `authority: "declaration_only"`.
+
+The log is hash-chained like the audit ledger, so a record cannot be quietly edited - a guard tampers with
+one and requires the chain to break.
+
+`compare()` runs the same task list through `aiml_only`, `aiml_worker` and `aiml_advisor`, measuring what
+each path *did*: turns the corpus handled, model invocations, route validity, and wall-clock latency. It
+reports `answer_quality: None` and `tokens: None` because it performs no inference - judging answers needs
+live completions and a grader, and a fabricated number would poison the measurement it exists to support.
+
+One accounting bug the guards caught: `corpus_handled` was computed as "no binding", which made the
+corpus-only path look like it handled every turn. It is now a property of the turn (the chain resolved or
+refused it), so `aiml_only` correctly reports 1 of 4.
 
 ---
 
@@ -1304,7 +1341,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 332 tests, OK (M3-M42) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 346 tests, OK (M3-M43) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
