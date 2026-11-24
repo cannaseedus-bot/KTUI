@@ -110,7 +110,10 @@ class ReactiveAppTests(unittest.TestCase):
     def test_a_state_change_triggers_a_second_render(self):
         import asyncio
 
+        import runtime_signals
+
         async def drive():
+            runtime_signals.reset("reactive")
             app = self.app()
             async with app.run_test(size=(120, 50)) as pilot:
                 await pilot.pause()
@@ -123,6 +126,7 @@ class ReactiveAppTests(unittest.TestCase):
 
                 runtime_tree.watch = moved
                 try:
+                    runtime_signals.bump("state changed")     # the gate is a bump, not a clock tick
                     app.poll_runtime()
                 finally:
                     runtime_tree.watch = original
@@ -146,10 +150,13 @@ class ReactiveAppTests(unittest.TestCase):
         self.assertIn("model 3", text)
         self.assertIn("worker", text)
 
-    def test_every_poll_rebuilds_rather_than_caching_a_graph(self):
+    def test_an_idle_poll_reuses_the_projection_and_a_bump_rebuilds_it(self):
         import asyncio
 
+        import runtime_signals
+
         async def drive():
+            runtime_signals.reset("builds")
             app = self.app()
             calls = []
             original = runtime_tree.watch
@@ -163,12 +170,15 @@ class ReactiveAppTests(unittest.TestCase):
                 async with app.run_test(size=(120, 50)) as pilot:
                     await pilot.pause()
                     app.poll_runtime()
-                    app.poll_runtime()
+                    app.poll_runtime()                        # idle: the generation has not moved
+                    runtime_signals.bump("something changed")
+                    app.poll_runtime()                        # bumped: rebuild
             finally:
                 runtime_tree.watch = original
             return len(calls)
-        self.assertEqual(asyncio.run(drive()), 2,
-                         "the registries stay authoritative; the widget holds only the digest")
+        # Two builds for three polls: the widget holds a digest and its text, never a graph, and the
+        # registries are re-read whenever the generation says the world moved.
+        self.assertEqual(asyncio.run(drive()), 2)
 
 
 if __name__ == "__main__":

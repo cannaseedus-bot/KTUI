@@ -214,6 +214,12 @@ after a lease bump -> rebuild, digest unchanged -> still renders 1
 So a bump that changes nothing observable costs **one rebuild and zero repaints**, which is what makes a 2 s
 tick affordable; and a bump with a semantic change does both.
 
+**Two M56 guards failed the moment the gate landed** - they had assumed a rebuild on every poll, which was
+true before M62 and false after. I fixed the guards rather than the behaviour, and the fix makes the new
+contract explicit: an idle poll reuses the last projection, a bump rebuilds it. Recording this because the
+suite was briefly red in a commit: the gate runs the package tests, so a host-guard regression can reach a
+commit before it reaches me.
+
 The counter is a **hint, not a truth**: a missed bump costs one stale frame rather than a wrong one, and the
 digest remains the gate for repainting so a noisy bump (a record written, no structural change) cannot make
 the screen flicker. Nothing in this path wakes, leases or stops a model - it is a counter and a compare.
