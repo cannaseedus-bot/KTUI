@@ -1127,12 +1127,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.11
+      "duration_seconds": 0.094
     },
-    "captured_at": "2026-11-24T04:48:48.557354+00:00",
+    "captured_at": "2026-11-24T04:56:15.253335+00:00",
     "health_correlation": {
-      "suite_sha": "e75ba5d8892e817abc8231a8ea1a69fc8b5343d7",
-      "health_sha": "e75ba5d8892e817abc8231a8ea1a69fc8b5343d7",
+      "suite_sha": "8846edaf585c4b38e602ce547bc1b8d77aa49f82",
+      "health_sha": "8846edaf585c4b38e602ce547bc1b8d77aa49f82",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -1141,7 +1141,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> e75ba5d8892e817abc8231a8ea1a69fc8b5343d7"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 8846edaf585c4b38e602ce547bc1b8d77aa49f82"
       },
       {
         "code": "untracked_files",
@@ -1297,7 +1297,7 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "e75ba5d8892e817abc8231a8ea1a69fc8b5343d7",
+    "tested_commit": "8846edaf585c4b38e602ce547bc1b8d77aa49f82",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
