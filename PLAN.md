@@ -85,6 +85,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M45 | Live evidence capture: one request id per turn, digest not prompt, execution distinguished from admission, recording can never break an answer | **guard** | `chat_app.record_turn`, `evidence_record.build`, `/evidence`, `tests_host/test_live_capture.py` (9 tests) |
 | M46 | Composition as a graph: the host resolves edges, never repairs, and scores nodes/edges/authority separately | **guard** | `plan_graph.py`, `proposal_eval.py`, `data/proposal-eval-fair.json`, `tests_host/test_plan_graph.py` (17 tests) |
 | M47 | A third backend: Qwen3-1.7B planner (thinking off) fixes over-generation and is the cheapest of the three, but under-generates the full chain | **guard** | `data/models.json`, `task-engine.py --no-think`, `data/proposal-eval-qwen.json`, `tests_host/test_model_router.py` (20 tests) |
+| M48 | Inference on demand: a registered wake, owned stops, leases that keep a shared backend up | **guard** | `model_lifecycle.py`, `data/models.json`, `tests_host/test_model_lifecycle.py` (15 tests) |
 
 ---
 
@@ -176,6 +177,38 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Inference on demand (M48)
+
+The router chose among *healthy* endpoints; it could not wake a stopped one. Now it can, and only through a
+registered launch:
+
+```
+model lifecycle · 3 model(s) · declaration_only
+  advisor  declared cold  now hot   port 9032 · idle 300s
+  planner  declared cold  now hot   port 9041 · idle 600s
+  worker   declared hot   now hot   port 9040 · idle 900s
+  (only a registered launch can wake a model; only an owned, unleased process sleeps)
+```
+
+Four rules, each guarded:
+
+| rule | how it holds |
+|---|---|
+| only a registered launcher runs | the manifest names alias, port and flags; a `launch.command` field is **refused at load** - a proposal cannot contribute a command |
+| only an owned process is stopped | ownership is the pid this lifecycle started on the declared port; a backend somebody else launched is left alone (tested) |
+| never stop while leased | `acquire()`/`release()` count users; with a lease live, `release_idle()` keeps the backend and says `leased` |
+| never stop before the timer | a release restarts the idle clock; a sweep inside the timeout reports `not_idle` |
+
+**WARM is declared unsupported rather than faked.** `llama-server` in this build loads the model at start,
+so a backend is either listening (HOT) or not (COLD); the state report says so instead of inventing an
+intermediate state. `wake` on an already-hot port returns `started: false` and launches nothing.
+
+The intended steady state on this machine: **Gemma hot** (conversation), **Qwen cold until a plan is
+needed**, **GPT-OSS cold until the advisor is escalated to** - which is what the declarations now say, with
+idle timeouts of 900 s, 600 s and 300 s respectively.
 
 ---
 
@@ -1495,7 +1528,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 383 tests, OK (M3-M47) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 398 tests, OK (M3-M48) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

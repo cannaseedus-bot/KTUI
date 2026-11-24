@@ -9,7 +9,13 @@
       "features": [
         "chat",
         "tools"
-      ]
+      ],
+      "state": "cold",
+      "idle_timeout_seconds": 300,
+      "launch": {
+        "alias": "gpt-oss-20b",
+        "port": 9032
+      }
     },
     "worker": {
       "base_url": "http://127.0.0.1:9040/v1",
@@ -18,7 +24,13 @@
       "features": [
         "chat",
         "code"
-      ]
+      ],
+      "state": "hot",
+      "idle_timeout_seconds": 900,
+      "launch": {
+        "alias": "gemma-3-1b",
+        "port": 9040
+      }
     },
     "planner": {
       "base_url": "http://127.0.0.1:9041/v1",
@@ -28,7 +40,14 @@
         "chat",
         "code",
         "json"
-      ]
+      ],
+      "state": "cold",
+      "idle_timeout_seconds": 600,
+      "launch": {
+        "alias": "qwen3-1.7b-q4",
+        "port": 9041,
+        "no_think": true
+      }
     }
   },
   "routing": {
@@ -61,6 +80,7 @@
     "probe": "/models",
     "timeout_seconds": 2,
     "require_registered": true,
-    "note": "only endpoints declared here are probed; a port that merely responds is not a model. planner runs qwen3-1.7b with thinking disabled (--reasoning-budget 0)"
+    "note": "only endpoints declared here are probed; a port that merely responds is not a model. planner runs qwen3-1.7b with thinking disabled (--reasoning-budget 0)",
+    "lifecycle": "hot: listening; cold: not listening (warm is unsupported by this runtime). Only a registered launch can wake a model, and only an owned, unleased process sleeps."
   }
 }
