@@ -1,0 +1,58 @@
+{
+  "schema": "kuhul-corpus-access/v1",
+  "uri": "corpus://shared/v1",
+  "authority": "declaration_only",
+  "sources": [
+    {
+      "uri": "aiml://categories",
+      "kind": "patterns",
+      "available": true,
+      "capability": "graph.relations.read",
+      "scope": "shared",
+      "note": "the migrated AIML categories (aiml_graph)"
+    },
+    {
+      "uri": "gml://relations",
+      "kind": "relations",
+      "available": true,
+      "capability": "graph.relations.read",
+      "scope": "shared",
+      "note": "the user's memory projection (user_memory)"
+    },
+    {
+      "uri": "memory://jsonl",
+      "kind": "events",
+      "available": true,
+      "capability": "graph.relations.read",
+      "scope": "self",
+      "note": "append-only user events; a caller reads only its own log"
+    },
+    {
+      "uri": "vectors://embeddinggemma2",
+      "kind": "embeddings",
+      "available": true,
+      "capability": "graph.relations.read",
+      "scope": "shared",
+      "note": "pattern/template/category vectors, memory-mapped from the manifest"
+    },
+    {
+      "uri": "gramstore://ngrams",
+      "kind": "ngrams",
+      "available": false,
+      "capability": "graph.relations.read",
+      "scope": "shared",
+      "note": "no GramStore exists in this checkout; the declaration says so rather than failing later"
+    }
+  ],
+  "operators": ["filter", "map", "fold", "accumulate", "reduce"],
+  "access": {
+    "read": "scope_checked",
+    "propose": true,
+    "write": "xcfe_admitted"
+  },
+  "boundaries": {
+    "retrieval": "reads existing knowledge for the current task; no weights change",
+    "incremental_learning": "a proposal may be persisted only after XCFE admission",
+    "model_training": "separate process; a corpus update never retrains a model"
+  }
+}

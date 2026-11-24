@@ -77,6 +77,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M38 | Per-request identity and scope: the transport authenticates, an engine-wide grant cannot widen a caller | **guard** | `rest_adapter.py` (`identity_for_token`, `_authorize`), `data/identities.json`, `tests_host/test_rest.py::M38…` (22 tests total) |
 | M39 | Decision closure under unknown probabilities: UNKNOWN is never 0.5, and an action collapses without a fact collapsing | **guard** | `decision.py`, `tests_host/test_decision.py` (15 tests) |
 | M40 | Micronaut registry: typed agents and typed edges, with structural / routing / authority reported separately | **guard** | `micronaut_registry.py`, `data/micronauts.json`, `data/micronaut-edges.json`, `tests_host/test_micronaut_registry.py` (16 tests) |
+| M41 | Shared corpus resolver: authorized retrieval, typed evidence, per-agent projection; retrieval ≠ learning ≠ training | **guard** | `corpus.py`, `data/corpus.json`, `tests_host/test_corpus.py` (15 tests) |
 
 ---
 
@@ -168,6 +169,45 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Shared corpus resolver (M41)
+
+One knowledge graph, many specialised views - and the three operations kept apart:
+
+```
+corpus corpus://shared/v1 · 5 source(s) · 5 operator(s) · declaration_only
+  aiml://categories            patterns    shared  available
+  gml://relations              relations   shared  available
+  gramstore://ngrams           ngrams      shared  UNAVAILABLE
+  memory://jsonl               events      self    available
+  vectors://embeddinggemma2    embeddings  shared  available
+  read: scope_checked · write: xcfe_admitted
+  training: separate process; a corpus update never retrains a model
+```
+
+**Retrieval** returns typed evidence with provenance (`kind`, `ref`, `source`, and the event id for
+relations), never writes, and is refused rather than degraded:
+
+| case | refusal |
+|---|---|
+| a source the declaration marks unavailable | `source_unavailable` - *"no GramStore exists in this checkout"*, stated up front |
+| a source not in the declaration | `source_not_declared` |
+| a caller without the source's capability | `capability_not_granted` |
+| a `self`-scoped source with no identity | `scope_required` |
+
+**Incremental learning is a proposal**, not a write: `propose_update()` returns
+`requires: "xcfe_admitted"`, `persisted: false`, and the note that *a corpus update never retrains a
+model*. The manifest is validated to refuse `write: "allowed"` and to require that `model_training`
+states it is a separate process - so the three operations cannot be quietly merged by editing the
+declaration.
+
+**Training is not here at all**, and the boundary is declared data rather than a comment.
+
+`view()` gives the micronaut-specific projection: with the capability and an identity, four sources are
+readable and one is unavailable; without the capability, nothing is readable; without an identity,
+`memory://jsonl` is `scope_required`. Same corpus, different lenses - which is the whole claim.
 
 ---
 
@@ -1197,7 +1237,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 300 tests, OK (M3-M40) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 315 tests, OK (M3-M41) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
