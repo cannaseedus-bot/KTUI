@@ -61,6 +61,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M22 | The daemon knows facts locally (curated ALICE banks) and offers depth instead of spending a model call | **guard** | `knowledge.py`, `chat_app.py` (`_maybe_offer`, `pending_deep`), `tests_host/test_knowledge.py::M22…` |
 | M23 | Answers carry clickable reference links (Wikipedia, Britannica, NASA, Space.com) labelled as searches | **guard** | `links.py`, `chat_app.py` (`maybe_reference`, `/links`), `micronaut_server.py`, `tests_host/test_links.py::M23…` |
 | M24 | The five GML/2 contract issues: reference modes, dynamic SRAI, runtime cycle guard, capability ladder, ordered templates | **guard** | `srai_resolver.py`, `aiml_host.states`, `core/rules.py` (segments required), `tests_host/test_gml2_contracts.py::M24…` |
+| M25 | AIML round-trip conformance: 131 real categories migrated, validated, and answering identically to python-aiml | **guard** | `aiml_graph.py`, `tests_host/test_aiml_roundtrip.py::M25…` |
 
 ---
 
@@ -152,6 +153,41 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## AIML round trip (M25)
+
+The step the review named as the gate before migrating a corpus: `AIML → GML → validated graph →
+matching → SRAI → rendered output`, compared with the interpreter.
+
+```
+131 categories from five host banks  ->  0 unsupported
+migrated set assembled as the six contracts  ->  Bundle.validate() = BINDINGS_VALIDATED
+17 inputs  ->  17/17 replies identical to python-aiml
+```
+
+The four roles are kept distinct, as specified: `category` is a relationship object carrying
+`pattern_ref`/`template_ref` and its provenance (`bank:index`); `pattern` holds the expression and
+wildcard count; `template` holds ordered `segment [ ordinal ... ]` entries; `srai` is an expression node
+with `max_depth 3` and `visited_guard 1`, not an edge to a fixed category.
+
+What the comparison found, and what it cost to fix: python-aiml captures with the **user's case**, so
+"my dogs name is Rex" must render `MEMORY remember pet.name Rex`. Matching is case-insensitive, but
+captures are built from the original tokens - the graph was uppercasing them, and the round-trip test
+is what exposed it. 17/17 is the result after that fix, not before.
+
+Bounds are proven, not assumed: two categories redirecting to each other terminate with
+`SRAI loop at ...`, and a six-hop chain stops at `max_depth 3 exceeded`. A directive such as
+`TOOL git status` comes back as **text** - the graph renders it and never executes it.
+
+Unsupported constructs are reported, never approximated: a `<that>`-context category appears in
+`problems` as `unsupported` and is excluded from `migrated`, so the migration count and the corpus
+count cannot silently disagree.
+
+Scope: patterns made of literals and `*` are migrated; `<that>`, topics and nested template constructs
+are not, and the module says so rather than pretending. Migrating the remaining corpus is now a
+mechanical extension of this harness, and the corpus projection (M21) already lists which banks exist.
 
 ---
 
@@ -654,7 +690,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 155 tests, OK (M3-M24: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12, gml2 15)
+host guards    : 168 tests, OK (M3-M25: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12, gml2 15, roundtrip 13)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
