@@ -135,5 +135,67 @@ class ProtocolTests(unittest.TestCase):
         self.assertEqual(report["authority"], "declaration_only")
 
 
+class ContextContractTests(unittest.TestCase):
+    def test_the_context_contract_matches_the_grammar(self):
+        loaded = plan_graph.context_contract()
+        self.assertTrue(loaded["ok"], loaded["problems"])
+        self.assertEqual(loaded["uri"], "kuhul://contract/v2")
+        for phase, entry in loaded["record"]["phases"].items():
+            self.assertIn(phase, plan_graph.PHASES, phase)
+            for operator in entry.get("allowed_operators") or []:
+                self.assertIn(operator, plan_graph.OPERATORS, phase)
+
+    def test_a_phase_owning_an_unregistered_operator_is_refused(self):
+        record = json.loads((ROOT / "kuhul-phase-engine-v0.1.0" / "data" / "context-contract.json")
+                            .read_text(encoding="utf-8"))
+        record["phases"]["Sek"]["allowed_operators"] = ["filter", "explode"]
+        folder = Path(tempfile.mkdtemp()) / "context.json"
+        folder.write_text(json.dumps(record), encoding="utf-8")
+        loaded = plan_graph.context_contract(folder)
+        self.assertFalse(loaded["ok"])
+        self.assertIn("operator", [problem["code"] for problem in loaded["problems"]])
+
+    def test_the_rendered_context_names_phases_and_targets(self):
+        record = plan_graph.context_contract()["record"]
+        text = plan_graph.render_context_prompt(record)
+        self.assertIn("Sek — operator_proposal", text)
+        self.assertIn("graph.matches — schema kuhul://schema/candidates/v1", text)
+        self.assertIn("phase_ownership", text)
+        self.assertIn("never rewritten", text)
+
+    def test_condition_d_appends_the_context_to_the_contract(self):
+        variants = contract_experiment.conditions()
+        self.assertIn("contract_context", variants)
+        self.assertIn("Registered targets", variants["contract_context"]["suffix"])
+        self.assertIn("Execution order", variants["contract_context"]["suffix"])
+        self.assertEqual(variants["contract_context"]["contract_uri"], "kuhul://contract/v2")
+
+    def test_the_protocol_records_the_context_contract(self):
+        corpus = evaluation_harness.load()
+        protocol = contract_experiment.protocol(corpus)
+        self.assertEqual(protocol["context_contract_uri"], "kuhul://contract/v2")
+
+    def test_a_cell_keeps_the_full_reply(self):
+        corpus = evaluation_harness.load()
+        long_reply = "x" * 900
+        report = contract_experiment.run(
+            ["stub"], corpus, repeats=1,
+            complete_for={"stub": lambda prompt: dict(text=long_reply, model="stub",
+                                                      completion_tokens=5, latency_ms=1)})
+        cell = report["results"]["stub"]["baseline"]["cells"][0]
+        self.assertGreater(len(cell["reply_text"]), 240)
+
+
+class DevelopmentCaseTests(unittest.TestCase):
+    def test_development_cases_are_separate_from_the_frozen_corpus(self):
+        development = (ROOT / "evaluation" / "development-cases.jsonl").read_text(encoding="utf-8")
+        ids = [json.loads(line)["id"] for line in development.splitlines() if line.strip()]
+        self.assertTrue(ids)
+        corpus = evaluation_harness.load()
+        for identifier in ids:
+            self.assertNotIn(identifier, corpus["by_id"],
+                             "a development case must never be scored")
+
+
 if __name__ == "__main__":
     unittest.main()

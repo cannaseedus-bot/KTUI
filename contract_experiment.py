@@ -57,6 +57,12 @@ def conditions() -> dict:
             suffix="\n\n" + plan_graph.render_contract_prompt(loaded["record"]),
             note="the same instruction plus kuhul://operators/v1, rendered from the declaration",
             contract_uri=loaded["uri"]),
+        "contract_context": dict(
+            suffix=("\n\n" + plan_graph.render_contract_prompt(loaded["record"]) + "\n\n"
+                    + plan_graph.render_context_prompt(plan_graph.context_contract()["record"])),
+            note=("the operator contract plus kuhul://contract/v2: phase ownership and the "
+                  "registered targets"),
+            contract_uri="kuhul://contract/v2"),
     }
 
 
@@ -70,6 +76,7 @@ def protocol(corpus: dict) -> dict:
     variants = conditions()
     return dict(schema=PROTOCOL, case=CASE,
                 contract_uri=variants["contract"]["contract_uri"],
+                context_contract_uri=variants.get("contract_context", {}).get("contract_uri"),
                 system_prompt_sha256=digest_of(system_prompt()),
                 suffix_sha256={name: digest_of(spec["suffix"]) for name, spec in variants.items()},
                 decoding=dict(DECODING), output_schema=OUTPUT_SCHEMA,
@@ -114,7 +121,8 @@ def run(models: dict, corpus: dict, *, repeats: int = REPEATS, complete_for=None
                                       latency_ms=score.get("latency_ms"),
                                       finish_reason=score.get("finish_reason"),
                                       errors=score["errors"],
-                                      reply_head=(reply.get("text") or "")[:240]))
+                                      reply_head=(reply.get("text") or "")[:240],
+                                      reply_text=(reply.get("text") or "")[:4000]))
                 except Exception as error:
                     results[model][name].append(dict(run=index, parsed=False, complete=False,
                                                      error=f"{type(error).__name__}: {error}"[:160]))

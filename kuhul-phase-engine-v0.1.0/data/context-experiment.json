@@ -1,0 +1,358 @@
+{
+  "schema": "kuhul-contract-experiment/1",
+  "case": "chain-01",
+  "repeats": 2,
+  "protocol": {
+    "schema": "kuhul-protocol/1",
+    "case": "chain-01",
+    "contract_uri": "kuhul://operators/v1",
+    "context_contract_uri": "kuhul://contract/v2",
+    "system_prompt_sha256": "31d31997219efdc12d262846bb02ce72215964f44377709f4b8e040d2510e671",
+    "suffix_sha256": {
+      "baseline": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "contract": "e4ef2a3fe3f4536bd9e150cdc8899e10e4562a5dc0b5e3b758e16abd543cc1ec",
+      "contract_context": "8994120c0ff93165418efc9fb78d35c7f58d95b626717183679f4cc50155db2f"
+    },
+    "decoding": {
+      "temperature": 0,
+      "max_tokens": 900
+    },
+    "output_schema": "{\"phase\": \"Pop|Wo|Yax|Sek|Chen|Xul\", \"operators\": [\"<operator>\", \"...\"], \"authority\": \"proposal\"}",
+    "expected_graph_sha256": "d061c565723e35afa6b787d97f10bab034bad0a5577c961e808954ff516fa75c"
+  },
+  "interleaved": true,
+  "conditions": {
+    "baseline": {
+      "note": "the original ambiguous instruction, unchanged",
+      "contract_uri": null
+    },
+    "contract": {
+      "note": "the same instruction plus kuhul://operators/v1, rendered from the declaration",
+      "contract_uri": "kuhul://operators/v1"
+    },
+    "contract_context": {
+      "note": "the operator contract plus kuhul://contract/v2: phase ownership and the registered targets",
+      "contract_uri": "kuhul://contract/v2"
+    }
+  },
+  "started_at": "2026-11-24T07:45:43Z",
+  "results": {
+    "worker": {
+      "baseline": {
+        "repeats": 2,
+        "complete": 2,
+        "rate": 1.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": true,
+            "tokens": 237,
+            "latency_ms": 16594,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"grap",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": true,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": true,
+            "tokens": 237,
+            "latency_ms": 13906,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"grap",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ]
+      },
+      "contract": {
+        "repeats": 2,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 229,
+            "latency_ms": 13344,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\"",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\",\n    \"binding\": \"map\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"FOLD\",\n    \"operator\": \"FOLD\",\n    \"target\": \"map\",\n    \"binding\": \"map\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"REDUCE\",\n    \"operator\": \"REDUCE\",\n    \"target\": \"map\",\n    \"binding\": \"map\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 229,
+            "latency_ms": 14797,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\"",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"map\",\n    \"binding\": \"map\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"FOLD\",\n    \"operator\": \"FOLD\",\n    \"target\": \"map\",\n    \"binding\": \"map\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"REDUCE\",\n    \"operator\": \"REDUCE\",\n    \"target\": \"map\",\n    \"binding\": \"map\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ]
+      },
+      "contract_context": {
+        "repeats": 2,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "missing_operators",
+            "complete": false,
+            "nodes_ok": false,
+            "edges_ok": false,
+            "proposed": [
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": true,
+            "tokens": 230,
+            "latency_ms": 16890,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Map\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Map\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Fold\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Reduce\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "missing_operators",
+            "complete": false,
+            "nodes_ok": false,
+            "edges_ok": false,
+            "proposed": [
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": true,
+            "tokens": 230,
+            "latency_ms": 17766,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Map\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Map\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Fold\",\n    \"operator\": \"reduce\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Reduce\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"None\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ]
+      }
+    },
+    "planner": {
+      "baseline": {
+        "repeats": 2,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 201,
+            "latency_ms": 21484,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"result\",\n    \"binding\": \"combine\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 201,
+            "latency_ms": 17250,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Ch'en\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"update\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"result\",\n    \"binding\": \"combine\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ]
+      },
+      "contract": {
+        "repeats": 2,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 201,
+            "latency_ms": 15735,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"proposition",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"map\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"fold\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"running_state\",\n    \"binding\": \"evidence\",\n    \"next\": \"reduce\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"result\",\n    \"binding\": \"finalize\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 212,
+            "latency_ms": 16422,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.propos",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.propositions\",\n    \"binding\": \"transformed\",\n    \"next\": \"FOLD\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"folded.evidence\",\n    \"binding\": \"running_state\",\n    \"next\": \"REDUCE\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"final.propositions\",\n    \"binding\": \"finalized\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ]
+      },
+      "contract_context": {
+        "repeats": 2,
+        "complete": 0,
+        "rate": 0.0,
+        "distinct_plans": 1,
+        "cells": [
+          {
+            "run": 0,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 234,
+            "latency_ms": 23906,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"targ",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"kuhul://phase/sek\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Reduce\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"kuhul://phase/sek\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          },
+          {
+            "run": 1,
+            "parsed": true,
+            "verdict": "exact",
+            "complete": false,
+            "nodes_ok": true,
+            "edges_ok": true,
+            "proposed": [
+              "filter",
+              "map",
+              "fold",
+              "reduce"
+            ],
+            "phase_ok": true,
+            "targets_ok": false,
+            "tokens": 234,
+            "latency_ms": 25281,
+            "finish_reason": "stop",
+            "errors": [],
+            "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"targ",
+            "reply_text": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"gml://relations\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Sek\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"kuhul://phase/sek\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": \"Reduce\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"reduce\",\n    \"target\": \"kuhul://phase/sek\",\n    \"binding\": \"bindings_resolved_by_Wo\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  }\n]\n```"
+          }
+        ]
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "condition D adds phase ownership and registered targets; frozen cases score, development cases were used only to check wording"
+}

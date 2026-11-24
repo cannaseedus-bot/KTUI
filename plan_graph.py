@@ -213,3 +213,54 @@ def render_contract_prompt(record: dict) -> str:
               f'Authority must be "{record.get("authority_must_be", "proposal")}".']
     return "\n".join(lines)
 
+# -- the context contract: phase ownership and registered targets, same registry ------------------------
+CONTEXT_FILE = Path(__file__).resolve().parent / "kuhul-phase-engine-v0.1.0" / "data" / "context-contract.json"
+
+
+def context_contract(path: Path | None = None) -> dict:
+    """Load `kuhul://contract/v2`: phases with their ownership, and the registered targets."""
+    path = Path(path or CONTEXT_FILE)
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return dict(ok=False, problems=[dict(code="unreadable", detail=str(error))], record={})
+    problems: list[dict] = []
+    if record.get("schema") != "kuhul://contract/v2":
+        problems.append(dict(code="schema", detail="expected kuhul://contract/v2"))
+    if record.get("authority") != "declaration_only":
+        problems.append(dict(code="authority", detail="the context contract is declaration_only"))
+    for phase, entry in (record.get("phases") or {}).items():
+        if phase not in PHASES:
+            problems.append(dict(code="phase", detail=f"unregistered phase {phase!r}"))
+            continue
+        for operator in entry.get("allowed_operators") or []:
+            if operator not in OPERATORS:
+                problems.append(dict(code="operator",
+                                     detail=f"{phase}: {operator!r} is not an operator"))
+    if not record.get("targets"):
+        problems.append(dict(code="targets", detail="no registered targets declared"))
+    return dict(ok=not problems, problems=problems, record=record,
+                uri=record.get("uri"), version=str(record.get("version")))
+
+
+def render_context_prompt(record: dict) -> str:
+    """The phase/target fragment: what belongs where, and which targets exist. No second registry."""
+    lines = ["K'UHUL CONTEXT CONTRACT (" + str(record.get("uri") or "kuhul://contract/v2") + ")",
+             "", "Phases and their owned operators:"]
+    for phase, entry in (record.get("phases") or {}).items():
+        operators = ", ".join(entry.get("allowed_operators") or []) or "(none)"
+        requires = entry.get("requires") or []
+        suffix = f" · requires {', '.join(requires)}" if requires else ""
+        lines.append(f"  {phase} — {entry.get('responsibility', '')}: {operators}{suffix}")
+    lines += ["", "Registered targets (choose only from these):"]
+    for target, entry in (record.get("targets") or {}).items():
+        lines.append(f"  {target} — schema {entry.get('schema', '')}")
+    rules = record.get("rules") or {}
+    lines.append("")
+    for key in ("phase_ownership", "target_binding", "casing"):
+        if rules.get(key):
+            lines.append(f"Rule ({key}): {rules[key]}")
+    lines += ["", 'Every step\'s phase must be the phase that owns that operator.',
+              'Use one phase per plan: "Sek" for operator proposals.', 'Return JSON only.']
+    return "\n".join(lines)
+

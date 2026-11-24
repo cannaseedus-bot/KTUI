@@ -95,6 +95,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M55 | Corpus format v2 frozen: expectation digests, reviewed provenance, and 16 cases across 11 categories; independent review still missing | **guard** | `evaluation/cases.jsonl`, `evaluation/reviewers.json`, `evaluation/manifest.json`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (19 tests) |
 | M56 | The green screen reacts: a semantic digest, a 2 s poll, and a render only when the state moves | **guard** | `runtime_tree.watch`, `chat_app.poll_runtime`, `tests_host/test_runtime_reactive.py` (9 tests) |
 | M57 | The protocol experiment: 27 interleaved cells with recorded provenance - and evidence that condition C must not be promoted | **guard** | `contract_experiment.py`, `data/protocol-experiment*.json`, `data/regression-planner.json`, `tests_host/test_contract_experiment.py` (17 tests) |
+| M58 | Condition D: phase ownership plus registered targets, measured per check - and the finding that target binding, not phase, is the bottleneck | **guard** | `data/context-contract.json`, `plan_graph.context_contract`, `contract_experiment (condition D)`, `data/context-experiment.json`, `evaluation/development-cases.jsonl`, `tests_host/test_contract_experiment.py` (18 tests) |
 
 ---
 
@@ -186,6 +187,43 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Phase and target context (M58)
+
+The canonical contract system gained a **second fragment, not a second registry**: `kuhul://contract/v2`
+declares each phase's responsibility and owned operators, and the registered targets with their schemas.
+`plan_graph.render_context_prompt()` renders it, `context_contract()` validates it against the same grammar,
+and condition **D** appends it to the operator contract.
+
+**Measured: 3 conditions × 2 models × 2 repeats, per-check scores recorded**
+
+| model | condition | complete | phase | targets | operator verdict |
+|---|---|---|---|---|---|
+| worker | baseline | **2/2** | 2/2 | 2/2 | `exact` |
+| worker | contract | 0/2 | 2/2 | **0/2** | `exact` |
+| worker | contract_context | 0/2 | 2/2 | 2/2 | **`missing_operators`** |
+| planner | baseline | 0/2 | 2/2 | **0/2** | `exact` |
+| planner | contract | 0/2 | 2/2 | 0/2 | `exact` |
+| planner | contract_context | 0/2 | 2/2 | 0/2 | `exact` |
+
+Three findings, and the per-check split is what makes them visible:
+
+**Phase ownership is not the current bottleneck.** Every cell scored `phase` 2/2 - the `Wo`-inside-`Sek`
+placement did not reproduce here, so the earlier phase concern is real but not dominant.
+
+**Target binding is the bottleneck**, and it is a *selection* problem rather than an omission: the planner
+emitted `graph.matches` for one step and `gml://relations` for the next, where the case allows only
+`graph.matches`. It picked a **registered but not allowed** target in every condition - including D, where the
+registered list was placed in front of it. Listing the namespace did not constrain the choice to the case.
+
+**D trades one correctness for another on the small model.** For gemma, adding the context fixed targets
+(2/2) and broke the graph (`missing_operators`): too much envelope pulls the 4-operator chain down to fewer
+steps. For Qwen it changed nothing.
+
+Development cases live in `evaluation/development-cases.jsonl` and are excluded from scoring by a guard, so
+the new instruction is not tuned to the frozen expectations it is graded against.
 
 ---
 
@@ -1880,7 +1918,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 487 tests, OK (M3-M57) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 494 tests, OK (M3-M58) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

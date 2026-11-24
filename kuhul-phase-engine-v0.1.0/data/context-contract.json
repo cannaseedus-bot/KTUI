@@ -1,0 +1,78 @@
+{
+  "schema": "kuhul://contract/v2",
+  "uri": "kuhul://contract/v2",
+  "version": "2",
+  "authority": "declaration_only",
+  "operators_uri": "kuhul://operators/v1",
+  "phases": {
+    "Pop": {
+      "responsibility": "recognize_intent",
+      "allowed_operators": [
+        "map"
+      ]
+    },
+    "Wo": {
+      "responsibility": "resolve_bindings",
+      "allowed_operators": [
+        "map"
+      ],
+      "provides": [
+        "bindings",
+        "targets"
+      ]
+    },
+    "Yax": {
+      "responsibility": "retrieve_evidence",
+      "allowed_operators": [
+        "filter",
+        "map"
+      ],
+      "requires": [
+        "bindings"
+      ]
+    },
+    "Sek": {
+      "responsibility": "operator_proposal",
+      "allowed_operators": [
+        "filter",
+        "map",
+        "fold",
+        "accumulate",
+        "reduce"
+      ],
+      "requires": [
+        "bindings_resolved_by_Wo"
+      ]
+    },
+    "Ch'en": {
+      "responsibility": "verify_and_admit",
+      "allowed_operators": [
+        "filter"
+      ]
+    },
+    "Xul": {
+      "responsibility": "close_result",
+      "allowed_operators": []
+    }
+  },
+  "targets": {
+    "graph.matches": {
+      "schema": "kuhul://schema/candidates/v1",
+      "owner": "relations"
+    },
+    "gml://relations": {
+      "schema": "kuhul://schema/proposition/v1",
+      "owner": "memory"
+    },
+    "kuhul://phases/sek": {
+      "schema": "kuhul://schema/phase/v1",
+      "owner": "phase_registry"
+    }
+  },
+  "rules": {
+    "phase_ownership": "every step's phase must own its operator; a Wo step inside a Sek plan is a foreign_phase_step and is rejected, never rewritten",
+    "target_binding": "a target must be one of the registered targets above",
+    "casing": "operator names are case-insensitive and canonicalised to the declared lower case; that normalisation is part of this contract, not an accident"
+  },
+  "note": "One instruction registry: plan_graph renders the operator, phase and target fragments from this file, and validates against the same declarations."
+}
