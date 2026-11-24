@@ -57,6 +57,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M18 | Clone a repo: https only, contained in the workspace, behind the write grant | **guard** | `gitops.py` (`clone`, `validate_remote`, `validate_destination`), `chat_app.py` (`clone_repo`), `tests_host/test_clone.py::M18…` |
 | M19 | Reachable endpoint: `micronaut://v1/chat` over loopback, local answers only | **guard** | `micronaut_server.py`, `chat_app.py` (`/serve`, `--serve`), `start.bat serve`, `tests_host/test_server.py::M19…` |
 | M20 | Greeting-µ: `greeting.gml` declares greetings, destinations and the paths between them; multi-intent messages keep every clause | **guard** | `greeting.gml`, `greetings.py`, `chat_app.py` (`multi_intent_answer`), `tests_host/test_greetings.py::M20…` |
+| M21 | The loaded AIML corpus ports to one GML document, verified against the sources | **guard** | `aiml_to_gml.py`, `aiml-corpus.gml`, `tests_host/test_aiml_corpus.py::M21…` |
 
 ---
 
@@ -148,6 +149,33 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The corpus as one document (M21)
+
+```
+python aiml_to_gml.py --write     -> aiml-corpus.gml   (18 banks · 419 categories · 0.15 MB)
+python aiml_to_gml.py --check     -> ok · 578 edges · 99 redirects resolved / 3 unresolved
+python aiml_to_gml.py --write X --all   -> the whole tree: 84 banks · 99,941 categories · 21.9 MB, ~70s
+```
+
+One node per bank (with its sha256 and byte count), one node per `<category>` (phrase, wildcard count,
+template, kind, directive), one edge per containment, one edge per resolved `<srai>`, and an explicit
+`srai_missing` node for a redirect that has no target in the projection. Nothing is dropped: `--check`
+re-derives the inventory from the `.aiml` files and compares counts, digests, wildcard counts and the
+complete redirect accounting (`resolved + missing == every <srai> in the sources`).
+
+**Scope is stated, because "the corpus" is ambiguous.** The default is the 18 banks the host and the
+daemon actually load. `--all` adds the vendored ALICE foundation set - 99,941 categories in a 21.9 MB
+document that takes about 70 seconds, and whose check does **not** pass: `phone.aiml` reports a bank
+count mismatch (its categories are declared without templates, which the projection skips) and 11,479
+of 31,670 `<srai>` targets are absent from that set. That is the honest result, so the giant document
+is measured and not committed.
+
+What the document is and is not: it is a projection for inspection and verification - the redirect
+structure of the corpus in one place, checkable against the files. It is not executable, the kernel
+still loads the `.aiml` files, and the document carries a `no_grant_from_corpus` constraint saying so.
 
 ---
 
@@ -509,7 +537,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 105 tests, OK (M3-M20: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11)
+host guards    : 115 tests, OK (M3-M21: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 10)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
