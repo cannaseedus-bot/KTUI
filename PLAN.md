@@ -67,6 +67,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M28 | K'UHUL program layer: the declared grammar parses, validates, serializes and traces (no execution) | **guard** | `core/program.py`, `tests/test_program.py` (15 tests) |
 | M29 | `kuhul-phases/v1` manifests: one JSON file per phase, chained by schema URI, regulated by a loader that executes nothing | **guard** | `core/phase_manifest.py`, `phases/json/*.json`, `tests/test_phase_manifest.py` (16 tests) |
 | M30 | `phase.resolve_aiml`: one input, one typed six-phase plan - evidence, delegation, no execution | **guard** | `phase_resolve.py`, `tests_host/test_phase_resolve.py` (15 tests) |
+| M31 | The 58 declared phase operations classified: registered / requires-grant / proposal-only / unbound | **guard** | `kuhul-phase-engine-v0.1.0/phase_ops.py`, `tests/test_phase_ops.py` (10 tests) |
 
 ---
 
@@ -158,6 +159,45 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Phase operations audit (M31)
+
+The six phase banks declare **58 operations** in their headers (112 categories: 21/14/16/23/20/18).
+That is vocabulary and intent - so the audit answers the only question that matters for integration:
+for each operation, what actually exists?
+
+```
+python phase_ops.py            # (from kuhul-phase-engine-v0.1.0)
+phase operations · 6 bank(s) · 112 categor(ies) · 58 operation(s)
+  registered      34
+  requires_grant   7  execute_tool_chain, dispatch_call, compare_and_commit, gramWrite,
+                      persist_state, update_authorized_metric_parameters,
+                      invalidate_dependent_projections
+  proposal_only    8
+  unbound          9
+  (declaration_only · a match grants nothing)
+```
+
+- **registered (34)** name a real capability that is imported and checked callable -
+  `find_best_pattern_match -> aiml_graph.match`, `srai_xcfe_propose` resolves through
+  `srai_resolver`, `verify_*` through `aiml_host.validate`/`states`, `compose`/`aggregate` through
+  `compose.py`, `manifest_lookup` through `phase_manifest.load`.
+- **requires_grant (7)** is exactly the set the review singled out: Sek's `execute_tool_chain` and
+  `dispatch_call`, Xul's `compare_and_commit`, `gramWrite`, `persist_state`,
+  `update_authorized_metric_parameters`, `invalidate_dependent_projections`. They are gated, never
+  registered - and a guard enforces that: tamper the table and `violations()` names the operation.
+- **proposal_only (8)** is what the host can do without granting anything: propose a fold, rank
+  candidates, route - not emit an answer, since emitting is the host's.
+- **unbound (9)** says why: no encoder for `embedgemma_prompt_vectorize`, no sense inventory, no BFS
+  over the projection (`graph_bfs` - the projection exists, the traversal does not), no n-gram
+  confidence, no MathML reader.
+
+So the answer to "which are implemented, which are proposal-only, which have validated host bindings"
+is data, regenerable, and checked: a wrong binding fails the suite (`verify_eliza_candidate_provenance`
+pointed at a nonexistent `phase_resolve.verify` until the audit caught it), and a gated name can never
+be classified `registered`.
 
 ---
 
@@ -869,7 +909,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 194 tests, OK (M3-M30) · package suite 129 tests (14 vector-adapter, 16 program, 16 phase-manifest)
+host guards    : 194 tests, OK (M3-M31) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
