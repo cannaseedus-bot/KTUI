@@ -78,6 +78,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M39 | Decision closure under unknown probabilities: UNKNOWN is never 0.5, and an action collapses without a fact collapsing | **guard** | `decision.py`, `tests_host/test_decision.py` (15 tests) |
 | M40 | Micronaut registry: typed agents and typed edges, with structural / routing / authority reported separately | **guard** | `micronaut_registry.py`, `data/micronauts.json`, `data/micronaut-edges.json`, `tests_host/test_micronaut_registry.py` (16 tests) |
 | M41 | Shared corpus resolver: authorized retrieval, typed evidence, per-agent projection; retrieval ≠ learning ≠ training | **guard** | `corpus.py`, `data/corpus.json`, `tests_host/test_corpus.py` (15 tests) |
+| M42 | Model router: registered endpoints only, AIML answers first, a binding is not an invocation | **guard** | `model_router.py`, `data/models.json`, `tests_host/test_model_router.py` (17 tests) |
 
 ---
 
@@ -169,6 +170,40 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Model router (M42)
+
+The LLM becomes an interchangeable backend, and the corpus decides whether one is needed at all.
+
+```
+model router · 2 model(s) · 5 route(s) · declaration_only
+  advisor  complex_reasoning  http://127.0.0.1:9032/v1  ['chat', 'tools']
+  worker   fast_inference     http://127.0.0.1:9040/v1  ['chat']
+  micronaut://v1/aiml -> worker · eliza -> worker · memory -> worker
+  micronaut://v1/relations -> advisor · compose -> advisor
+  (declaration_only · a binding is not an invocation)
+```
+
+The probe ran against the live server in this checkout: **advisor healthy in 62 ms**, listing
+`gpt-oss-20b-MXFp4.gguf`; **worker unreachable** (nothing on 9040), reported with its latency rather
+than treated as absent.
+
+Two rules, each guarded:
+
+- **Only registered endpoints are probed.** An unregistered name is refused with `model_not_registered`
+  and *no URL is contacted* - a test asserts the result carries no `url` key. The manifest refuses a
+  non-loopback base URL and refuses `require_registered: false`, so "a port that answered" can never
+  become a model.
+- **AIML answers first.** `plan_invocation()` asks the phase chain: when the chain handles the turn the
+  result is `invoke_model: false, "no tokens spent"`; when the chain *refuses* it, a model cannot
+  override the refusal; only an unhandled turn proposes a backend.
+
+Selection is deterministic and reports why alternatives were rejected: the micronaut's declared model
+first, then the preference order (`fast` / `deep`), filtered by probe success and required features
+(`worker` declares only `chat`, so a `tools` request lands on `advisor`). An unrouted micronaut is refused
+with `micronaut_not_routed` rather than silently given a default backend.
 
 ---
 
@@ -1237,7 +1272,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 315 tests, OK (M3-M41) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 332 tests, OK (M3-M42) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

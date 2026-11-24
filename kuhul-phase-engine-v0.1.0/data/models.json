@@ -1,0 +1,36 @@
+{
+  "schema": "kuhul-model-router/v1",
+  "authority": "declaration_only",
+  "models": {
+    "advisor": {
+      "base_url": "http://127.0.0.1:9032/v1",
+      "role": "complex_reasoning",
+      "preference": "deep",
+      "features": ["chat", "tools"]
+    },
+    "worker": {
+      "base_url": "http://127.0.0.1:9040/v1",
+      "role": "fast_inference",
+      "preference": "fast",
+      "features": ["chat"]
+    }
+  },
+  "routing": {
+    "micronaut://v1/aiml": "worker",
+    "micronaut://v1/eliza": "worker",
+    "micronaut://v1/relations": "advisor",
+    "micronaut://v1/memory": "worker",
+    "micronaut://v1/compose": "advisor"
+  },
+  "preferences": {
+    "fast": ["worker", "advisor"],
+    "deep": ["advisor", "worker"],
+    "cheap": ["worker", "advisor"]
+  },
+  "policy": {
+    "probe": "/models",
+    "timeout_seconds": 2,
+    "require_registered": true,
+    "note": "only endpoints declared here are probed; a port that merely responds is not a model"
+  }
+}
