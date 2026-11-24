@@ -56,7 +56,9 @@ class M12UserMemory(unittest.TestCase):
         self.assertEqual(read.kind, "memquery")
         self.assertEqual(read.answer, "pet.name")
         write = engine.run("my dogs name is max")
-        self.assertEqual(write.kind, "deferred", "a refused write must not become a turn")
+        # A policy refusal is a local answer, not a handoff: the model is not asked to justify it.
+        self.assertEqual(write.kind, "refused")
+        self.assertIn("refused", str(dict(write.phases).get("Ch'en", "")))
         self.assertEqual(decisions[0][0], "memquery")
         self.assertEqual(decisions[1][0], "memory")
 

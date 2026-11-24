@@ -51,6 +51,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M12 | User memory: AIML proposes, host admits, JSONL records, GML projects | **guard** | `user_memory.py`, `memory.gml`, `memory.aiml`, `tests_host/test_memory.py::M12…` |
 | M13 | AIML bundle consumed as declarations: resolved proposals, zero authority | **guard** | `aiml_host.py`, `functions.py` (`aiml_bundle_validate`, `aiml_propose`), `tests_host/test_aiml_bundle_host.py::M13…` |
 | M14 | The daemon introduces itself (not ALICE), lists its models and its mark; the mark is downsized | **guard** | `identity.aiml`, `chat_app.py` (`identity_text`), `logo.png`, `tests_host/test_identity_logo.py::M14…` |
+| M15 | Routing honesty: refusals answer locally, every turn kind renders, model handoffs say why | **guard** | `daemon.py` (refused kind), `chat_app.py` (`routing_note`, headings), `tests_host/test_routing.py::M15…` |
 
 ---
 
@@ -142,6 +143,28 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Routing honesty (M15)
+
+Reported symptom: *"chat is going straight to model first."* The ordering was already slash → task bus
+→ fast path → AIML/daemon → model, so the cause was not order - it was two silent handoffs:
+
+1. **A policy refusal fell through to the model.** A memory write without the grant returned no local
+   answer, so the daemon's "deferred to the model" handed it on and the model improvised a reply
+   instead of saying `memory writes need /allow memory`. A refusal is an answer: the daemon now closes
+   the turn as `refused` with the reason, and the host renders it under *Local refusal (not
+   authorized)*.
+2. **The heading table had three keys.** `memory`, `memquery`, `refused` and `plan` turns would raise
+   `KeyError` in the renderer; it is now a `.get(kind, "Local")` map covering every kind.
+
+Handoffs that remain are real ones, and they now say so: before streaming, the chat mounts
+`No local answer → delegating to the model (<phase reason>)`. A genuine no-match still reaches the
+model - the goal is to know which turns are which, not to answer everything locally.
+
+The guards drive the app end to end (type, press enter, assert a Response appears) rather than only
+calling `local_answer`, because the crash lived in the renderer, not in the router.
 
 ---
 
@@ -308,7 +331,7 @@ gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 host guards    : 9 tests, OK  (python -m unittest discover -s tests_host)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 51 tests, OK (M3-M14: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6)
+host guards    : 54 tests, OK (M3-M15: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 3)
 evidence chain : artifact commit's parent == report `tested_commit` == 6b06884
 ```
 

@@ -1090,6 +1090,9 @@ class ChatApp(App):
             return turn.kind, self.execute_memory(turn.kind, turn.answer)
         if turn.kind == "identity":
             return "aiml", self.identity_text()
+        if turn.kind == "refused":
+            # A refusal is an answer: the user is told what to fix, not handed to the model.
+            return "refused", turn.answer
         return "aiml", turn.answer
 
     def _local_answer_direct(self, text: str) -> tuple[str, str] | None:
@@ -1752,16 +1755,34 @@ class ChatApp(App):
         local = self.local_answer(text)
         if local:
             kind, body = local
-            heading = {"tool": "Local tool (AIML → sandbox)", "aiml": "Local AIML", "error": "Local tool refused"}[kind]
+            headings = {
+                "tool": "Local tool (AIML → sandbox)",
+                "aiml": "Local AIML",
+                "error": "Local tool refused",
+                "refused": "Local refusal (not authorized)",
+                "memory": "Local memory (JSONL history)",
+                "memquery": "Local memory (GML projection)",
+                "plan": "Local plan (declarations only)",
+            }
+            heading = headings.get(kind, "Local")
             if kind == "tool":
                 v.mount(Response(f"**[{heading}]**\n\n```\n{body}\n```"))
             else:
                 v.mount(Response(f"**[{heading}]**\n\n{body}"))
             return
 
-        # 4. LLM with Tools
-        v.mount(ToolLog("Delegating to LLM with Sandbox Tools..."))
+        # 4. LLM with Tools - and say why the turn got here, so routing is visible rather than silent.
+        v.mount(ToolLog(self.routing_note()))
         self.stream_llm_response(text)
+
+    def routing_note(self) -> str:
+        """One line explaining why a turn is going to the model instead of being answered locally."""
+        turn = self.last_turn
+        if turn is None:
+            return "No local match → delegating to the model."
+        trace = dict(turn.phases)
+        why = trace.get("Ch'en") or trace.get("Yax") or "no local match"
+        return f"No local answer → delegating to the model ({why})."
 
     @work(exclusive=True)
     async def stream_llm_response(self, user_text: str) -> None:

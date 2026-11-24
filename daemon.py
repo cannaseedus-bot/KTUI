@@ -302,7 +302,9 @@ class Daemon:
             return turn
         if kind == "tool" and payload not in READ_VERBS:
             record("Ch'en", f"refused: {payload} may not be selected by similarity")
-            record("Xul", "deferred to the model")
+            # A refusal is an answer, not a handoff: the model must not be asked to justify policy.
+            turn.kind, turn.answer = "refused", f"`{payload}` may not be selected by similarity."
+            record("Xul", "refused locally")
             return turn
         if kind == "tool":
             admitted, why = self.admit(payload, argument)
@@ -316,7 +318,8 @@ class Daemon:
             admitted, why = True, "plain AIML answer"
         record("Ch'en", ("admitted: " if admitted else "refused: ") + why)
         if not admitted:
-            record("Xul", "deferred to the model")
+            turn.kind, turn.answer = "refused", why
+            record("Xul", "refused locally")
             return turn
 
         # Xul: closure. The kind is what the host renders; the text is what it renders.
