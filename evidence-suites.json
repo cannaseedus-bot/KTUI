@@ -1,0 +1,44 @@
+{
+  "schema": "kuhul://evidence/suites/v1",
+  "authority": "declaration_only",
+  "note": "Evidence is satisfied only when every required suite executed and passed against the same tested commit. A zero exit from one runner cannot stand in for another suite's result.",
+  "suites": {
+    "package": {
+      "required": true,
+      "cwd": "kuhul-phase-engine-v0.1.0",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests"
+      ],
+      "minimum_tests": 139
+    },
+    "harness": {
+      "required": true,
+      "cwd": "kuhul-phase-engine-v0.1.0",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "test_host_gate"
+      ],
+      "minimum_tests": 14
+    },
+    "host_guards": {
+      "required": true,
+      "cwd": ".",
+      "command": [
+        "python",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "tests_host"
+      ],
+      "minimum_tests": 639
+    }
+  }
+}
