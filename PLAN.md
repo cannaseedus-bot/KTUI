@@ -125,6 +125,38 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:ce-across-categories-and-full-run-cost -->
 <!-- milestone:a-versus-ce-across-the-frozen-corpus -->
 <!-- milestone:a-generated-key-is-not-a-reviewer -->
+<!-- milestone:keymaker-identities-not-authority -->
+## keymaker: identities, not authority
+
+A standalone utility, one signature format, no second attestation contract:
+
+| operation | algorithm | purpose |
+|---|---|---|
+| `generate` | Ed25519 | key pair; the private half is passphrase-encrypted and written atomically |
+| `sign` / `verify` | Ed25519 | over the canonical payload the frozen verifier already checks |
+| `fingerprint` | SHA-256 | of the raw public key - an identifier, not proof of authorship |
+| `digest` | SHA-256 | of an artifact |
+
+Every result reports `registered: false`, `independence: false`, `authority: "unregistered"`. **A generated key is
+an identity, not an authority** - registration and independence stay decisions of the registry and the onboarding
+policy. Key material under `evaluation/` is refused outright, so a private key cannot sit beside the cases it could
+be used to approve; that defect existed here once and this is the structural answer to it.
+
+The cross-check that matters: a keymaker-generated key signs an attestation that `review_attestations.verify`
+accepts, so the project has one signature format rather than two that must be kept in step. A wrong passphrase
+cannot open a key, an existing identity is never overwritten, altered bytes fail verification, and an invalid
+public key is refused rather than answered `False`.
+
+**Deliberately not built**, and this is a refusal rather than an omission: linking identities to an email address or
+a Google OAuth account, a login/register flow, and a bot that hands a user their API token on request. Identity
+linking needs an authentication service with its own threat model - the loopback app has no TLS, no session store
+and no credential rotation. An API token is a bearer secret: it is issued out of band, and a model that can echo it
+is a leak with extra steps.
+
+Status unchanged: **3 verified · 0 independent · 0 benchmark-eligible**.
+
+---
+
 ## A generated key is not a reviewer
 
 The registry carried a `reviewer://pending-human` entry with a public key **I generated**, described as
