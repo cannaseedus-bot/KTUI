@@ -103,6 +103,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M63 | The generation counts committed changes only (readiness-gated, failures distinct), with a slow reconciliation rebuild for external edits | **guard** | `model_lifecycle.ensure` bump placement, `chat_app.RECONCILE_EVERY`, `tests_host/test_runtime_signals.py` (13 tests) |
 | M64 | Grams-u: deterministic n-gram extraction with sliding/bound windowing, provenance digests, and relations left to GML | **guard** | `grams.py`, `tests_host/test_grams.py` (13 tests) |
 | M65 | The schema URI bus: typed handoffs gated by edge + capability, and version evolution only through registered adapters | **guard** | `schema_bus.py`, `data/schemas.json`, `tests_host/test_schema_bus.py` (21 tests) |
+| M66 | Re-score from stored replies, a declared completeness contract, and task families that pick the profile deterministically | **guard** | `rescore.py`, `evaluation/scoring-contract.json`, `evaluation/task-sessions.json`, `tests_host/test_protocol_rescore.py` (16 tests) |
 
 ---
 
@@ -194,6 +195,50 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Re-score, contract, and task families (M66)
+
+Three artifacts, three jobs, no overlap - and one refusal that matters more than the code.
+
+**The 27-cell artifacts cannot be re-scored.** `protocol-experiment.json` and its advisor companion kept
+`reply_head` (240 characters), not the reply, so phase and target scores cannot be recovered from them.
+`rescore.py` says so explicitly instead of parsing the head and pretending:
+
+```
+rescore · protocol-experiment.json · REFUSED: replies_unavailable
+  the artifact stored reply heads, not replies; phase and target scores cannot be recovered -
+  run the frozen protocol again and label it a new execution
+```
+
+Where the replies *were* kept (`context-experiment.json`, 12 replies), re-scoring works and produces a
+derived artifact carrying the source name, its sha256 and the scorer version - the original evidence untouched.
+
+**Completeness is a declaration now**, not five booleans scattered through the scorer:
+
+```
+Complete = parsed and graph_exact and phase_valid and targets_valid and refusal_valid
+```
+
+`complete_from_contract()` applies it with **no partial credit** and reports the failing requirement by name
+(`failed_requirements: ["phase_valid"]`), so "incomplete" always says why.
+
+**Task families pick the profile**, deterministically from the corpus category - never the model choosing its
+own after seeing the answer:
+
+| family | profile |
+|---|---|
+| `operator_pair`, `phase_selection`, `uri_binding`, `refusal`, `unknown_facts`, `srai_redirect`, `rest_route`, … | `B_contract` |
+| `full_composition`, `operator_containment` | `C_contract_examples` |
+| anything undeclared | `A_original` (the declared default) |
+
+That is the "don't promote C globally" decision written as a binding rather than a comment: C applies where
+it was measured to help, B everywhere else, and the fallback is the plain baseline.
+
+**In flight, not claimed:** the 27-cell re-execution with full replies and per-check cells is running as a
+labelled **new execution** (the old artifacts were unrescoreable). Its artifact is not part of this commit; if
+it completes it becomes the first protocol run that can be re-scored offline without new inference.
 
 ---
 
@@ -2138,7 +2183,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 563 tests, OK (M3-M65) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 579 tests, OK (M3-M66) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

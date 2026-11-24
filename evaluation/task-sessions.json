@@ -1,0 +1,19 @@
+{
+  "schema": "kuhul://evaluation/task-sessions/v1",
+  "authority": "declaration_only",
+  "note": "The task family comes from the frozen corpus category, not from a model choosing its own profile. A profile instructs; it never grants authority.",
+  "bindings": {
+    "operator_pair": "B_contract",
+    "phase_selection": "B_contract",
+    "phase_traversal": "B_contract",
+    "uri_binding": "B_contract",
+    "refusal": "B_contract",
+    "unknown_facts": "B_contract",
+    "srai_redirect": "B_contract",
+    "rest_route": "B_contract",
+    "runtime_introspection": "B_contract",
+    "full_composition": "C_contract_examples",
+    "operator_containment": "C_contract_examples"
+  },
+  "default": "A_original"
+}

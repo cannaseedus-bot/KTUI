@@ -68,6 +68,37 @@ def load(path: Path | None = None) -> dict:
                 contract_uri=record.get("contract_uri"), note=record.get("note"))
 
 
+TASK_SESSIONS = PACKAGE / "evaluation" / "task-sessions.json"
+
+
+def task_sessions(path: Path | None = None) -> dict:
+    """The task-family to profile binding, declared - not chosen by the model after seeing the task."""
+    candidate = Path(path or (HOST_ROOT / "evaluation" / "task-sessions.json"))
+    try:
+        record = json.loads(candidate.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return dict(ok=False, problems=[dict(code="unreadable", detail=str(error))], bindings={})
+    problems = []
+    if record.get("schema") != "kuhul://evaluation/task-sessions/v1":
+        problems.append(dict(code="schema", detail="expected kuhul://evaluation/task-sessions/v1"))
+    for family, profile in (record.get("bindings") or {}).items():
+        if profile not in ("A_original", "B_contract", "C_contract_examples"):
+            problems.append(dict(code="profile", detail=f"{family}: {profile!r} is not a profile"))
+    return dict(ok=not problems, problems=problems, bindings=record.get("bindings") or {},
+                default=record.get("default") or "A_original")
+
+
+def session_for(case: dict, *, bindings: dict | None = None) -> dict:
+    """Which profile a case's family gets. Deterministic: the family comes from the corpus category."""
+    bindings = bindings or task_sessions()
+    family = str(case.get("category") or "")
+    profile = (bindings.get("bindings") or {}).get(family, bindings.get("default") or "A_original")
+    return dict(case=case.get("id"), family=family, profile=profile,
+                reason=("declared binding for the family" if family in (bindings.get("bindings") or {})
+                        else "declared default"),
+                authority="declaration_only")
+
+
 def profile_digest(profile: dict) -> str:
     """A digest of the whole template, so a verdict can be reproduced from the profile alone."""
     import hashlib

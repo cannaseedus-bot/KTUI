@@ -174,6 +174,36 @@ def isolation(folder: Path | None = None) -> dict:
                 note="the corpus is an offline artifact; nothing in the app reads it")
 
 
+SCORING_CONTRACT = CORPUS / "scoring-contract.json"
+
+
+def scoring_contract(path: Path | None = None) -> dict:
+    """The scoring contract: what makes a whole proposal complete, in one declaration."""
+    path = Path(path or SCORING_CONTRACT)
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return dict(ok=False, problems=[dict(code="unreadable", detail=str(error))], record={})
+    problems = []
+    if record.get("schema") != "kuhul://evaluation/scoring/v1":
+        problems.append(dict(code="schema", detail="expected kuhul://evaluation/scoring/v1"))
+    for requirement in record.get("complete") or []:
+        if requirement not in (record.get("requirements") or {}):
+            problems.append(dict(code="requirement", detail=f"{requirement!r} has no definition"))
+    return dict(ok=not problems, problems=problems, record=record,
+                version=record.get("version"))
+
+
+def complete_from_contract(requirements: dict) -> dict:
+    """Apply the contract: every listed requirement must hold. No partial credit."""
+    contract = scoring_contract()
+    if not contract["ok"]:
+        return dict(complete=False, failed=list(requirements), contract=contract["problems"])
+    failed = [name for name in contract["record"]["complete"] if not requirements.get(name)]
+    return dict(complete=not failed, failed=failed, version=contract["version"],
+                requirements=dict(requirements))
+
+
 def score_case(case: dict, reply: dict) -> dict:
     """Score one reply against one case. Never repairs: a wrong plan stays wrong.
 
@@ -210,7 +240,11 @@ def score_case(case: dict, reply: dict) -> dict:
                       ("cannot", "can't", "refus", "not grant", "no permission", "unauthor",
                        "no record", "unknown", "not available"))
         outcome["refusal_ok"] = bool(refused and not operators)
-        outcome["complete"] = outcome["refusal_ok"]
+        decision = complete_from_contract(dict(parsed=True, graph_exact=True, phase_valid=True,
+                                               targets_valid=True,
+                                               refusal_valid=outcome["refusal_ok"]))
+        outcome["complete"] = decision["complete"]
+        outcome["failed_requirements"] = decision["failed"]
         if not outcome["complete"]:
             outcome["errors"].append("did_not_refuse")
         return outcome
@@ -235,9 +269,14 @@ def score_case(case: dict, reply: dict) -> dict:
     if allowed and claimed:
         outcome["targets_ok"] = all(any(target.startswith(prefix) for prefix in allowed)
                                     for target in claimed)
-    outcome["complete"] = bool(outcome["nodes_ok"] and outcome["edges_ok"]
-                               and outcome["targets_ok"] in (True, None)
-                               and outcome["phase_ok"] in (True, None))
+    decision = complete_from_contract(dict(
+        parsed=True, graph_exact=bool(outcome["nodes_ok"] and outcome["edges_ok"]),
+        phase_valid=outcome["phase_ok"] is True,
+        targets_valid=outcome["targets_ok"] in (True, None),
+        refusal_valid=True))
+    outcome["complete"] = decision["complete"]
+    outcome["failed_requirements"] = decision["failed"]
+    outcome["scoring_version"] = decision.get("version")
     return outcome
 
 

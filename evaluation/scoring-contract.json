@@ -1,0 +1,25 @@
+{
+  "schema": "kuhul://evaluation/scoring/v1",
+  "authority": "evaluation_only",
+  "version": "1",
+  "complete": [
+    "parsed",
+    "graph_exact",
+    "phase_valid",
+    "targets_valid",
+    "refusal_valid"
+  ],
+  "requirements": {
+    "parsed": "a proposal was parsed from the reply",
+    "graph_exact": "the operator graph equals the expected graph (nodes and edges)",
+    "phase_valid": "the phase equals the case's expected phase",
+    "targets_valid": "every claimed target is one the case allows; an omitted target is unmeasured",
+    "refusal_valid": "a refusal case was refused rather than answered with a plan"
+  },
+  "partial_credit": "none: a requirement that fails makes the proposal incomplete",
+  "notes": [
+    "an omitted target counts as unmeasured, not wrong, and is reported separately",
+    "parsed false means graph, phase and target correctness cannot be established from that reply",
+    "verdict extra_operators or wrong_order is a graph failure; phase and target are not inferred from it"
+  ]
+}
