@@ -40,15 +40,29 @@ def reply_digest(text: str) -> str:
 
 
 def replies_of(artifact: dict) -> dict:
-    """Every stored reply, keyed by (model, condition, run) - full text only, never a head."""
-    found = {}
-    for model, conditions in (artifact.get("results") or {}).items():
-        for condition, block in (conditions or {}).items():
-            for cell in (block or {}).get("cells") or []:
-                key = (model, condition, int(cell.get("run", 0)))
-                text = cell.get("reply_text")
-                found[key] = dict(text=text, head=cell.get("reply_head"),
-                                  truncated=text is None or (text is not None and len(text) == 4000))
+    """Every stored reply, found by walking the artifact - the nesting depth differs between experiments."""
+    found: dict = {}
+
+    def walk(node, path):
+        if isinstance(node, dict):
+            cells = node.get("cells")
+            if isinstance(cells, list):
+                for cell in cells:
+                    if isinstance(cell, dict):
+                        key = tuple(path + [f"run{int(cell.get('run', 0))}"])
+                        text = cell.get("reply_text")
+                        found[key] = dict(text=text, head=cell.get("reply_head"),
+                                          truncated=text is None,
+                                          case_id=(path[-1] if path else None))
+            for key_name, child in node.items():
+                if key_name == "cells":
+                    continue
+                walk(child, path + [str(key_name)])
+        elif isinstance(node, list):
+            for index, child in enumerate(node):
+                walk(child, path + [str(index)])
+
+    walk(artifact.get("results") or {}, [])
     return found
 
 
@@ -78,24 +92,39 @@ def rescore(artifact_path: Path, corpus: dict, *, write: bool = False) -> dict:
                     detail=("the artifact stored reply heads, not replies; phase and target scores cannot be "
                             "recovered - run the frozen protocol again and label it a new execution"),
                     scores=[])
-    case = corpus["by_id"].get(artifact.get("case"))
-    if case is None:
+    single_case = corpus["by_id"].get(artifact.get("case")) if artifact.get("case") else None
+    if artifact.get("case") and single_case is None:
         return dict(base, ok=False, refused="case_not_in_corpus", detail=str(artifact.get("case")))
     scores, skipped = [], []
-    for (model, condition, run), entry in sorted(replies_of(artifact).items()):
+    cases_seen = set()
+    for key, entry in sorted(replies_of(artifact).items()):
+        parts = list(key)
+        run = parts[-1] if parts else "run0"
+        condition = "/".join(parts[:-1]) or "unknown"
+        model = parts[0] if parts else "unknown"
         if not entry["text"]:
             skipped.append(dict(model=model, condition=condition, run=run,
                                 reason="no reply was stored (the call failed or was cancelled)"))
             continue
         reply = dict(text=entry["text"], model=model, latency_ms=None, completion_tokens=None)
+        case = single_case or corpus["by_id"].get(entry.get("case_id") or _case_id_of(entry["text"], corpus))
+        if case is None:
+            skipped.append(dict(model=model, condition=condition, run=run,
+                                reason="the reply could not be matched to a corpus case"))
+            continue
+        cases_seen.add(case["id"])
         score = evaluation_harness.score_case(case, reply)
-        scores.append(dict(model=model, condition=condition, run=run,
+        scores.append(dict(model=model, condition=condition, run=run, case=case["id"],
                            reply_digest=reply_digest(entry["text"]),
                            parsed=score["parsed"], verdict=score["verdict"],
                            complete=score["complete"], nodes_ok=score["nodes_ok"],
                            edges_ok=score["edges_ok"], phase_ok=score.get("phase_ok"),
-                           targets_ok=score.get("targets_ok"), errors=score["errors"]))
-    derived = dict(base, ok=True, refused=None, case=artifact.get("case"), scores=scores,
+                           targets_ok=score.get("targets_ok"),
+                           target_state=score.get("target_state"),
+                           bound_complete=score.get("bound_complete"),
+                           target_source=score.get("target_source"),
+                           errors=score["errors"]))
+    derived = dict(base, ok=True, refused=None, case=artifact.get("case") or sorted(cases_seen), scores=scores,
                    skipped=skipped, scored=len(scores), summary=_summary(scores))
     if write:
         out = DATA / f"{artifact_path.stem}.rescored.json"
@@ -104,18 +133,30 @@ def rescore(artifact_path: Path, corpus: dict, *, write: bool = False) -> dict:
     return derived
 
 
+def _case_id_of(text: str, corpus: dict) -> str | None:
+    """Which corpus case a stored reply belongs to, matched by the case input it answered."""
+    for case in corpus.get("cases") or []:
+        if str(case.get("input") or "") and str(case["input"]) in str(text or ""):
+            return case["id"]
+    return None
+
+
 def _summary(scores: list[dict]) -> dict:
     groups: dict[str, dict] = {}
     for score in scores:
-        key = f"{score['model']}/{score['condition']}"
+        key = "/".join(score["condition"].split("/")[:2]) or score["model"]
         block = groups.setdefault(key, dict(replies=0, parsed=0, complete=0, graph=0,
-                                            phase_ok=0, targets_ok=0, verdicts={}))
+                                            phase_ok=0, targets_ok=0, bound_complete=0,
+                                            target_states={}, verdicts={}))
         block["replies"] += 1
         block["parsed"] += int(bool(score["parsed"]))
         block["complete"] += int(bool(score["complete"]))
         block["graph"] += int(score.get("verdict") == "exact")
         block["phase_ok"] += int(score.get("phase_ok") is True)
         block["targets_ok"] += int(score.get("targets_ok") is True)
+        block["bound_complete"] += int(bool(score.get("bound_complete")))
+        state = str(score.get("target_state") or "unscored")
+        block["target_states"][state] = block["target_states"].get(state, 0) + 1
         verdict = str(score.get("verdict") or "unparsed")
         block["verdicts"][verdict] = block["verdicts"].get(verdict, 0) + 1
     return groups
@@ -128,6 +169,7 @@ def summary(report: dict) -> str:
     lines = [f"rescore · {report['source']} ({report['availability']['full']} replies) · "
              f"scorer {report['scorer']}"]
     for key, block in report["summary"].items():
-        lines.append(f"  {key:34} complete {block['complete']} graph {block['graph']} "
-                     f"phase {block['phase_ok']} targets {block['targets_ok']} · {block['verdicts']}")
+        lines.append(f"  {key:34} v1 {block['complete']} · v2 bound {block['bound_complete']} · "
+                     f"graph {block['graph']} phase {block['phase_ok']} targets {block['targets_ok']} "
+                     f"· {block['target_states']}")
     return "\n".join(lines)

@@ -105,6 +105,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M65 | The schema URI bus: typed handoffs gated by edge + capability, and version evolution only through registered adapters | **guard** | `schema_bus.py`, `data/schemas.json`, `tests_host/test_schema_bus.py` (21 tests) |
 | M66 | Re-score from stored replies, a declared completeness contract, and task families that pick the profile deterministically | **guard** | `rescore.py`, `evaluation/scoring-contract.json`, `evaluation/task-sessions.json`, `tests_host/test_protocol_rescore.py` (16 tests) |
 | M67 | Condition E: Wo resolves the allowed target before inference - targets fixed 1/2 -> 2/2 for the planner with the graph untouched | **guard** | `data/targets.json`, `binding_resolver.py`, `data/binding-experiment.json`, `tests_host/test_binding_resolver.py` (13 tests) |
+| M68 | Scoring v2 (correct / incorrect / missing) and the re-score of 36 saved replies - which demotes Qwen C from 6/6 to 0/6 bound | **guard** | `evaluation/scoring-contract-v2.json`, `evaluation_harness.scoring_v2`, `rescore.py`, `data/session-experiment-36.rescored.json`, `tests_host/test_protocol_rescore.py` (24 tests) |
 
 ---
 
@@ -196,6 +197,47 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Scoring v2 demotes the result I reported (M68)
+
+v1 treated an omitted target as **unmeasured**, so a plan could be "complete" without binding anything. v2 keeps
+v1 intact and adds the distinction the review asked for - `correct` / `incorrect` / `missing` - with
+`BoundComplete = graph_exact ∧ phase_valid ∧ target_correct ∧ refusal_valid`.
+
+**Re-scored offline from the 36 saved replies, no new inference:**
+
+| model | profile | v1 complete | **v2 bound complete** | target states |
+|---|---|---|---|---|
+| planner | A original | 3/6 | **3/6** | correct 3 · incorrect 3 |
+| planner | B contract | 0/6 | 0/6 | incorrect 3 · unbound 3 |
+| planner | **C examples** | **6/6** | **0/6** | **missing 6** |
+| worker | A original | 3/6 | **3/6** | correct 3 · incorrect 3 |
+| worker | B contract | 0/6 | 0/6 | incorrect 6 |
+| worker | C examples | 0/6 | 0/6 | missing 6 |
+
+**Qwen's celebrated 6/6 under profile C is 0/6 once a target has to be named.** All six replies produced the
+exact graph and the right phase and **omitted the target entirely** - which v1 scored as neutral. So my earlier
+sentence "C's advantage survives repetition" was true of *graph and phase* and false of *a bound plan*. The
+correction is mine, not the model's: the metric was too permissive, and the re-score was cheap enough to expose
+it without another call.
+
+**A's passes are genuine**: 3/6 survive v2 with `correct` targets, and the other three are `incorrect` - the
+registered-but-unauthorized failure from M58, now visible per reply.
+
+Everything is preserved: v1 stays as the historical definition, v2 is a new declared contract, and
+`data/session-experiment-36.rescored.json` references the original artifact by name and sha256.
+
+### Routing frozen as directed
+
+| role | model | profile |
+|---|---|---|
+| planner | qwen3-1.7b | C for structured composition - and now known to need the binding supplied |
+| worker | gemma-3-1b | A original |
+| advisor | gpt-oss-20b | explicit escalation only; no automatic promotion |
+
+That is the pairing M67 measured: the model contributes the transformation, and Wo supplies the binding.
 
 ---
 

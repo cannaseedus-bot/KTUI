@@ -1,0 +1,30 @@
+{
+  "schema": "kuhul://evaluation/scoring/v2",
+  "authority": "evaluation_only",
+  "version": "2",
+  "supersedes": "kuhul://evaluation/scoring/v1",
+  "checks": [
+    "graph_exact",
+    "phase_valid",
+    "target_present",
+    "target_allowed",
+    "refusal_valid"
+  ],
+  "target_states": {
+    "correct": "an explicit target matches the case's authorized binding",
+    "incorrect": "an explicit target violates the authorized binding",
+    "missing": "no target was emitted"
+  },
+  "bound_complete": [
+    "graph_exact",
+    "phase_valid",
+    "target_correct",
+    "refusal_valid"
+  ],
+  "rules": {
+    "target_required": "a case that declares targets requires one: `missing` fails target_present and therefore bound_complete",
+    "unbound_cases": "a refusal or unknown-facts case binds no target, so target checks are skipped",
+    "v1_unchanged": "v1 treated an omitted target as unmeasured and could still report complete; that definition stays for historical comparisons",
+    "no_credit_for_host_bindings": "a target the host resolved is not a model prediction: evidence records target_source as wo_resolved, model_proposed or missing"
+  }
+}

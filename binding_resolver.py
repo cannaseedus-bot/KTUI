@@ -112,7 +112,13 @@ def evidence(binding_record: dict, proposal: dict, verdict: dict) -> dict:
                 raw_target=proposal.get("target"), resolved_target=verdict.get("resolved_target"),
                 conflict=bool(verdict.get("conflict")), accepted=bool(verdict.get("ok")
                                                                       and not verdict.get("skipped")),
-                reason=verdict.get("reason"), admitted=False, authority="declaration_only")
+                reason=verdict.get("reason"), admitted=False, authority="declaration_only",
+                target_source=("missing" if proposal.get("target") is None else
+                               "wo_resolved" if (binding_record.get("resolved_target")
+                                                 and proposal.get("target")
+                                                 == binding_record["resolved_target"]
+                                                 and binding_record.get("mode") == "deterministic"
+                                                 and False) else "model_proposed"))
 
 
 def summary(registry: dict) -> str:

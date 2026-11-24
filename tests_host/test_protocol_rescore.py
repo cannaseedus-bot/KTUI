@@ -175,5 +175,74 @@ class PartialArtifactTests(unittest.TestCase):
         self.assertEqual(report["refused"], "replies_unavailable")
 
 
+class ScoringV2Tests(unittest.TestCase):
+    """v2 keeps v1 intact and separates the three target states."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.corpus = evaluation_harness.load()
+        cls.case = cls.corpus["by_id"]["chain-01"]
+
+    def score(self, target=None):
+        payload = {"phase": "Sek", "operators": ["filter", "map", "fold", "reduce"],
+                   "authority": "proposal"}
+        if target:
+            payload["target"] = target
+        return evaluation_harness.score_case(self.case, reply(json.dumps(payload)))
+
+    def test_the_v2_contract_exists_and_v1_is_unchanged(self):
+        v2 = evaluation_harness.scoring_v2()
+        self.assertTrue(v2["ok"], v2["problems"])
+        self.assertEqual(v2["record"]["schema"], "kuhul://evaluation/scoring/v2")
+        self.assertEqual(evaluation_harness.scoring_contract()["record"]["schema"],
+                         "kuhul://evaluation/scoring/v1")
+
+    def test_a_correct_target_is_bound_complete(self):
+        score = self.score("graph.matches")
+        self.assertTrue(score["complete"])
+        self.assertTrue(score["bound_complete"])
+        self.assertEqual(score["target_state"], "correct")
+
+    def test_a_missing_target_is_complete_under_v1_but_not_bound_complete(self):
+        score = self.score()
+        self.assertTrue(score["complete"], "v1 treats an omitted target as unmeasured")
+        self.assertFalse(score["bound_complete"], "v2 requires the binding")
+        self.assertEqual(score["target_state"], "missing")
+
+    def test_an_incorrect_target_fails_both(self):
+        score = self.score("gml://relations")
+        self.assertFalse(score["complete"])
+        self.assertFalse(score["bound_complete"])
+        self.assertEqual(score["target_state"], "incorrect")
+
+    def test_an_unbound_case_skips_the_target_check(self):
+        refusal = self.corpus["by_id"]["authority-01"]
+        score = evaluation_harness.score_case(
+            refusal, reply("I cannot do that: the capability is not granted."))
+        self.assertEqual(score["target_state"], "unbound")
+        self.assertTrue(score["complete"], "a refusal case needs no target")
+
+
+class MultiCaseRescoreTests(unittest.TestCase):
+    def test_a_multi_case_artifact_rescores_every_cell(self):
+        import tempfile
+
+        corpus = evaluation_harness.load()
+        record = dict(results={"m": {"A": {"pair-01": {"cells": [
+            dict(run=0, reply_text=json.dumps({"phase": "Sek", "operators": ["filter", "map"],
+                                               "authority": "proposal"}))]},
+            "chain-01": {"cells": [
+                dict(run=0, reply_text=json.dumps({"phase": "Sek",
+                                                   "operators": ["filter", "map", "fold", "reduce"],
+                                                   "authority": "proposal"}))]}}}})
+        path = Path(tempfile.mkdtemp()) / "multi.json"
+        path.write_text(json.dumps(record), encoding="utf-8")
+        report = rescore.rescore(path, corpus)
+        self.assertTrue(report["ok"], report.get("refused"))
+        self.assertEqual(report["scored"], 2)
+        self.assertEqual(sorted(score["case"] for score in report["scores"]),
+                         ["chain-01", "pair-01"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -175,6 +175,7 @@ def isolation(folder: Path | None = None) -> dict:
 
 
 SCORING_CONTRACT = CORPUS / "scoring-contract.json"
+SCORING_CONTRACT_V2 = CORPUS / "scoring-contract-v2.json"
 
 
 def scoring_contract(path: Path | None = None) -> dict:
@@ -192,6 +193,37 @@ def scoring_contract(path: Path | None = None) -> dict:
             problems.append(dict(code="requirement", detail=f"{requirement!r} has no definition"))
     return dict(ok=not problems, problems=problems, record=record,
                 version=record.get("version"))
+
+
+def scoring_v2(path: Path | None = None) -> dict:
+    """The v2 contract: a missing target is not a neutral outcome when the case requires one."""
+    path = Path(path or SCORING_CONTRACT_V2)
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        return dict(ok=False, problems=[dict(code="unreadable", detail=str(error))], record={})
+    problems = []
+    if record.get("schema") != "kuhul://evaluation/scoring/v2":
+        problems.append(dict(code="schema", detail="expected kuhul://evaluation/scoring/v2"))
+    for name in record.get("bound_complete") or []:
+        if name not in ("graph_exact", "phase_valid", "target_correct", "refusal_valid"):
+            problems.append(dict(code="bound_complete", detail=f"unknown term {name!r}"))
+    return dict(ok=not problems, problems=problems, record=record, version=record.get("version"))
+
+
+def target_state(case: dict, reply_or_proposal: dict) -> str:
+    """`correct`, `incorrect` or `missing` - the distinction v1 collapsed into a None."""
+    allowed = list((case.get("expect") or {}).get("targets") or [])
+    if not allowed:
+        return "unbound"
+    claimed = [str(item.get("target") or "") for item in (reply_or_proposal.get("proposals") or [])
+               if isinstance(item, dict) and item.get("target")]
+    if not claimed and reply_or_proposal.get("target"):
+        claimed = [str(reply_or_proposal["target"])]
+    if not claimed:
+        return "missing"
+    return "correct" if all(any(str(target).startswith(prefix) for prefix in allowed)
+                            for target in claimed) else "incorrect"
 
 
 def complete_from_contract(requirements: dict) -> dict:
@@ -245,6 +277,11 @@ def score_case(case: dict, reply: dict) -> dict:
                                                refusal_valid=outcome["refusal_ok"]))
         outcome["complete"] = decision["complete"]
         outcome["failed_requirements"] = decision["failed"]
+        # An unbound case has no target to check: it is skipped, not missing, in both versions.
+        outcome["target_state"] = "unbound"
+        outcome["target_source"] = "unbound"
+        outcome["bound_complete"] = bool(outcome["refusal_ok"])
+        outcome["scoring_v2"] = (scoring_v2() or {}).get("version")
         if not outcome["complete"]:
             outcome["errors"].append("did_not_refuse")
         return outcome
@@ -277,6 +314,20 @@ def score_case(case: dict, reply: dict) -> dict:
     outcome["complete"] = decision["complete"]
     outcome["failed_requirements"] = decision["failed"]
     outcome["scoring_version"] = decision.get("version")
+    # v2: the same reply, judged with a missing target treated as missing rather than neutral.
+    state = target_state(case, sequence)
+    outcome["target_state"] = state
+    contract_v2 = scoring_v2()
+    if contract_v2["ok"]:
+        bound = [bool(outcome["nodes_ok"] and outcome["edges_ok"]),
+                 outcome["phase_ok"] is True,
+                 state in ("correct", "unbound"),
+                 True]
+        outcome["bound_complete"] = all(bound)
+        outcome["scoring_v2"] = contract_v2["version"]
+        outcome["target_source"] = ("missing" if state == "missing"
+                                    else "model_proposed" if state == "correct" else
+                                    "unbound" if state == "unbound" else "model_proposed")
     return outcome
 
 
