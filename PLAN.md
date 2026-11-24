@@ -69,6 +69,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M30 | `phase.resolve_aiml`: one input, one typed six-phase plan - evidence, delegation, no execution | **guard** | `phase_resolve.py`, `tests_host/test_phase_resolve.py` (15 tests) |
 | M31 | The 58 declared phase operations classified: registered / requires-grant / proposal-only / unbound | **guard** | `kuhul-phase-engine-v0.1.0/phase_ops.py`, `tests/test_phase_ops.py` (10 tests) |
 | M32 | The bridge: walk the manifests with a carried context, dedupe a duplicated binding, visit every phase | **guard** | `phase_chain.py`, `tests_host/test_phase_chain.py` (13 tests) |
+| M33 | The five operators with rank discipline, and URI resolution that navigates without granting | **guard** | `operators.py`, `tests_host/test_operators.py` (14 tests) |
 
 ---
 
@@ -160,6 +161,43 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Operators and URI chains (M33)
+
+The phases say *when and under what authority*; the operators say *what happens to the data*. Both are
+implemented, and both refuse to decide authority.
+
+**Operators, with the rank discipline the architecture turns on:**
+
+| operator | rank | guarantee |
+|---|---|---|
+| FILTER | preserved | same shape, fewer items; pure (the input list is untouched) |
+| MAP | preserved | one in, one out *by construction* - a transform cannot change the collection size |
+| FOLD | preserved | the accumulator's rank survives; ACCUMULATE is its state update |
+| REDUCE | collapsed | collapses along a declared axis (`max` / `min` / `sum`), and says so in provenance |
+
+```
+pipeline(4 candidates) -> FILTER 4->1 -> MAP 1->1 -> FOLD 1->1 -> REDUCE 1->1
+  selected: {axis: score, selected: {ref: aiml://vector/1, score: 1.0}, rank: 0}
+  authority: declaration_only · execution: false
+```
+
+Each stage's provenance records `count_before`, `count_after` and `rank`, so a claim about a fold
+preserving rank (or a reduce changing it) is checkable rather than asserted.
+
+**URI resolution navigates; it does not grant.** Five schemes resolve to typed data -
+`kuhul://phases/pop` reads the manifest, `aiml://category/what-is#1` names a node,
+`gml://enterprise/relations` a graph, `micronaut://v1/chat` the daemon endpoint,
+`srai://route/what-is` a route. Every envelope carries `authority: declaration_only` and
+`execution: false`, and the resolver refuses unregistered schemes (`http://`, `file://`), a missing
+manifest with a reason rather than a traceback, cycles, and depth or budget overruns. A walk stops at the
+first refusal and reports both sides.
+
+One dead check removed while writing the guards: `apply_map` compared lengths *after* a list
+comprehension, which can never differ - the invariant is structural, so the test now asserts the
+property instead of expecting an error that could not happen.
 
 ---
 
@@ -951,7 +989,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 207 tests, OK (M3-M32) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 221 tests, OK (M3-M33) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
