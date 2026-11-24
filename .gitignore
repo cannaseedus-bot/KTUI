@@ -29,3 +29,5 @@ aiml-en-us-foundation-alice/.hg/
 
 # Independent backups: a backup that lives inside the history it protects is not a backup
 backups/
+# local user profiles are configuration, not source
+profiles/

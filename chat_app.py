@@ -113,6 +113,10 @@ try:  # observed phase events: what the host did, never what a model claimed
     import phase_events
 except ImportError:  # pragma: no cover
     phase_events = None
+try:  # local profile: configuration the bot may read, never a grant
+    import profile as user_profile
+except ImportError:  # pragma: no cover
+    user_profile = None
 import math
 import tempfile
 import shlex
@@ -1470,6 +1474,24 @@ class ChatApp(App):
         self.set_interval(2.0, self.poll_runtime)
         self.set_interval(30.0, self.sweep_idle)
 
+    def action_profile(self) -> None:
+        """Show the local profile for this user, and say plainly that it grants nothing."""
+        if user_profile is None:
+            self.say_system("The profile store (profile.py) is unavailable.")
+            return
+        loaded = user_profile.load(self.user_id)
+        self.say_system(user_profile.summary(loaded))
+        view = user_profile.read_for_answer(self.user_id)
+        if view["shareable"]:
+            self.say_system("shareable: " + json.dumps(view["shareable"], sort_keys=True))
+        if view["bindings"]:
+            self.say_system("bindings: " + json.dumps(view["bindings"], sort_keys=True))
+        if not loaded["ok"]:
+            for problem in loaded["problems"]:
+                self.say_system(f"refused · {problem['code']}: {problem['detail']}")
+        self.say_system("A profile is configuration: it can steer what I say, never what I am allowed to do. "
+                        "Tokens and capabilities do not belong in it, and are refused.")
+
     def action_runtime(self) -> None:
         """The runtime projection: what the registries actually say about the running system."""
         if runtime_tree is None:
@@ -1744,6 +1766,7 @@ class ChatApp(App):
         commands["links"] = ("Links: reference searches for a topic", self.action_links, "Wikipedia, Britannica, NASA, Space.com - searches, not pages I read")
         commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
         commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
+        commands["profile"] = ("Profile: what the bot may know about you", self.action_profile, "Configuration only; no capabilities, no secrets")
         commands["runtime"] = ("Runtime: the green-screen projection", self.action_runtime, "Read-only tree of phases, micronauts, models and evidence")
         commands["evidence"] = ("Evidence: the recorded turns and the chain state", self.action_evidence, "Request id, latency, execution vs admission; hash-chained")
         commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
