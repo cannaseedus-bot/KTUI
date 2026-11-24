@@ -131,6 +131,44 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:correctness-controlled-execution-and-evidence -->
 <!-- milestone:one-sha256-lock-and-a-measured-gate -->
 <!-- milestone:wo-classifies-a-live-turn -->
+<!-- milestone:model-turn-three-handlers -->
+## The model turn: three handlers, and a finished stream is not a verdict
+
+`model_turn` holds the contract and `chat_app` emits it around the real handlers:
+
+| phase | handler | contract |
+|---|---|---|
+| Sek | `model_turn.process` | the completed stream becomes a candidate; a transport failure is its own outcome |
+| Ch'en | `model_turn.validate` | `accepted` / `refused` / `empty` / `tool_call` / `transport_failed`, `verified` separate |
+| Xul | `model_turn.close` | `outcome`, `emitted` and `verified` as three independent facts |
+
+A real streamed refusal traces:
+
+```
+Sek    ok true, transport ok, 6 chunks, 48 chars
+Ch'en  verdict refused, ok false, verified true, turn_outcome refused
+Xul    ok false, emitted true, verified true, turn_outcome refused
+```
+
+**The refusal is displayed and the turn did not succeed** - those are different statements, and the trace now makes
+both. A transport failure reports `transport: failed` at Sek and `verdict: transport_failed` at Ch'en, so a network
+problem never reads as a model failure.
+
+Three defects found while wiring, all now pinned by guards:
+
+1. **two vocabularies collided.** The emitter validates `outcome` as ok/failed/cancelled, and I passed turn words
+   like `accepted`; the rejection was swallowed, so **Xul's exit vanished and the turn read `active` forever**. The
+   detail now carries `outcome` (phase lifecycle) and `turn_outcome` (turn result) separately, and a dropped
+   observation increments `observation_errors` instead of disappearing.
+2. **Sek entered after the stream loop**, so a mid-stream failure emitted an exit with no matching enter. Sek now
+   begins when the response begins.
+3. **a guard asserted a character count from memory** (`"Rex is your dog."` is 16, not 17). It measures the string.
+
+Guards cover: an accepted stream, a completed stream that refuses, a transport failure, cancellation (a failed turn
+still closes), no request id meaning no events, and concurrent turns keeping their own traces.
+
+---
+
 ## Wo classifies a live turn: six phases, in contract order
 
 A real host function with a typed contract and no model in the loop. `turn_classifier.classify` returns
