@@ -1,0 +1,48 @@
+{
+  "schema": "kuhul-condition-stability/1",
+  "model": "worker",
+  "condition": "A_baseline",
+  "case": "chain-01",
+  "runs": [
+    {
+      "run": 0,
+      "verdict": "exact",
+      "ops": [
+        "filter",
+        "map",
+        "fold",
+        "reduce"
+      ],
+      "tokens": 237,
+      "latency_ms": 18609
+    },
+    {
+      "run": 1,
+      "verdict": "exact",
+      "ops": [
+        "filter",
+        "map",
+        "fold",
+        "reduce"
+      ],
+      "tokens": 237,
+      "latency_ms": 15250
+    },
+    {
+      "run": 2,
+      "verdict": "exact",
+      "ops": [
+        "filter",
+        "map",
+        "fold",
+        "reduce"
+      ],
+      "tokens": 237,
+      "latency_ms": 13500
+    }
+  ],
+  "distinct_plans": 1,
+  "note": "three repeats of one cell; a single run cannot separate a condition effect from sampling",
+  "authority": "declaration_only",
+  "execution": false
+}

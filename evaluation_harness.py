@@ -115,6 +115,19 @@ def score_case(case: dict, reply: dict) -> dict:
     """
     expect = case["expect"] or {}
     sequence = plan_graph.parse_sequence(reply.get("text"))
+    if sequence is None:
+        # A six-field proposal list is the other legitimate shape; both are scored the same way.
+        import proposal_eval
+        proposals = proposal_eval._extract(reply.get("text"))
+        if proposals:
+            phase = next((item.get("phase") for item in proposals if isinstance(item, dict)), None)
+            operators = [item.get("operator") for item in proposals
+                         if isinstance(item, dict) and item.get("operator")]
+            if operators:
+                sequence = dict(phase=phase or "Sek", operators=operators,
+                                authority=next((item.get("authority") for item in proposals
+                                                if isinstance(item, dict)), None),
+                                proposals=proposals)
     outcome = dict(case=case["id"], category=case["category"], review=case["review_status"],
                    model=reply.get("model"), latency_ms=reply.get("latency_ms"),
                    finish_reason=reply.get("finish_reason"),

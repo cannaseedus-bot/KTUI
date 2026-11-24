@@ -1,0 +1,149 @@
+{
+  "schema": "kuhul-condition-experiment/1",
+  "case": "chain-01",
+  "models": [
+    "worker",
+    "planner",
+    "advisor"
+  ],
+  "started_at": "2026-11-24T06:48:50Z",
+  "conditions": {
+    "A_baseline": "the original ambiguous phrasing",
+    "B_semantic": "the contract in plain words, appended to the same instruction",
+    "C_structural": "the typed contract: containment, execution order and authority stated explicitly"
+  },
+  "results": {
+    "worker": {
+      "A_baseline": {
+        "parsed": true,
+        "verdict": "exact",
+        "complete": true,
+        "nodes_ok": true,
+        "edges_ok": true,
+        "proposed": [
+          "filter",
+          "map",
+          "fold",
+          "reduce"
+        ],
+        "tokens": 237,
+        "latency_ms": 19203,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null"
+      },
+      "B_semantic": {
+        "parsed": true,
+        "verdict": "missing_operators",
+        "complete": false,
+        "nodes_ok": false,
+        "edges_ok": false,
+        "proposed": [
+          "filter",
+          "fold",
+          "reduce"
+        ],
+        "tokens": 180,
+        "latency_ms": 10547,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": nul"
+      },
+      "C_structural": {
+        "parsed": true,
+        "verdict": "exact",
+        "complete": true,
+        "nodes_ok": true,
+        "edges_ok": true,
+        "proposed": [
+          "filter",
+          "map",
+          "fold",
+          "reduce"
+        ],
+        "tokens": 299,
+        "latency_ms": 17125,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"FILTER\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null,\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"MAP\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": null"
+      }
+    },
+    "planner": {
+      "A_baseline": {
+        "parsed": true,
+        "verdict": "exact",
+        "complete": false,
+        "nodes_ok": true,
+        "edges_ok": true,
+        "proposed": [
+          "filter",
+          "map",
+          "fold",
+          "reduce"
+        ],
+        "tokens": 201,
+        "latency_ms": 27875,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"map\",\n    \"target\": \"proposition\",\n    \"binding\": \"transform\",\n    \"next\": \"Ch'en\",\n    \"autho"
+      },
+      "B_semantic": {
+        "parsed": true,
+        "verdict": "missing_operators",
+        "complete": false,
+        "nodes_ok": false,
+        "edges_ok": false,
+        "proposed": [
+          "fold",
+          "reduce"
+        ],
+        "tokens": 154,
+        "latency_ms": 13500,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"accumulate\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"state\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Wo\",\n    \"operator\": \"fold\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"evidence\",\n    \"next\": \"Ch'en\",\n    "
+      },
+      "C_structural": {
+        "parsed": true,
+        "verdict": "exact",
+        "complete": false,
+        "nodes_ok": true,
+        "edges_ok": true,
+        "proposed": [
+          "filter",
+          "map",
+          "fold",
+          "reduce"
+        ],
+        "tokens": 209,
+        "latency_ms": 17953,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"valid\",\n    \"next\": \"Wo\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"map\",\n    \"target\": \"graph.propositions\",\n    \"binding\": \"transformed\",\n    \"next\": \"FOLD\",\n "
+      }
+    },
+    "advisor": {
+      "C_structural": {
+        "parsed": true,
+        "verdict": "exact",
+        "complete": false,
+        "nodes_ok": true,
+        "edges_ok": true,
+        "proposed": [
+          "filter",
+          "map",
+          "fold",
+          "reduce"
+        ],
+        "tokens": 706,
+        "latency_ms": 201547,
+        "finish_reason": "stop",
+        "errors": [],
+        "reply_head": "[{\"phase\":\"Sek\",\"operator\":\"filter\",\"target\":\"graph.matches\",\"binding\":\"validMatch\",\"next\":\"map\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"map\",\"target\":\"gml://relations\",\"binding\":\"toProposition\",\"next\":\"fold\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"fold\",\"target\":\"evidenceState"
+      }
+    }
+  },
+  "authority": "declaration_only",
+  "execution": false,
+  "note": "one frozen case, one run per cell; separates instruction effects from model size"
+}

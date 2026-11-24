@@ -88,6 +88,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M48 | Inference on demand: a registered wake, owned stops, leases that keep a shared backend up | **guard** | `model_lifecycle.py`, `data/models.json`, `tests_host/test_model_lifecycle.py` (15 tests) |
 | M49 | The frozen evaluation corpus: reviewed expectations, nodes scored apart from edges, headline restricted to frozen cases | **guard** | `evaluation/`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (13 tests) |
 | M50 | `runtime://green-screen/v1`: one read-only tree over the registries, bound to the UI, answering 'why this model' | **guard** | `runtime_tree.py`, `chat_app /runtime`, `tests_host/test_runtime_tree.py` (13 tests) |
+| M51 | Three instruction conditions on one frozen graph validator - and the system-prompt confound that changed the answer | **guard** | `condition_experiment.py`, `data/condition-experiment.json`, `data/condition-stability.json`, `tests_host/test_condition_experiment.py` (12 tests) |
 
 ---
 
@@ -179,6 +180,39 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Three conditions, one validator - and one confound (M51)
+
+Same frozen case (`chain-01`), same validator (`evaluation_harness.score_case`), one run per cell:
+
+| condition | worker gemma-1B | planner qwen-1.7B | advisor gpt-oss-20B |
+|---|---|---|---|
+| **A** baseline ("accumulate evidence") | `exact` | `exact` | not run |
+| **B** semantic ("FOLD owns ACCUMULATE; REDUCE follows FOLD") | `missing_operators` (no `map`) | `missing_operators` (only `fold, reduce`) | not run |
+| **C** structural (the typed contract) | `exact` | `exact` | `exact` (706 tokens, 202 s) |
+
+Three things this establishes, and one it does not.
+
+**Establishes:** the contract condition C does not hurt, and the large model reaches the same exact plan
+under it. Condition **B hurt both small models** - the shortest clarification made them drop operators they
+had produced under A - so "more explanation" is not monotonic.
+
+**Establishes (and this matters more):** a stability run of cell A, three repeats, gave **one plan three
+times**: `filter, map, fold, reduce`, 237 tokens each (13.5-18.6 s). So a single run cannot separate a
+condition effect from sampling noise.
+
+**Does not establish a clean comparison, because of a confound I created.** The earlier baseline that
+produced `misplaced_accumulate` for *both* models was measured with an earlier **system prompt**
+("Reply with a JSON array and nothing else."). While fixing the harness I strengthened it to "no prose, no
+explanation, no code fence". Under the current system prompt the same baseline instruction now yields
+`fold`. So the phrase that changed the plan may have been mine, not the task suffix.
+
+That is the honest state of the experiment: the condition suffix is one variable, the system prompt is
+another, and they were not held fixed across the comparison. The next run holds the system prompt
+constant while varying only the suffix, with at least three repeats per cell - the corpus and validators
+are ready, and the stability script already does repeats.
 
 ---
 
@@ -1605,7 +1639,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 424 tests, OK (M3-M50) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 436 tests, OK (M3-M51) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
