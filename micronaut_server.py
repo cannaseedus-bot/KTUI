@@ -54,6 +54,17 @@ class Engine:
         self.started = time.monotonic()
         self.lock = threading.Lock()
 
+    def capabilities(self) -> set:
+        """What this host may do in route terms: its grants, plus the read capabilities it always has."""
+        granted = {"graph.relations.read"}
+        app = getattr(self, "app", None)
+        if app is not None and hasattr(app, "granted_capabilities"):
+            try:
+                granted |= set(app.granted_capabilities())
+            except Exception:
+                pass
+        return granted
+
     def _trace(self) -> list[dict]:
         turn = getattr(self.app, "last_turn", None)
         return [dict(phase=name, detail=detail) for name, detail in (turn.phases if turn else [])]
@@ -117,6 +128,19 @@ class Handler(BaseHTTPRequestHandler):
     # -- routes ---------------------------------------------------------------------------------
     def do_GET(self) -> None:
         route = self._path()
+        if route.startswith("/api/"):
+            # kuhul-rest/v1: the manifest decides the route, this host serves it read-only.
+            try:
+                import rest_adapter
+                query = self._query()
+                caller = query.get("as") or self.headers.get("X-User") or ""
+                granted = set(self.engine.capabilities()) if hasattr(self.engine, "capabilities") else set()
+                result = rest_adapter.handle("GET", self.path, caller=caller, granted=granted)
+            except Exception as error:  # a broken adapter is a 500, not a dropped connection
+                self._send(500, dict(error=f"{type(error).__name__}: {error}"))
+                return
+            self._send(result["status"], result)
+            return
         if route in ("/v1/health", "/health"):
             self._send(200, self.engine.health())
         elif route in ("/v1/models", "/models"):

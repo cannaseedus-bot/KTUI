@@ -1,0 +1,67 @@
+{
+  "schema": "kuhul-rest/v1",
+  "authority": "declaration_only",
+  "projections": {
+    "user.public.v1": [
+      "id",
+      "name",
+      "status"
+    ],
+    "phase.summary.v1": [
+      "phase",
+      "uri",
+      "bindings",
+      "next",
+      "authority"
+    ]
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/users/:id",
+      "entry": "kuhul://phases/pop",
+      "target": "gml://users/{id}",
+      "capability": "memory.facts.read",
+      "projection": "user.public.v1",
+      "operators": [
+        "filter",
+        "map",
+        "fold",
+        "accumulate",
+        "reduce"
+      ],
+      "effects": {
+        "execution": false,
+        "mutation": false,
+        "persistence": false
+      },
+      "params": {
+        "id": {
+          "type": "integer"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/phases/:name",
+      "entry": "kuhul://phases/pop",
+      "target": "kuhul://phases/{name}",
+      "capability": "graph.relations.read",
+      "projection": "phase.summary.v1",
+      "operators": [
+        "filter",
+        "map"
+      ],
+      "effects": {
+        "execution": false,
+        "mutation": false,
+        "persistence": false
+      },
+      "params": {
+        "name": {
+          "type": "word"
+        }
+      }
+    }
+  ]
+}

@@ -73,6 +73,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M34 | Daemon consumes the phase chain as the first routing boundary, with an explicit fallback policy | **guard** | `phase_routing.py`, `chat_app.py` (`phase_route`, `granted_capabilities`), `tests_host/test_phase_routing.py` |
 | M35 | Grant-aware routing: an absent grant blocks, a present grant permits only its own scope, a match grants nothing | **guard** | `phase_routing.route`, `tests_host/test_phase_routing.py::M35…` (12 tests total) |
 | M36 | Operation proposals: a six-field prediction the host validates, converts and still does not admit | **guard** | `proposal.py`, `tests_host/test_proposal.py` (14 tests) |
+| M37 | `kuhul-rest/v1`: a declarative route manifest and a read-only adapter with four guards | **guard** | `rest_adapter.py`, `data/rest-routes.json`, `micronaut_server.py`, `tests_host/test_rest.py` (15 tests) |
 
 ---
 
@@ -164,6 +165,34 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## REST adapter (M37)
+
+`kuhul-rest/v1` is a route manifest; `rest_adapter.py` connects the three components that already
+existed - HTTP in `micronaut_server`, manifests in `phase_manifest`, operators in `operators` - and
+serves a **projection of authorized data**, not a generated answer.
+
+```
+GET /api/users/42?as=42  ->  200  {"id": "42", "name": "Bill", "status": "active"}
+GET /api/users/42x       ->  400  malformed parameter 'id' (expected integer)
+GET /api/users/99  as 42 ->  403  caller '42' may not read '99'
+GET /api/unknown         ->  404  unknown route
+GET /api/users/42        ->  403  caller '' may not read '42'
+```
+
+The four guards are enforced, each with a status and a reason:
+
+| guard | behaviour |
+|---|---|
+| route confinement | only declared method+path; `{id}` is a **typed** parameter (`integer`), so `42x` is 400 not a lookup |
+| read authorization | the route's capability must be granted (manifest name or the host alias `graph.relations.read`); a caller may read only their own resource unless `users.read.any` |
+| projection confinement | `user.public.v1` allows `id, name, status`; `email` is recorded, **withheld**, and reported as withheld; a fact never recorded stays missing rather than invented |
+| effect confinement | the manifest refuses `execution/mutation/persistence` that are not `false`, and every response reports all three false |
+
+A manifest that declares `mutation: true` fails to load - a guard proves it. The operator pipeline runs
+over the facts (`filter -> map -> fold -> reduce`) and is reported with the response.
 
 ---
 
@@ -1069,7 +1098,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 247 tests, OK (M3-M36) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 262 tests, OK (M3-M37) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
