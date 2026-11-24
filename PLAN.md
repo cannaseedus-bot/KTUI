@@ -98,6 +98,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M58 | Condition D: phase ownership plus registered targets, measured per check - and the finding that target binding, not phase, is the bottleneck | **guard** | `data/context-contract.json`, `plan_graph.context_contract`, `contract_experiment (condition D)`, `data/context-experiment.json`, `evaluation/development-cases.jsonl`, `tests_host/test_contract_experiment.py` (18 tests) |
 | M59 | 36 session cells: C's advantage survives repetition for Qwen and does not transfer to Gemma; the passes rest on omitted targets | **guard** | `session_profile.py`, `data/session-profiles.json` (disjoint examples), `data/session-experiment-36.json`, `tests_host/test_session_profile.py` (13 tests) |
 | M60 | The stream holds the lease: cancellation returns it, cold-start failure takes none, one lifecycle and a 30 s sweep in the app | **guard** | `inference_session.StreamingCall`, `chat_app.lease/sweep_idle`, `model_lifecycle.observed`, `tests_host/test_stream_lease.py` (10 tests) |
+| M61 | Signed review attestations: Ed25519 over the case digest and contract, verified against a registered public key - and still zero benchmark-eligible cases | **guard** | `review_attestations.py`, `evaluation/review-attestations.jsonl`, `evaluation/reviewers.json`, `tests_host/test_review_attestations.py` (12 tests) |
 
 ---
 
@@ -189,6 +190,37 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Signed review attestations (M61)
+
+A review counts when a key proves it, not when a field claims it. The attestation is a **separate artifact**,
+signed by the reviewer over a canonical payload that covers the schema version, case id, expectation digest,
+contract, reviewer and decision - so an approval cannot be copied onto another case or a rewritten
+expectation.
+
+```
+3 attestations · 3 verified · 0 independently reviewed
+  pair-01       agent://session-author  approved  verified · not independent
+  chain-01      agent://session-author  approved  verified · not independent
+  authority-01  agent://session-author  approved  verified · not independent
+  independently reviewed: none - no registered reviewer is marked independent
+```
+
+The signature machinery is real and tested: a changed decision, a moved case id, a rewritten digest and a
+forged signature each fail verification, and an unregistered reviewer is refused by name. What it **cannot**
+do is create independence: the only key in `reviewers.json` is the author's, so `independently_attested` is
+empty and only all 16 cases remain **regression**-eligible. Cryptographic possession is not human
+independence, and the harness reports them as different numbers rather than one.
+
+The private key lives in `logs/keys/author-ed25519.pem`, which `.gitignore` covers (`git check-ignore`
+confirms); the registry stores only the public half. A test asserts no `.pem` sits in `evaluation/`, so a
+signing key cannot be committed beside the cases it signs.
+
+One harness bug this caught: `registry()` takes the reviewers **file**, and I first handed it the corpus
+folder, which quietly produced "reviewer not registered" for three good signatures. A silent `verified: 0`
+would have looked like a policy outcome rather than a path bug.
 
 ---
 
@@ -1984,7 +2016,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 504 tests, OK (M3-M60) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 516 tests, OK (M3-M61) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

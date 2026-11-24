@@ -132,6 +132,16 @@ def load(folder: Path | None = None) -> dict:
     if manifest.get("frozen_ids") != frozen:
         problems.append(dict(code="frozen_ids",
                              detail="manifest frozen_ids do not match the frozen cases in the file"))
+    # A review counts only when a signed attestation verifies against the registry, not when a field
+    # says "independent". The field-based review stays as a declared claim.
+    try:
+        import review_attestations
+        attestation_report = review_attestations.check(
+            dict(by_id={case["id"]: case for case in cases}), review_attestations.load(),
+            review_attestations.registry(Path(folder) / "reviewers.json"))
+    except Exception as error:                     # a broken attestation layer must not hide the corpus
+        attestation_report = dict(verified=0, independent=0, independently_reviewed_cases=[],
+                                  error=f"{type(error).__name__}: {error}")
     independent = [case["id"] for case in cases if case["_review"]["independent"]]
     if manifest.get("independent_reviews") != len(independent):
         problems.append(dict(code="independent_reviews",
@@ -142,6 +152,9 @@ def load(folder: Path | None = None) -> dict:
                 by_id={case["id"]: case for case in cases},
                 frozen=[case for case in cases if case["review_status"] == "frozen"],
                 eligible=eligible, independently_reviewed=independent,
+                verified_attestations=int(attestation_report.get("verified") or 0),
+                independently_attested=attestation_report.get("independently_reviewed_cases") or [],
+                attestation_report=attestation_report,
                 authority="declaration_only")
 
 

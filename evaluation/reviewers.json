@@ -5,7 +5,8 @@
     "agent://session-author": {
       "role": "author",
       "independent": false,
-      "note": "wrote these cases; an author review is not independent"
+      "note": "wrote these cases and reviews them; a verified author attestation proves the payload was not altered, not that anyone independent looked at it",
+      "public_key": "MQLkgGskxBysaVNpJzCFoKdcQbG8qcflp6tDYz2Yrig="
     }
   }
 }
