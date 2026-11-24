@@ -72,6 +72,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M33 | The five operators with rank discipline, and URI resolution that navigates without granting | **guard** | `operators.py`, `tests_host/test_operators.py` (14 tests) |
 | M34 | Daemon consumes the phase chain as the first routing boundary, with an explicit fallback policy | **guard** | `phase_routing.py`, `chat_app.py` (`phase_route`, `granted_capabilities`), `tests_host/test_phase_routing.py` |
 | M35 | Grant-aware routing: an absent grant blocks, a present grant permits only its own scope, a match grants nothing | **guard** | `phase_routing.route`, `tests_host/test_phase_routing.py::M35…` (12 tests total) |
+| M36 | Operation proposals: a six-field prediction the host validates, converts and still does not admit | **guard** | `proposal.py`, `tests_host/test_proposal.py` (14 tests) |
 
 ---
 
@@ -163,6 +164,43 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Operation proposals (M36)
+
+The smaller prediction problem, made checkable. A model does not generate a program; it names six fields:
+
+```json
+{"phase": "Sek", "operator": "filter", "target": "graph.matches",
+ "binding": "valid", "next": "map", "authority": "proposal"}
+```
+
+`proposal.validate` checks the vocabulary and the shape - unknown phase, unknown operator, a target whose
+reference is not registered (`http://…` refused, `gml://…`/`⟁DATA` accepted), a `filter`/`map` without a
+binding, a `next` that is neither phase nor operator, and any authority claim other than
+`proposal`/`declaration_only`. `validate_all` also follows the chain (`next: map` must actually be
+followed by a map) and treats an operator in an unusual phase as a **notice**, not a refusal - the
+architecture is explicit that a phase may use an operator for its own purposes.
+
+Accepted proposals convert to declarative source and are validated **again** by the program layer:
+
+```
+Sek {
+  filter("graph.matches", "valid")
+  map("graph.matches", "transform")
+  fold("evidence")
+  reduce("evidence")
+}
+```
+
+And a valid proposal is still **not admitted**: `admitted: false`, `execution: false`,
+`authority: declaration_only`. That is the point - the model proposes, the host establishes validity, and
+XCFE decides what may run.
+
+Bugs found while wiring: `next` was required to be a *phase*, while the review's table uses the next
+*operator* (`Next: MAP`); and targets emitted as bare identifiers failed the program layer's strict
+identifier checks, so they are emitted as strings.
 
 ---
 
@@ -1031,7 +1069,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 233 tests, OK (M3-M35) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 247 tests, OK (M3-M36) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
