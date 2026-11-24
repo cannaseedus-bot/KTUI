@@ -1129,10 +1129,10 @@
       "timed_out": false,
       "duration_seconds": 0.11
     },
-    "captured_at": "2026-11-24T09:34:40.682397+00:00",
+    "captured_at": "2026-11-24T09:37:42.007504+00:00",
     "health_correlation": {
-      "suite_sha": "10be1e3ad038753abbf36684d621310a6509dc0a",
-      "health_sha": "10be1e3ad038753abbf36684d621310a6509dc0a",
+      "suite_sha": "f7f8aea26d1f43bd5155f993979778fd5dc8bacd",
+      "health_sha": "f7f8aea26d1f43bd5155f993979778fd5dc8bacd",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -1141,7 +1141,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 10be1e3ad038753abbf36684d621310a6509dc0a"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> f7f8aea26d1f43bd5155f993979778fd5dc8bacd"
       },
       {
         "code": "untracked_files",
@@ -1297,7 +1297,7 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "10be1e3ad038753abbf36684d621310a6509dc0a",
+    "tested_commit": "f7f8aea26d1f43bd5155f993979778fd5dc8bacd",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
