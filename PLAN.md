@@ -101,6 +101,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M61 | Signed review attestations: Ed25519 over the case digest and contract, verified against a registered public key - and still zero benchmark-eligible cases | **guard** | `review_attestations.py`, `evaluation/review-attestations.jsonl`, `evaluation/reviewers.json`, `tests_host/test_review_attestations.py` (12 tests) |
 | M62 | Stage 2 of the green screen: a generation counter skips the rebuild, the digest still gates the repaint | **guard** | `runtime_signals.py`, `chat_app.poll_runtime`, `model_lifecycle`/`evidence_record` bumps, `tests_host/test_runtime_signals.py` (8 tests) |
 | M63 | The generation counts committed changes only (readiness-gated, failures distinct), with a slow reconciliation rebuild for external edits | **guard** | `model_lifecycle.ensure` bump placement, `chat_app.RECONCILE_EVERY`, `tests_host/test_runtime_signals.py` (13 tests) |
+| M64 | Grams-u: deterministic n-gram extraction with sliding/bound windowing, provenance digests, and relations left to GML | **guard** | `grams.py`, `tests_host/test_grams.py` (13 tests) |
 
 ---
 
@@ -192,6 +193,37 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Grams-u (M64)
+
+Tokens to n-grams, deterministically - and two claims deliberately *not* made.
+
+```
+grams · 5 token(s) · mode sliding · 1-gram 5, 2-gram 4, 3-gram 3 · 12 gram(s)
+bigrams:  Bill has · has a · a black · black dog
+trigrams: Bill has a · has a black · a black dog
+```
+
+**Windowing is a choice, not a default.** `mode="sliding"` spans the text (5 tokens → 5/4/3); `mode="bound"`
+with `slots=5` keeps five positional captures and produces **only unigrams and adjacent pairs** - no
+cross-slot trigram, because a trigram over three declared slots would need a slot pattern nobody declared.
+That is the review's question answered in code: five wildcards are positional bindings, not a sliding window,
+and the module refuses to treat one as the other.
+
+**Adjacency is never a typed relation.** `relation_candidates()` returns each bigram with
+`relation: None`, `requires: "gml"`, and the trigrams that contain it as `supported_by`. Grams-u generates and
+cites; Relations-u decides whether `black dog` is an attribute, a concept, or just two adjacent words.
+
+**A missing encoder is reported, not estimated.** The stored EmbeddingGemma vectors are present (256
+dimensions, 99,524 rows) and `encoder()` reports them; but those vectors cover AIML patterns, not gram text,
+so `embed()` without an adapter returns `available: False`, `vectors: None` and the reason. With an adapter it
+returns whatever the adapter scored - nothing more. A failing adapter is an error with its message, not a
+score of zero.
+
+One test I got wrong and fixed rather than loosened: I expected four scored grams and got seven, because
+bigrams *and* trigrams are multi-token. The assertion now says seven and why.
 
 ---
 
@@ -2076,7 +2108,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 529 tests, OK (M3-M63) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 542 tests, OK (M3-M64) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
