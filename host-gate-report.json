@@ -1104,7 +1104,7 @@
       "stdout": "banks 9 \u00b7 categories 238 \u00b7 bad digests 0 \u00b7 missing modules none \u00b7 newest edit 21:29\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.172
+      "duration_seconds": 0.203
     },
     "extension_summary_before": {
       "command_line": [
@@ -1127,12 +1127,12 @@
       "stdout": "GML extension `gml-tensor/1` owned by gml.tensor \u00b7 registry bootstrap `gml-registry/1`\nfields: 19 over data, graph, slice, tensor, tensor.shape\nconstraints: 6 \u00b7 operator ASSEMBLE\n  data_count         arity=2 scope=source authority=declaration_only\n  finite_values      arity=1 scope=source authority=declaration_only\n  dtype_match        arity=3 scope=assembly authority=declaration_only\n  bounds_check       arity=4 scope=assembly authority=declaration_only\n  no_overlap         arity=2 scope=assembly authority=declaration_only\n  complete_coverage  arity=3 scope=assembly authority=declaration_only\n",
       "stderr": "",
       "timed_out": false,
-      "duration_seconds": 0.109
+      "duration_seconds": 0.11
     },
-    "captured_at": "2026-11-24T08:21:58.514080+00:00",
+    "captured_at": "2026-11-24T08:25:07.851664+00:00",
     "health_correlation": {
-      "suite_sha": "9771965f05f346f0b529717fcd5dd74e778a636c",
-      "health_sha": "9771965f05f346f0b529717fcd5dd74e778a636c",
+      "suite_sha": "c66d06dee2b4bb3eac791a355a5cc8efff36644f",
+      "health_sha": "c66d06dee2b4bb3eac791a355a5cc8efff36644f",
       "same_run": true,
       "note": "health commands ran in this same invocation, after the suite"
     }
@@ -1141,7 +1141,7 @@
     "informational": [
       {
         "code": "sha_changed",
-        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> 9771965f05f346f0b529717fcd5dd74e778a636c"
+        "detail": "357169b54036f88843fcc9bd63ceb397a81ff1be -> c66d06dee2b4bb3eac791a355a5cc8efff36644f"
       },
       {
         "code": "untracked_files",
@@ -1297,7 +1297,7 @@
       }
     },
     "evidence_satisfied": true,
-    "tested_commit": "9771965f05f346f0b529717fcd5dd74e778a636c",
+    "tested_commit": "c66d06dee2b4bb3eac791a355a5cc8efff36644f",
     "captured_clean": true,
     "merge_authorized": false,
     "authority": "human",
