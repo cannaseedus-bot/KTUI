@@ -117,6 +117,26 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 ---
 
+## Phase events: failures, cancellations, bounds
+
+The observation stream gained the four behaviours the review asked for, without inventing activity:
+
+| requirement | how it is held |
+|---|---|
+| `phase_failed` is its own family | an outcome is `ok` / `failed` / `cancelled`; an unknown outcome is refused |
+| a dying request ends its phase | the instrumented path emits `phase_exit` with outcome `failed` or `cancelled` out of its exception |
+| concurrent turns stay apart | traces are keyed by request id; a guard interleaves two real resolutions and checks every event belongs to its turn |
+| bounded history | `MAX_EVENTS` per trace, `MAX_TRACES` overall, so an in-process diagnostic cannot grow without limit |
+| the projection is told | a committed event bumps the runtime generation; the digest still decides whether anything repaints |
+
+`observe()` reports `cancelled`, `failed`, `exited`, `active` or `no_observations`, with `failed` and `cancelled`
+as separate flags. A cancellation is not a failure, and a missing observation is neither.
+
+Still deliberately uninstrumented: Wo, Yax, Sek, Ch'en and Xul. Drawing them as active without an observed host
+transition remains the exact lie this module exists to prevent.
+
+---
+
 ## One observed idle transition
 
 Until now HOT -> COLD was a tested mechanism: the projection had only ever reported COLD from a fake host. This
