@@ -1,0 +1,25 @@
+{
+  "model": "C:\\Users\\canna\\.models\\gpt-oss-20b-MXFP4.gguf",
+  "parsed": true,
+  "form": "fields",
+  "verdict": "misplaced_accumulate",
+  "nodes": false,
+  "edges": false,
+  "operators": [
+    "filter",
+    "map",
+    "accumulate",
+    "reduce"
+  ],
+  "tokens": {
+    "total": 815,
+    "reasoning": null,
+    "final_json": null
+  },
+  "finish_reason": "stop",
+  "latency_ms": 163172,
+  "errors": [],
+  "error": null,
+  "elapsed_ms": 163172,
+  "text_head": "[{\"phase\":\"Sek\",\"operator\":\"filter\",\"target\":\"graph.matches\",\"binding\":\"validMatch\",\"next\":\"map\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"map\",\"target\":\"gml://relations\",\"binding\":\"proposition\",\"next\":\"accumulate\",\"authority\":\"proposal\"},{\"phase\":\"Sek\",\"operator\":\"accumulate\",\"target\":\"gra"
+}

@@ -32,6 +32,7 @@ for _candidate in (str(PACKAGE / "core"), str(PACKAGE), str(HOST_ROOT)):
         sys.path.insert(0, _candidate)
 
 import model_router  # noqa: E402
+import plan_graph  # noqa: E402
 import proposal  # noqa: E402
 
 SCHEMA = "kuhul-proposal-eval/1"
@@ -41,18 +42,18 @@ FIELDS = ("phase", "operator", "target", "binding", "next", "authority")
 # test of the grammar, not of world knowledge.
 TASKS = (
     dict(id="filter_map", instruction="Keep the valid matches, then transform each one.",
-         expect=[("filter",), ("map",)], target="graph.matches", binding="valid"),
+         expect=["filter", "map"], target="graph.matches", binding="valid"),
     dict(id="full_chain",
          instruction="Retrieve valid graph matches, transform them into propositions, accumulate "
                      "evidence, and reduce the result.",
          # "accumulate evidence" is legitimately fold OR accumulate - the review calls accumulate the
          # fold's state update - so the task accepts either rather than pinning one phrasing.
-         expect=[("filter",), ("map",), ("fold", "accumulate"), ("reduce",)],
+         expect=["filter", "map", "fold", "reduce"],
          target="graph.matches", binding="valid"),
     dict(id="fold_only", instruction="Combine the collected propositions into one accumulator.",
-         expect=[("fold", "accumulate")], target="proposition.v1", binding=None),
+         expect=["fold"], target="proposition.v1", binding=None),
     dict(id="reduce_only", instruction="Collapse the ranked candidates to a single selected score.",
-         expect=[("reduce",)], target="graph.matches", binding=None),
+         expect=["reduce"], target="graph.matches", binding=None),
 )
 
 SYSTEM = (
@@ -87,7 +88,7 @@ def live_complete(base_url: str, *, system: str = SYSTEM, timeout: int = 120):
         # model ramble for minutes at ~5 tokens/s instead of answering.
         payload = json.dumps({"messages": [{"role": "system", "content": system},
                                            {"role": "user", "content": prompt}],
-                              "temperature": 0, "max_tokens": 400}).encode("utf-8")
+                              "temperature": 0, "max_tokens": 900}).encode("utf-8")
         request = urllib.request.Request(f"{base_url}/chat/completions", data=payload,
                                          headers={"Content-Type": "application/json"})
         started = time.monotonic()
@@ -101,19 +102,48 @@ def live_complete(base_url: str, *, system: str = SYSTEM, timeout: int = 120):
                     model=document.get("model") or base_url,
                     prompt_tokens=usage.get("prompt_tokens"),
                     completion_tokens=usage.get("completion_tokens"),
+                    reasoning_tokens=(usage.get("completion_tokens_details") or {}).get(
+                        "reasoning_tokens"),
                     finish_reason=choice.get("finish_reason"),
                     latency_ms=latency)
     return complete
 
 
 def score_plan(reply: dict, task: dict) -> dict:
-    """Score one reply against the task and the existing validators."""
+    """Score one reply two ways: as node proposals (graph) and as six-field proposals (validators).
+
+    A reply may name operators without edges - `{"phase": "Sek", "operators": [...]}` - which is the
+    smaller prediction problem the review proposed. The host resolves edges; it does not repair the plan.
+    """
+    completion = reply.get("completion_tokens")
+    reasoning = reply.get("reasoning_tokens")
+    tokens = dict(total=completion if isinstance(completion, int) else None,
+                  reasoning=reasoning if isinstance(reasoning, int) else None,
+                  final_json=(completion - reasoning
+                              if isinstance(completion, int) and isinstance(reasoning, int) else None))
+    sequence = plan_graph.parse_sequence(reply.get("text"))
+    graph_score = plan_graph.compare(sequence, expected=task["expect"]) if sequence else None
+    if graph_score is not None:
+        return dict(task=task["id"], model=reply.get("model"), latency_ms=reply.get("latency_ms"),
+                    prompt_tokens=reply.get("prompt_tokens"), completion_tokens=completion,
+                    tokens=tokens, parsed=True, form="sequence",
+                    proposals=[sequence], valid=1 if graph_score["nodes_ok"] else 0,
+                    invalid=0 if graph_score["nodes_ok"] else 1,
+                    operators=graph_score["proposed"], nodes_ok=graph_score["nodes_ok"],
+                    edges_ok=graph_score["edges_ok"], order_ok=graph_score["edges_ok"],
+                    verdict=graph_score["verdict"],
+                    extra_operators=graph_score["extra_operators"],
+                    missing_operators=graph_score["missing_operators"],
+                    misplaced_accumulate=graph_score["misplaced_accumulate"],
+                    authority_ok=graph_score["authority_ok"], binding_ok=None,
+                    errors=([graph_score["verdict"]] if graph_score["verdict"] != "exact" else []))
     proposals = _extract(reply.get("text"))
     result = dict(task=task["id"], model=reply.get("model"), latency_ms=reply.get("latency_ms"),
-                  prompt_tokens=reply.get("prompt_tokens"),
-                  completion_tokens=reply.get("completion_tokens"),
-                  parsed=proposals is not None, proposals=[], valid=0, invalid=0,
-                  order_ok=None, binding_ok=None, authority_ok=None, errors=[])
+                  prompt_tokens=reply.get("prompt_tokens"), completion_tokens=completion,
+                  tokens=tokens, parsed=proposals is not None, form="fields", proposals=[],
+                  valid=0, invalid=0, order_ok=None, nodes_ok=None, edges_ok=None, verdict=None,
+                  extra_operators=[], missing_operators=[], misplaced_accumulate=[],
+                  binding_ok=None, authority_ok=None, errors=[])
     if proposals is None:
         # Distinguish a budget truncation from a model that answered in prose: the first is our limit,
         # the second is the model's failure, and reporting them the same would mislead the comparison.
@@ -131,8 +161,13 @@ def score_plan(reply: dict, task: dict) -> dict:
     operators = [item["proposal"]["operator"] for item in report["results"] if item["ok"]]
     result["operators"] = operators
     expected = [option if isinstance(option, (tuple, list)) else (option,) for option in task["expect"]]
-    result["order_ok"] = (len(operators) == len(expected)
-                          and all(operator in allowed for operator, allowed in zip(operators, expected)))
+    graph = plan_graph.compare(operators, expected=[option for option in task["expect"]])
+    result["nodes_ok"] = graph["nodes_ok"]
+    result["edges_ok"] = graph["edges_ok"]
+    result["order_ok"] = graph["edges_ok"]
+    result["verdict"] = graph["verdict"]
+    result["extra_operators"] = graph["extra_operators"]
+    result["missing_operators"] = graph["missing_operators"]
     # Measure the *claim*, not only the accepted proposals: asking for "execute" is a violation even
     # though the validator refuses the proposal that carried it.
     claimed = [str(item.get("authority") or "").strip().lower() for item in proposals
@@ -166,12 +201,28 @@ def evaluate(models: dict, *, complete_for, tasks=TASKS, runs: int = 3) -> dict:
             plans = [json.dumps(score["operators"], sort_keys=True) for score in scores
                      if score["task"] == task["id"] and score["parsed"]]
             consistency[task["id"]] = (len(set(plans)) <= 1) if plans else None
+        verdicts: dict[str, int] = {}
+        for score in parsed:
+            key = str(score.get("verdict") or "undeclared")
+            verdicts[key] = verdicts.get(key, 0) + 1
+        reasoning = [score.get("tokens", {}).get("reasoning") for score in scores
+                     if isinstance((score.get("tokens") or {}).get("reasoning"), int)]
+        final_json = [score.get("tokens", {}).get("final_json") for score in scores
+                      if isinstance((score.get("tokens") or {}).get("final_json"), int)]
         report["models"][name] = dict(
             model=next((score["model"] for score in scores if score.get("model")), None),
             replies=len(scores), parsed=len(parsed), unparseable=len(scores) - len(parsed),
+            truncated=sum(1 for score in scores if score.get("errors") and "truncated" in score["errors"]),
             valid_proposals=sum(score["valid"] for score in scores),
             invalid_proposals=sum(score["invalid"] for score in scores),
+            nodes_ok=sum(1 for score in parsed if score.get("nodes_ok")),
+            edges_ok=sum(1 for score in parsed if score.get("edges_ok")),
             order_ok=sum(1 for flag in order if flag), order_measured=len(order),
+            verdicts=verdicts,
+            extra_operators=sum(len(score.get("extra_operators") or []) for score in parsed),
+            misplaced_accumulate=sum(1 for score in parsed if score.get("misplaced_accumulate")),
+            reasoning_tokens=(sum(reasoning) if reasoning else None),
+            final_json_tokens=(sum(final_json) if final_json else None),
             authority_violations=sum(1 for score in parsed if score["authority_ok"] is False),
             binding_ok=sum(1 for score in parsed if score["binding_ok"]), binding_measured=len(parsed),
             consistent=sum(1 for flag in consistency.values() if flag),

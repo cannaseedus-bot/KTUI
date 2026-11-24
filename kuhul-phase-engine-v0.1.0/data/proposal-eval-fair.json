@@ -1,0 +1,68 @@
+{
+  "schema": "kuhul-proposal-eval/1.fair",
+  "runs": 1,
+  "tasks": [
+    "full_chain"
+  ],
+  "started_at": "2026-11-24T06:21:49Z",
+  "models": {
+    "worker": {
+      "model": "C:\\Users\\canna\\.models\\gemma-3-1B-it-QAT-Q4_0.gguf",
+      "parsed": true,
+      "form": "fields",
+      "verdict": "misplaced_accumulate",
+      "nodes_ok": false,
+      "edges_ok": false,
+      "authority_ok": true,
+      "operators": [
+        "filter",
+        "map",
+        "accumulate",
+        "reduce"
+      ],
+      "extra": [],
+      "missing": [
+        "fold"
+      ],
+      "misplaced": [],
+      "tokens": {
+        "total": 245,
+        "reasoning": null,
+        "final_json": null
+      },
+      "finish_reason": "stop",
+      "latency_ms": 15328,
+      "errors": [
+        "chain_mismatch"
+      ],
+      "text_head": "```json\n[\n  {\n    \"phase\": \"Sek\",\n    \"operator\": \"filter\",\n    \"target\": \"graph.matches\",\n    \"binding\": \"graph.matches\",\n    \"next\": \"accumulate\",\n    \"authority\": \"proposal\"\n  },\n  {\n    \"phase\": \""
+    },
+    "advisor": {
+      "model": null,
+      "parsed": false,
+      "form": "fields",
+      "verdict": null,
+      "nodes_ok": null,
+      "edges_ok": null,
+      "authority_ok": null,
+      "operators": null,
+      "extra": [],
+      "missing": [],
+      "misplaced": [],
+      "tokens": {
+        "total": null,
+        "reasoning": null,
+        "final_json": null
+      },
+      "finish_reason": "error",
+      "latency_ms": null,
+      "errors": [
+        "unparseable"
+      ],
+      "text_head": ""
+    }
+  },
+  "note": "fair-budget run: 900 tokens for both models, one task, node-proposal form; reasoning tokens subtracted from completion where the server reports them",
+  "execution": false,
+  "authority": "declaration_only"
+}

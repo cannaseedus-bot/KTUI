@@ -83,6 +83,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M43 | Inference evidence records and the three-path comparison: what the corpus saves, with unmeasured values left None | **guard** | `evidence_record.py`, `tests_host/test_evidence_record.py` (14 tests) |
 | M44 | Proposal evaluation: can the 1B model produce valid K'UHUL plans? Scored by the existing validators | **guard** | `proposal_eval.py`, `runtime_servers.py`, `data/proposal-eval-live.json`, `tests_host/test_proposal_eval.py` (10 tests) |
 | M45 | Live evidence capture: one request id per turn, digest not prompt, execution distinguished from admission, recording can never break an answer | **guard** | `chat_app.record_turn`, `evidence_record.build`, `/evidence`, `tests_host/test_live_capture.py` (9 tests) |
+| M46 | Composition as a graph: the host resolves edges, never repairs, and scores nodes/edges/authority separately | **guard** | `plan_graph.py`, `proposal_eval.py`, `data/proposal-eval-fair.json`, `tests_host/test_plan_graph.py` (17 tests) |
 
 ---
 
@@ -174,6 +175,55 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Composition as a graph (M46)
+
+The model may now name operators without edges, and the host resolves them - while **never repairing a
+wrong plan**:
+
+```
+{"phase": "Sek", "operators": ["filter", "map", "fold", "reduce"], "authority": "proposal"}
+```
+
+`plan_graph.compare()` reports four facts separately, because a plan can have the right operators and the
+wrong connections:
+
+| proposal | verdict | why |
+|---|---|---|
+| `filter, map, fold, reduce` | `exact` | |
+| `filter, map, fold, accumulate, reduce` | `exact` | nested `accumulate` is the same graph |
+| `filter, map, accumulate, reduce` | `misplaced_accumulate` | `accumulate` used where `fold` belongs - not a substitute |
+| `filter, map, reduce, filter` | `extra_operators` | two extras, `fold` missing; the proposal is preserved, not trimmed |
+| `filter, map` | `missing_operators` | short plans stay short |
+| `map, filter, fold, reduce` | `wrong_order` | same nodes, different edges |
+| any of the above with `authority: "execute"` | `authority_ok: false` | scored separately from the plan |
+
+### The fair-budget result changed the conclusion
+
+The first comparison truncated the 20B at 400 tokens, so the advisor "failed" on a harness limit. At 900
+tokens and a 420-second client timeout, both models answered the full-chain task:
+
+| | worker gemma-3-1B | advisor gpt-oss-20b |
+|---|---|---|
+| operators | `filter, map, accumulate, reduce` | `filter, map, accumulate, reduce` |
+| verdict | `misplaced_accumulate` | `misplaced_accumulate` |
+| completion tokens | 245 | 815 |
+| latency | **15.3 s** | 163.2 s (10.6x) |
+
+**Both models produced the same plan, and both made the same contract error** - using `accumulate` as a
+standalone step where the graph requires it nested inside `fold`. So on this task the 20B bought 10.6x the
+latency and 3.3x the tokens for an identical result.
+
+That points away from model capability and toward **the instruction**: the prompt says "accumulate
+evidence", and both models reasonably emit `accumulate`. The next experiment is a prompt that states the
+fold/accumulate relationship explicitly, run against the same validators - which is a cheaper and more
+informative test than escalation.
+
+`score_plan()` now records `tokens: {total, reasoning, final_json}` and keeps each component `None` when
+the server does not report it (`final_json` needs both, so it is `null` here), plus `finish_reason` so a
+truncation is never mistaken for a wrong answer.
 
 ---
 
@@ -1410,7 +1460,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 363 tests, OK (M3-M45) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 380 tests, OK (M3-M46) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
