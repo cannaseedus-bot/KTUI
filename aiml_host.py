@@ -191,6 +191,85 @@ def admit(proposal: dict, allowlist: tuple[str, ...] = ()) -> dict:
                                          detail="declarations propose; the host authorizes; nothing runs")])
 
 
+# -- the validation ladder -------------------------------------------------------------------------
+PARSED = "PARSED"
+STRUCTURAL = "STRUCTURALLY_VALIDATED"
+BINDINGS = "BINDINGS_VALIDATED"
+EXECUTABLE = "EXECUTABLE_CANDIDATE"
+ADMITTED = "ADMITTED"
+REJECTED = "REJECTED"
+LADDER = (PARSED, STRUCTURAL, BINDINGS, EXECUTABLE, ADMITTED)
+
+
+def declared_capabilities(folder: Path = CONTRACTS) -> list[str]:
+    """Every capability any node in the bundle asks for."""
+    modules = _modules()
+    graphs = contracts(folder)
+    found = set()
+    for document in graphs.values():
+        for entry in getattr(document, "entries", []) or []:
+            if getattr(entry, "name", "") != "node":
+                continue
+            for capability in _capabilities(entry.value):
+                found.add(capability)
+    return sorted(found)
+
+
+def states(folder: Path = CONTRACTS, host_capabilities: tuple[str, ...] = ()) -> dict:
+    """The ladder from the review: a document set can stop at any rung, and only one is a rejection.
+
+    Structural validity is a property of the documents. Binding validity is a property of *this* host:
+    a portable graph whose capability is not installed here stops at STRUCTURALLY_VALIDATED and names
+    what is missing. Calling that REJECTED would make a good graph look broken because the machine
+    lacks a plugin.
+    """
+    reasons: list[dict] = []
+    modules = _modules()
+    graphs = contracts(folder)
+    if not graphs:
+        return dict(state=REJECTED, stage="parse", portable=False, reasons=[
+            dict(code="no_contracts", detail="no .gml contracts found")],
+            missing_capabilities=[], declared_capabilities=[])
+
+    # 1. parsed: every document parses (contracts() already parsed them)
+    reasons.append(dict(code="parsed", detail=f"{len(graphs)} document(s) parsed"))
+
+    # 2. structural: the bundle's own constructor checks schema ids, contracts and node ids
+    try:
+        extension = modules["extension"].load_extension(modules["gml2"].parse(
+            Path(EXTENSION_DOC).read_text(encoding="utf-8")))
+        bundle = modules["bundle"].Bundle(graphs, extension)
+    except Exception as error:
+        reasons.append(dict(code="structural", detail=f"{type(error).__name__}: {error}"[:240]))
+        return dict(state=REJECTED, stage="structural", portable=False, reasons=reasons,
+                    missing_capabilities=[], declared_capabilities=[])
+    reasons.append(dict(code="structural", detail="ids, contracts and graph identity valid"))
+
+    # 3. bindings: the declared rules resolve against the packaged resolvers, and every capability
+    #    resolves against the host registry supplied by the caller
+    declared = declared_capabilities(folder)
+    missing = [capability for capability in declared if capability not in set(host_capabilities)]
+    try:
+        bundle.validate()
+        reasons.append(dict(code="bindings", detail="rules and references validated"))
+    except Exception as error:
+        reasons.append(dict(code="rules", detail=f"{type(error).__name__}: {error}"[:240]))
+        return dict(state=REJECTED, stage="rules", portable=False, reasons=reasons,
+                    missing_capabilities=missing, declared_capabilities=declared)
+    if missing:
+        reasons.append(dict(code="capabilities_missing",
+                            detail=f"not installed on this host: {', '.join(missing)}"))
+        return dict(state=STRUCTURAL, stage="bindings", portable=True, reasons=reasons,
+                    missing_capabilities=missing, declared_capabilities=declared)
+    reasons.append(dict(code="bindings", detail=f"{len(declared)} capability(ies) resolved"))
+
+    # 4/5. executable and admitted are never claimed by a validator
+    reasons.append(dict(code="executable", detail="no operator is executed on this host"))
+    reasons.append(dict(code="admitted", detail="admission belongs to the host, not the validator"))
+    return dict(state=BINDINGS, stage="executable", portable=True, reasons=reasons,
+                missing_capabilities=[], declared_capabilities=declared)
+
+
 def summary(folder: Path = CONTRACTS) -> str:
     report = validate(folder)
     lines = [f"AIML bundle: {report['state']} · {len(report['contracts'])} contract(s)"]

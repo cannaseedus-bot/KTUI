@@ -60,6 +60,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M21 | The loaded AIML corpus ports to one GML document, verified against the sources | **guard** | `aiml_to_gml.py`, `aiml-corpus.gml`, `tests_host/test_aiml_corpus.py::M21…` |
 | M22 | The daemon knows facts locally (curated ALICE banks) and offers depth instead of spending a model call | **guard** | `knowledge.py`, `chat_app.py` (`_maybe_offer`, `pending_deep`), `tests_host/test_knowledge.py::M22…` |
 | M23 | Answers carry clickable reference links (Wikipedia, Britannica, NASA, Space.com) labelled as searches | **guard** | `links.py`, `chat_app.py` (`maybe_reference`, `/links`), `micronaut_server.py`, `tests_host/test_links.py::M23…` |
+| M24 | The five GML/2 contract issues: reference modes, dynamic SRAI, runtime cycle guard, capability ladder, ordered templates | **guard** | `srai_resolver.py`, `aiml_host.states`, `core/rules.py` (segments required), `tests_host/test_gml2_contracts.py::M24…` |
 
 ---
 
@@ -151,6 +152,31 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## GML/2 contract issues (M24)
+
+The review's five points, checked against the real package rather than the draft. Three already held,
+two did not, and one hole was found in the package itself.
+
+| issue | state | evidence |
+|---|---|---|
+| 1. references | **already held** | `resolve()` rejects `pattern:1` as an invalid reference, distinguishes `gml://` (whole graph) from `aiml://` (node-addressable) by mode, and refuses a foreign schema; `endpoint_modes_consistent` rejects mixed endpoints |
+| 2. dynamic SRAI | **already held** | `srai_static_ok` refuses `@redirects_to` on an expression containing `{star:N}`; `srai_guards_present` requires positive `max_depth` and `visited_guard 1` |
+| 3. cycle guard | **was missing** | the package only checked that guards were *declared*; `srai_resolver.py` now enforces `max_depth` and a visited set keyed on the **resolved expression plus its captures**, so a loop that only appears after substitution is caught |
+| 4. capability states | **was missing** | `aiml_host.states()` implements the ladder and stops a portable graph at `STRUCTURALLY_VALIDATED` when this host lacks a capability, naming it - rather than calling a good graph `REJECTED` because a plugin is absent |
+| 5. ordered templates | **hole found** | segments were supported but a template with *no* segments passed the ordinal rule vacuously, so the `spans`/`slots` form was silently accepted; `template_ordinals_contiguous` now requires ordered segments |
+
+Parser/serializer property, also asserted: `serialize(parse(x))` is stable under a second round trip
+for all six contracts.
+
+The one base-package change is `core/rules.py` (segments required). It is a tightening, the package's
+own 80 tests stay green, and the F14/M2 guards are unaffected - but it is a change to the base, so it
+is recorded here rather than folded into a host commit quietly.
+
+Not claimed: `EXECUTABLE_CANDIDATE` and `ADMITTED` are never reported by the validator. It says where a
+document set stopped and why; admission remains the host's decision.
 
 ---
 
@@ -628,7 +654,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 140 tests, OK (M3-M23: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12)
+host guards    : 155 tests, OK (M3-M24: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11, corpus 14, knowledge 9, links 12, gml2 15)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

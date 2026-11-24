@@ -44,7 +44,12 @@ def srai_guards_present(*, node):
         raise RuleViolation('SRAI requires positive max_depth and visited_guard 1')
 
 def template_ordinals_contiguous(*, node):
-    segments=_many(node,'segment'); ordinals=[_one(seg,'ordinal') for seg in segments]
+    segments=_many(node,'segment')
+    # A template must declare its ordered segments. A form that cannot express the order between text
+    # and substitutions (spans/slots) is not a template: with zero segments the ordinal check would
+    # otherwise pass vacuously, which is the hole this closes.
+    if not segments: raise RuleViolation('template declares no ordered segments')
+    ordinals=[_one(seg,'ordinal') for seg in segments]
     if any(type(i) is not int for i in ordinals) or sorted(ordinals)!=list(range(len(ordinals))):
         raise RuleViolation('template segment ordinals not contiguous')
 
