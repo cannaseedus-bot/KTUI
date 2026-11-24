@@ -134,7 +134,7 @@ def capture(*, output: Path | None = None, runner=None, head: str | None = None,
         return dict(schema=SCHEMA, ok=False, problems=manifest["problems"])
     results = {name: run_suite(name, entry, runner=runner)
                for name, entry in manifest["suites"].items() if entry.get("required")}
-    head = head or _git("rev-parse HEAD")
+    head = head or _git("rev-parse", "HEAD")
     record = dict(schema=SCHEMA, captured_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                   tested_commit=head, suites=results,
                   verdict=verdict(results, required=manifest["required"], tested_commit=head,

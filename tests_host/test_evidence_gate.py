@@ -15,7 +15,10 @@ sys.path.insert(0, str(ROOT))
 
 import evidence_gate  # noqa: E402
 
-PASS = dict(package=(139, 0), harness=(14, 0), host_guards=(627, 0))
+# Derive the expected counts from the manifest itself, so a guard cannot go stale when a suite grows.
+_MANIFEST = evidence_gate.load()
+PASS = {name: (_MANIFEST["suites"][name]["minimum_tests"], 0)
+        for name in _MANIFEST["required"]}
 
 
 def runner_for(counts):
