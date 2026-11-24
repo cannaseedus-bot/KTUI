@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 409,
+  "count": 410,
   "covers": "tracked working tree; uncommitted edits are refused by verify()",
   "excludes": {
     "names": [
@@ -21,7 +21,7 @@
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
     "MICRO-AGENT-BRIDGE.md": "a530c33ceaf4f2b56600afd21f29931068b7b725f52183a74df34e3d92cb3e51",
-    "PLAN.md": "767712141feb9e8f0c15f19d35ed25d3a339e192505a46b2bb16e5b13662874b",
+    "PLAN.md": "4231399fbb8f933af297a632726d9f9b931db969fb058775ea8748abf997c80a",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -412,6 +412,7 @@
     "tests_host/test_rest.py": "2796c869aebf9121935de1c23eecb797830448b33cc7e16b198e3bdfab8e9199",
     "tests_host/test_review_attestations.py": "706e47a33733022b0b4c1dcc955accb89f3643c9b3e121fcd43dd7b669bf6f6e",
     "tests_host/test_review_packet.py": "7afe7fd33f15af0eef46d109f752192be7970005ac73b7b782212bc070f07579",
+    "tests_host/test_route_turn.py": "f302b9841677539d1980f15b8a9a81baa8e61f89d4fb9708626a7bd70bb76993",
     "tests_host/test_routing.py": "dee82b6b82590529ff5dcb841e8a67901b1110a041c6dfbdbe5cfec528c90b4d",
     "tests_host/test_runtime_independence.py": "c9aae7220be59975a9d546e436f7416aa519249cc5e9694da1026759411a0584",
     "tests_host/test_runtime_reactive.py": "79ed3d9cc10173c83ab72596b6eb6a3b95e6725e2db7fbf2a3a5884060454b3c",
@@ -428,16 +429,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "88b331525728091fc917c29791307fac51ce41e6cb8b3a9beccbe816f79c511f",
+  "hash": "10aadec990e5e82b7154565043e5779865198f46a115e12ed8a786e6dd2037af",
   "locked": true,
-  "note": "lock for the live route turn (M91)",
+  "note": "re-lock after the PLAN section",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
     "count": 409,
-    "hash": "53c0803ce124436a32a3e1c855856bf0c86481a6d98bbd3b8fd5eb0aab05154e",
-    "updated_at": "2026-11-24T22:07:44Z"
+    "hash": "88b331525728091fc917c29791307fac51ce41e6cb8b3a9beccbe816f79c511f",
+    "updated_at": "2026-11-24T22:48:03Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T22:48:03Z"
+  "updated_at": "2026-11-24T22:50:42Z"
 }

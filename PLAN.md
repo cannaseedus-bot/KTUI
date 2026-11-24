@@ -15,6 +15,13 @@ Rules for using it:
 
 ---
 
+## Runtime Ownership
+
+- `~/.aiml` is the Python local-agent host. It owns the local model session, conversation history, registered agents, inference stream and sandboxed tool admission. The Textual UI is one frontend; a headless API/MCP adapter must reuse the same service and admission path.
+- `~/.knumatic` is the TypeScript KNUMATIC application. It owns site identity, user/project scope, browser UI, Base44 integration and TypeScript-native runtime or backend functions.
+- These are separate processes and deployment environments. KNUMATIC cannot call Python modules by local path. Cross-runtime use requires a versioned HTTP or MCP contract, with authentication and capability policy enforced by the receiving host.
+- HTTP is the direct API for KNUMATIC to use the Python model host. MCP exposes registered tools/resources to compatible hosts; it does not replace the Python conversation session or sandbox. Both adapters should call the same Python service layer.
+
 ## Task list
 
 Status: `done` = in the tree and verified · `guard` = enforced by a test · `open` = not landed yet
@@ -117,6 +124,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M77 | Bind and invoke all five generic phase-catalog handlers through typed host admission; preserve invocation receipts | **done** | `micronaut_host_handlers.py`, `micronaut_server.Engine.invoke_micronaut`, `tests_host/test_micronaut_host_handlers.py` |
 | M78 | Resolve Graph Theory references, bind its bounded read-only query handler, expose local HTTP query API, and guard invocation and authority | **done** | `micronaut/graph_executor.py`, `micronaut_host_handlers.py`, `micronaut_server.Engine.graph_query`, `/api/atomic/call`, `tests_host/test_graph_theory_micronaut.py` |
 | M79 | Report per-semantic-agent unresolved program refs and host-binding state; prevent declarations from implying invocation | **guard** | `micronaut_audit.py`, `tests_host/test_micronaut_host_handlers.py`, `PLAN.md` |
+| M80 | Extract a headless Python model/session service and expose it through authenticated API/MCP adapters without bypassing the sandbox | **open** | `chat_app.py`, `micronaut_server.py`, `inference_session.py`, `session_log.py`, `tests_host/` |
 
 ---
 
@@ -134,6 +142,35 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:wo-classifies-a-live-turn -->
 <!-- milestone:model-turn-three-handlers -->
 <!-- milestone:micro-agent-bridge-declared-routes-only -->
+<!-- milestone:one-live-turn-uses-the-bridge -->
+## One live turn uses the bridge
+
+`ASK PLANNER` now travels the real dispatch path. Measured through `local_answer`:
+
+| case | phases | invocations | trace |
+|---|---|---|---|
+| granted | Pop Wo Yax Sek Ch'en Xul | `['planner']` | exited |
+| no grant | Pop Wo Yax Sek Ch'en Xul | `[]` | failed |
+| literal `model://planner` in ordinary text | Pop Wo | `[]` | no route turn at all |
+| empty candidate | Pop Wo Yax Sek Ch'en Xul | `['planner']` | failed |
+
+The AIML/SRAI chain keeps both hops: `ASK PLANNER -> SRAI ASK_PLANNER -> ROUTE ASK_PLANNER`. Exactly one backend
+invocation happens per declared route, the result enters the conversation context before composition, and one
+request id runs through every phase.
+
+One semantic refinement found by a failing guard: Sek reported `ok: false` when the backend returned nothing, which
+conflated *the call ran and came back empty* with *the call never ran*. Sek now reports whether it dispatched (ok
+unless the route was refused) and **Ch'en judges the content** - a completed call is still not a verified answer.
+
+The literal case is the one to protect: `what is model://planner` produces no Yax and no invocation. A rendered
+answer containing a URI is not a route.
+
+Still open, and deliberately not claimed: the Micronaut destination is exercised only through an injected invoker in
+tests, not through `Engine.invoke_micronaut` in a live turn; and `AGENT.md` stays unwritten until that consumer
+exists.
+
+---
+
 ## The Micro Agent bridge: declared routes only, two destinations
 
 Built to the four decisions, and the rule the review asked to protect is the module's centre: **dispatch is reached
@@ -3295,3 +3332,13 @@ Expected failure signatures and what they mean:
 **Verify:** `python -B -m unittest tests_host.test_micronaut_host_handlers tests_host.test_graph_theory_micronaut -q`; `python -B -c "import micronaut_audit; print(micronaut_audit.report()['semantic_registry'])"`.
 
 **If erased:** Missing implementations or catalog name similarities can again be represented as registered and utilized agents without source or invocation evidence.
+
+### M80 — headless Python agent host for KNUMATIC and MCP clients
+
+**Symptom:** `chat_app.py` owns the local model stream, conversation, agent tools and sandbox inside a Textual application. The existing `/v1/chat` route serves the deterministic local pipeline and does not run that model/tool loop, so KNUMATIC cannot use the Python agent host as a headless service yet.
+
+**Fix:** Open. Extract a UI-independent Python session service that owns messages, model selection, streamed turns, tool-call/result follow-up, session persistence and existing sandbox admission. Keep Textual as one frontend. Add an authenticated, bounded HTTP API for KNUMATIC. Add MCP only as a separate adapter over the same service/capability registry; MCP tool discovery must not grant sandbox access. KNUMATIC remains a separate TypeScript host and calls only a versioned transport contract, never local Python paths.
+
+**Verify:** Add contract tests proving session continuity across multiple turns and tool round-trips, per-session isolation, unauthorized/malformed request rejection, capability denial, sandbox write denial without an explicit grant, and equivalent handler receipts through HTTP and MCP. Until implementation exists, this milestone remains open and the current `/v1/chat` must not be described as the LLM session API.
+
+**If erased:** The current UI-coupled model loop can be mistaken for a headless service, or a future adapter can bypass the host-owned session and sandbox gates.
