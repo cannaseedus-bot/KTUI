@@ -117,6 +117,10 @@ try:  # local profile: configuration the bot may read, never a grant
     import profile as user_profile
 except ImportError:  # pragma: no cover
     user_profile = None
+try:  # the model turn's three observable handlers: process, validate, close
+    import model_turn
+except ImportError:  # pragma: no cover
+    model_turn = None
 try:  # Wo: classify the turn deterministically, and never invent a target
     import turn_classifier
 except ImportError:  # pragma: no cover
@@ -802,6 +806,9 @@ class ChatApp(App):
         # Turns that streamed without a lease because the served model name matched no declared alias.
         self.unmanaged_streams = 0
         self.last_unmanaged = None
+        # A dropped phase observation is a defect, so it is counted rather than swallowed.
+        self.observation_errors = 0
+        self.last_observation_error = None
         # Stage 2: the generation this app last rebuilt at, so an idle tick costs one integer compare.
         # A generation counter cannot see another process's edits, so a slow reconciliation rebuild stays.
         self.runtime_generation = None
@@ -1146,6 +1153,19 @@ class ChatApp(App):
         if sandbox.allow_write:
             granted.add("file.write")
         return granted
+
+    def observe_model_phase(self, event: str, phase: str, detail: dict) -> None:
+        """Record one model-turn handler. Silent without a request id, but never silently lossy."""
+        if phase_events is None:
+            return
+        request_id = getattr(self, "request_id", None)
+        if not request_id:
+            return
+        try:
+            phase_events.emit(request_id, event, phase=phase, source="host", detail=detail)
+        except Exception as error:
+            self.observation_errors += 1
+            self.last_observation_error = f"{event} {phase}: {type(error).__name__}: {error}"[:200]
 
     def classify_turn(self, text: str) -> dict | None:
         """Wo's work for one turn: a typed binding, observed, and never a grant."""
@@ -2530,6 +2550,9 @@ class ChatApp(App):
                 except Exception:
                     turn = None          # a model the lifecycle cannot wake still streams as before
 
+        # Sek begins when the response begins: a failure mid-stream then has an entry to close, instead of an
+        # exit with no matching enter.
+        self.observe_model_phase("phase_enter", "Sek", {"operation": "model.process"})
         try:
             with self.client.chat.completions.stream(
                 model=self.model_name,
@@ -2537,16 +2560,25 @@ class ChatApp(App):
                 tools=tools,
             ) as stream:
                 full = ""
+                chunks = 0
                 for event in stream:
                     if event.type == "content.delta":
+                        chunks += 1
                         if turn is not None:
                             turn.note_chunk(event.delta)
                         full += event.delta
                         resp.update(full)
                         v.scroll_end(animate=False)
                 
+                processed = (model_turn.process(text=full, chunks=chunks)
+                             if model_turn is not None else dict(ok=True, transport="ok"))
                 final = stream.get_final_completion()
                 message = final.choices[0].message
+                self.observe_model_phase("phase_exit", "Sek",
+                                         {"operation": "model.process", "ok": processed["ok"],
+                                          "outcome": ("ok" if processed["ok"] else "failed"),
+                                          "transport": processed["transport"],
+                                          "chunks": chunks, "chars": len(full)})
                 self.messages.append(message.model_dump(exclude_none=True))
                 
                 if message.tool_calls:
@@ -2566,10 +2598,51 @@ class ChatApp(App):
                     # The answer arrived inline: this is the turn to remember for /resume and /rewind.
                     self.remember("assistant", full)
 
+                # Ch'en examines the candidate; Xul closes the turn. A finished stream is not an accepted answer.
+                verdict = (model_turn.validate(full, tool_calls=bool(message.tool_calls))
+                           if model_turn is not None else dict(verdict="accepted", ok=True, verified=True,
+                                                               transport="ok", reason=None))
+                self.observe_model_phase("phase_enter", "Ch'en", {"operation": "model.validate"})
+                # outcome is the phase lifecycle (ok/failed/cancelled); turn_outcome is what the turn did.
+                self.observe_model_phase("phase_exit", "Ch'en",
+                                         {"operation": "model.validate", "verdict": verdict["verdict"],
+                                          "ok": verdict["ok"], "outcome": "ok",
+                                          "turn_outcome": ("accepted" if verdict["ok"] else "refused"),
+                                          "verified": verdict["verified"],
+                                          "transport": verdict["transport"],
+                                          "reason": verdict.get("reason")})
+                self.observe_model_phase("phase_enter", "Xul",
+                                         {"operation": "model.close", "verdict": verdict["verdict"]})
+                closed = (model_turn.close(verdict["verdict"], emitted=True)
+                          if model_turn is not None else dict(ok=True, outcome="accepted",
+                                                              emitted=True, verified=True))
+                self.observe_model_phase("phase_exit", "Xul",
+                                         {"operation": "model.close", "ok": closed["ok"],
+                                          "outcome": "ok" if closed["emitted"] else "failed",
+                                          "turn_outcome": closed["outcome"],
+                                          "emitted": closed["emitted"],
+                                          "verified": closed["verified"]})
+
         except Exception as e:
             resp.update(f"**LLM Error:** {e}")
             if turn is not None:
                 turn.error = f"{type(e).__name__}: {e}"[:200]
+            # A turn that failed in transport still ends: Sek reported the failure, Ch'en cannot verify,
+            # and Xul closes as failed while recording that something was displayed.
+            self.observe_model_phase("phase_exit", "Sek",
+                                     {"operation": "model.process", "ok": False, "outcome": "failed",
+                                      "transport": "failed", "error": f"{type(e).__name__}"})
+            self.observe_model_phase("phase_enter", "Ch'en", {"operation": "model.validate"})
+            self.observe_model_phase("phase_exit", "Ch'en",
+                                     {"operation": "model.validate", "verdict": "transport_failed",
+                                      "ok": False, "outcome": "ok", "turn_outcome": "failed",
+                                      "verified": False, "transport": "failed",
+                                      "reason": f"{type(e).__name__}"})
+            self.observe_model_phase("phase_enter", "Xul", {"operation": "model.close",
+                                                            "verdict": "transport_failed"})
+            self.observe_model_phase("phase_exit", "Xul",
+                                     {"operation": "model.close", "ok": False, "outcome": "ok",
+                                      "turn_outcome": "failed", "emitted": True, "verified": False})
         finally:
             if turn is not None:
                 # Evidence, not success: a failed or interrupted stream still records its observation.

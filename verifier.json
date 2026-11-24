@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 401,
+  "count": 403,
   "covers": "tracked working tree; uncommitted edits are refused by verify()",
   "excludes": {
     "names": [
@@ -20,7 +20,7 @@
   "files": {
     ".gitattributes": "b3a2ff6c81213484869faff276e603e6151d1fcf40bbb4c81f4155da4155206f",
     ".gitignore": "9778d7796160432c987e9b4e59d34d97c7a20e4e764a32d06d44b1a4a1c65be9",
-    "PLAN.md": "8d1b36b3158f18488dfaa33a74f216da4205e062a35aa179a7b697c090ade368",
+    "PLAN.md": "c8090ced662de0b0870f9e49c325ec8b9507b8d87df18510ac825f23459119ec",
     "README.md": "1d04bfe509d7dc71b78a8b19b7e95e5549e25fb635960dc5a5204df9775644b7",
     "SECURITY.md": "4e930b93d780d16a0fe1f0ecd330cc4c8b2ce3efde953b33abcd35a02f13c73a",
     "_override.aiml": "aa8ca0b94b35b7e8e7bd1672eb029b00ac08d64504f30e318ea7926f289fe019",
@@ -101,7 +101,7 @@
     "bound_scoring.py": "04d6b7b0204c1c72298ca277bd7bd1632409bf5be43efe9d723b358506a8feb7",
     "ce_experiment.py": "cbbc320db174cabee733bd59849fd361728d2ecf38c5615b17dffe108e111764",
     "ce_protocol.py": "6dc7eaa627548cc68b89de7edb5e376dbed4d201df3215d7c80e63f88fba4dbf",
-    "chat_app.py": "c9d8f1220caacf34001ef356321dab85cdd2b60b95938d5781e47aa9bcbb470d",
+    "chat_app.py": "be90fa4e9738413551fbbbfe6f487e63c0afb5f38bff5ffa0850fd3f641c2135",
     "codex.aiml": "447e2af5c8bbf84344a4b23d7f700da737f5176e88a16145e51ec982afe4973e",
     "compose.aiml": "2eaeb48a02ef318d825f789c2326b094b00788834a0b6ab17cc2734dbf072321",
     "compose.py": "da6612a7e3195d13a31c52206e42ee40cf63b75a44bf2d89f60a8af4d91c483c",
@@ -122,7 +122,7 @@
     "evaluation/scoring-contract.json": "40ccd709ebbb83ffa649d3d867f232ba0494ed33e77f13904565bfef97473968",
     "evaluation/task-sessions.json": "eb902d19a8b552bcf6e8a8114ce6d0f2f8ffcddcbd2fa8ca0bd4e14bf899fb19",
     "evaluation_harness.py": "df294a6e450ad009d5f0bb3547307e899d7ab059939443385fde4379a5d7d787",
-    "evidence-suites.json": "16dbdc171324cd447659a57669706670c9acfbae297b87622e4110b93a6055aa",
+    "evidence-suites.json": "febf99fa8e28ba454c4aa255a5ae0403438d3e11829d4b957a474eff9eb3b463",
     "evidence_gate.py": "cf1f5273ec87f0f75a01512882db6cf8c66c3d9f305fc3b7c354ce798e40d5e4",
     "evidence_record.py": "7f0142a220bdac6d6a3757ae57ef67ca710aa3d0dfe38eaf53ef31281e97b6dc",
     "functions.py": "55aac70a851903f795c32046a270d6429828ab1aa9941a066c51e3a028f7c116",
@@ -416,20 +416,22 @@
     "tests_host/test_session_profile.py": "6a656a6e1be2fcc9d96efdad73bf4a5ec15c8f24b849e495fcb3eb4634872303",
     "tests_host/test_stream_lease.py": "47bacbe8eef82e5ccae31eb5ce22fab348ab8e8bef208f3af5db6ec4b12d35b2",
     "tests_host/test_tools.py": "82ff85e0ac655111150f4e6071bfa99d97892b0b36b4aa8da1ab23a721187b4a",
+    "tests_host/test_turn_classifier.py": "04e3a4a7a83cc1e287f56e2594769e8a6a9c62a4ec537de3e836988072f8a696",
     "tests_host/test_verifier.py": "60b5d31f9d35e261b57d7826bd3a30b82f74bc8f22cea6eef68815b42416114b",
+    "turn_classifier.py": "656ff11276502f56f011497a665b2c9cbb0fe2890f59b678a28ddedf63f44cb5",
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "3119a0afde86b64a94c1d5d6000707e26b1ef6f5b0afcae6fffa40f14c9bbe57",
+  "hash": "23913424960dc2df4576919e2b07c4da900552db2f4f288d1c9196b30a8ec439",
   "locked": true,
-  "note": "lock for the Wo turn classifier (M88)",
+  "note": "lock for the model-turn lifecycle (M89)",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
-    "count": 400,
-    "hash": "8a47a899177e93ce9e967b1953e7f225dce2f0f26842bb420cebf3257c674d7f",
-    "updated_at": "2026-11-24T21:20:38Z"
+    "count": 401,
+    "hash": "3119a0afde86b64a94c1d5d6000707e26b1ef6f5b0afcae6fffa40f14c9bbe57",
+    "updated_at": "2026-11-24T21:45:19Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T21:45:19Z"
+  "updated_at": "2026-11-24T21:55:49Z"
 }
