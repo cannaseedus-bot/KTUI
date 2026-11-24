@@ -1,6 +1,6 @@
 {
   "algorithm": "sha256",
-  "count": 400,
+  "count": 401,
   "covers": "tracked working tree; uncommitted edits are refused by verify()",
   "excludes": {
     "names": [
@@ -101,7 +101,7 @@
     "bound_scoring.py": "04d6b7b0204c1c72298ca277bd7bd1632409bf5be43efe9d723b358506a8feb7",
     "ce_experiment.py": "cbbc320db174cabee733bd59849fd361728d2ecf38c5615b17dffe108e111764",
     "ce_protocol.py": "6dc7eaa627548cc68b89de7edb5e376dbed4d201df3215d7c80e63f88fba4dbf",
-    "chat_app.py": "7aa32c4b59fc777b9fbdd6a90572d45e11b0c5fca3b88c37b045c7170a89a208",
+    "chat_app.py": "c9d8f1220caacf34001ef356321dab85cdd2b60b95938d5781e47aa9bcbb470d",
     "codex.aiml": "447e2af5c8bbf84344a4b23d7f700da737f5176e88a16145e51ec982afe4973e",
     "compose.aiml": "2eaeb48a02ef318d825f789c2326b094b00788834a0b6ab17cc2734dbf072321",
     "compose.py": "da6612a7e3195d13a31c52206e42ee40cf63b75a44bf2d89f60a8af4d91c483c",
@@ -122,7 +122,7 @@
     "evaluation/scoring-contract.json": "40ccd709ebbb83ffa649d3d867f232ba0494ed33e77f13904565bfef97473968",
     "evaluation/task-sessions.json": "eb902d19a8b552bcf6e8a8114ce6d0f2f8ffcddcbd2fa8ca0bd4e14bf899fb19",
     "evaluation_harness.py": "df294a6e450ad009d5f0bb3547307e899d7ab059939443385fde4379a5d7d787",
-    "evidence-suites.json": "6bbae0ca422be708e4d4d3dae138390e5170b28f595de426ca916242c2f996b4",
+    "evidence-suites.json": "16dbdc171324cd447659a57669706670c9acfbae297b87622e4110b93a6055aa",
     "evidence_gate.py": "cf1f5273ec87f0f75a01512882db6cf8c66c3d9f305fc3b7c354ce798e40d5e4",
     "evidence_record.py": "7f0142a220bdac6d6a3757ae57ef67ca710aa3d0dfe38eaf53ef31281e97b6dc",
     "functions.py": "55aac70a851903f795c32046a270d6429828ab1aa9941a066c51e3a028f7c116",
@@ -396,6 +396,7 @@
     "tests_host/test_phase_events.py": "220ce808d05660afe29c9008c3296e3087a3ed325623cfe361e482268910e931",
     "tests_host/test_phase_resolve.py": "50451ff3e0a8f76bd8460e7ad9b9f0d1eaaf21ef820d59f70fca23662b640c9c",
     "tests_host/test_phase_routing.py": "cec8a4b90bd2a25a9267310a01509116261c9f757e3cad4fd3ecca3f3d68b319",
+    "tests_host/test_phase_trace_turn.py": "829c9b2719f83e134261172f3a9a8ec6072d6b6c287724e07a80e51307a79116",
     "tests_host/test_plan_edit.py": "f4add51948b7727731501c089d968254a795c9541b477c03d80161ab4115a22e",
     "tests_host/test_plan_graph.py": "5ca8d69a00bceaf8b24558a0febd04aae4eb88d210e91740cf1aabfe02f26fef",
     "tests_host/test_profile.py": "6f31726c5d53a58c5d5b896dee2577530587c43cd0adb0b28591132ab3caa731",
@@ -419,16 +420,16 @@
     "user_memory.py": "f3df145c54222b348e74d617f9e151cdac7b7bbd1dc2474e16c74a1d0f4cfd0a",
     "verifier.py": "9fd00c4abf0bca50ae067fbde8d4482d7dd457703a242e8e1693d931d0b5abff"
   },
-  "hash": "8a47a899177e93ce9e967b1953e7f225dce2f0f26842bb420cebf3257c674d7f",
+  "hash": "3119a0afde86b64a94c1d5d6000707e26b1ef6f5b0afcae6fffa40f14c9bbe57",
   "locked": true,
-  "note": "lock for the compose phase trace (Yax, Sek, Ch'en, Xul)",
+  "note": "lock for the Wo turn classifier (M88)",
   "optional_plugin": "the Ed25519 attestation ledger is an evaluation plugin; this lock does not depend on it",
   "previous": {
     "count": 400,
-    "hash": "ac00039f35863f770070999786cd1002ed5b5fd6dc44801fce6fc1ca86098898",
-    "updated_at": "2026-11-24T21:06:20Z"
+    "hash": "8a47a899177e93ce9e967b1953e7f225dce2f0f26842bb420cebf3257c674d7f",
+    "updated_at": "2026-11-24T21:20:38Z"
   },
   "schema": "kuhul://verifier/lock/v1",
   "source": "working tree",
-  "updated_at": "2026-11-24T21:20:38Z"
+  "updated_at": "2026-11-24T21:45:19Z"
 }

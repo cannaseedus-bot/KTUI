@@ -53,9 +53,10 @@ class ComposeTraceTests(unittest.TestCase):
 
         return asyncio.run(drive())
 
-    def test_a_compose_turn_traces_five_phases_in_order(self):
+    def test_a_compose_turn_traces_six_phases_in_order(self):
         _, trace = self.turn()
-        self.assertEqual(trace["phases"], ["Pop", "Yax", "Sek", "Ch'en", "Xul"])
+        self.assertEqual(trace["phases"], ["Pop", "Wo", "Yax", "Sek", "Ch'en", "Xul"],
+                         "Pop recognises, Wo binds, then the computation runs")
         self.assertTrue(trace["complete"], "every phase that entered also exited")
         self.assertEqual(trace["families"], ["phase_enter", "phase_exit"])
 
@@ -71,6 +72,8 @@ class ComposeTraceTests(unittest.TestCase):
         for event in trace["events"]:
             if event["event"] == "phase_exit":
                 by_phase[event["phase"]] = event["detail"]
+        self.assertEqual(by_phase["Wo"]["family"], "compose")
+        self.assertEqual(by_phase["Wo"]["targets"], ["graph.matches"])
         self.assertEqual(by_phase["Yax"]["kept"], 2, "two relations were retrieved")
         self.assertEqual(by_phase["Yax"]["considered"], 2)
         self.assertEqual(by_phase["Sek"]["candidates"], 2)
@@ -86,10 +89,14 @@ class ComposeTraceTests(unittest.TestCase):
         self.assertEqual(exits["Yax"]["kept"], 1)
         self.assertEqual(exits["Sek"]["candidates"], 1)
 
-    def test_wo_is_absent_because_nothing_on_this_path_binds(self):
-        _, trace = self.turn()
-        self.assertNotIn("Wo", trace["phases"],
-                         "no task family is classified for a live turn, so Wo has no work to observe")
+    def test_an_ambiguous_turn_binds_nothing(self):
+        _, trace = self.turn(text="what do you know about my dog")
+        exits = {event["phase"]: event["detail"] for event in trace["events"]
+                 if event["event"] == "phase_exit"}
+        self.assertEqual(exits["Wo"]["status"], "ambiguous")
+        self.assertFalse(exits["Wo"]["ok"], "an ambiguous binding is not a bound turn")
+        self.assertEqual(sorted(exits["Wo"]["candidates"]), ["compose", "memory_query"])
+        self.assertEqual(exits["Wo"]["targets"], [], "no target is invented for an ambiguous turn")
 
     def test_no_request_id_means_no_events(self):
         import compose

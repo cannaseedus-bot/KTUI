@@ -117,6 +117,10 @@ try:  # local profile: configuration the bot may read, never a grant
     import profile as user_profile
 except ImportError:  # pragma: no cover
     user_profile = None
+try:  # Wo: classify the turn deterministically, and never invent a target
+    import turn_classifier
+except ImportError:  # pragma: no cover
+    turn_classifier = None
 import math
 import tempfile
 import shlex
@@ -784,6 +788,7 @@ class ChatApp(App):
         self.last_routing = None
         # The green screen: a digest of the last render, and counters a guard can read.
         self.last_tree = None
+        self.last_binding = None
         self.runtime_digest = None
         self.runtime_polls = 0
         self.runtime_renders = 0
@@ -1142,6 +1147,20 @@ class ChatApp(App):
             granted.add("file.write")
         return granted
 
+    def classify_turn(self, text: str) -> dict | None:
+        """Wo's work for one turn: a typed binding, observed, and never a grant."""
+        if turn_classifier is None:
+            return None
+        try:
+            binding = turn_classifier.classify(text, granted=self.granted_capabilities())
+        except Exception as error:            # classification must never take the turn down
+            self.last_binding = dict(schema="kuhul://turn/classification/v1", status="unsupported",
+                                     reason=f"classifier unavailable: {error}"[:160])
+            return self.last_binding
+        self.last_binding = binding
+        turn_classifier.observe(binding, getattr(self, "request_id", None))
+        return binding
+
     def phase_route(self, text: str) -> dict | None:
         """Consult the chain before answering. Returns the verdict, or None if unavailable."""
         if phase_routing is None:
@@ -1154,6 +1173,8 @@ class ChatApp(App):
             self.last_routing = dict(action="fallback", reason=f"chain unavailable: {error}")
             return self.last_routing
         self.last_routing = verdict
+        # Pop has recognised the turn; Wo now binds it to a family. That order is the phase contract.
+        self.classify_turn(text)
         self.last_plan = verdict.get("plan")
         return verdict
 
