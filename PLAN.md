@@ -56,6 +56,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M17 | Commit, push and build on command, with git's own output or error; model tools stay read-only | **guard** | `gitops.py`, `gitops.aiml`, `chat_app.py` (`admit_gitop`), `tests_host/test_gitops.py::M17…` |
 | M18 | Clone a repo: https only, contained in the workspace, behind the write grant | **guard** | `gitops.py` (`clone`, `validate_remote`, `validate_destination`), `chat_app.py` (`clone_repo`), `tests_host/test_clone.py::M18…` |
 | M19 | Reachable endpoint: `micronaut://v1/chat` over loopback, local answers only | **guard** | `micronaut_server.py`, `chat_app.py` (`/serve`, `--serve`), `start.bat serve`, `tests_host/test_server.py::M19…` |
+| M20 | Greeting-µ: `greeting.gml` declares greetings, destinations and the paths between them; multi-intent messages keep every clause | **guard** | `greeting.gml`, `greetings.py`, `chat_app.py` (`multi_intent_answer`), `tests_host/test_greetings.py::M20…` |
 
 ---
 
@@ -147,6 +148,49 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## Greeting-µ (M20)
+
+A greeting is an entry point, not an answer. `greeting.gml` is the declaration: **14 nodes, 21 edges**,
+one schema (`gml-conversation/1`), the greetings themselves, the social questions that ride along,
+seven destinations, and the paths between them - all under a `no_grant_from_greeting` constraint.
+
+```
+HELLO/HI/HEY/YO/GOOD MORNING   -> conversation
+HEY                            -> question, tool, command, memory, task, identity   (may_lead_to)
+HOW ARE YOU / WHATS UP         -> conversation, tool
+destination                    -> declared authority: read_only | proposal_only | requires_grant
+```
+
+`greetings.py` applies the document; it never executes or authorizes:
+
+```
+"Hey, how are you, and can you check my server?"
+  -> greeting/conversation/read_only
+  -> social/conversation/read_only
+  -> destination/tool/proposal_only      authorized: False
+```
+
+Two rules that keep the message whole:
+
+- **a greeting may open a longer clause** - "hey remember my dog's name is max" is a greeting *and* a
+  memory proposal, not a greeting that swallows the rest;
+- **connectors are not intents** - "and", "then", "also" are stripped, and the most specific cue wins
+  ("who are you" is identity, not a generic "who" question).
+
+The host then answers every clause locally, or hands the *whole* utterance on: a clause it cannot
+answer means no partial answer (`multi_intent_answer` returns None). Single-intent messages take the
+old path unchanged, which the guards assert so nothing regresses.
+
+`greeting.gml` is load-bearing, and a test proves it by adding a greeting to a copy of the document
+and requiring the new phrase to be recognised - there is no Python list of greetings to keep in sync.
+
+Not yet wired, stated plainly: the graph routes, but the *destinations* still resolve through the AIML
+banks and the daemon's admission boundary rather than through `ROUTE` as a first-class operator. The
+candidate list is available for that integration; what exists today is the declaration, the
+decomposition, and the all-or-nothing host behaviour.
 
 ---
 
@@ -465,7 +509,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 94 tests, OK (M3-M19: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10)
+host guards    : 105 tests, OK (M3-M20: guards, ledger 11, backup 5, memory 9, bundle 10, identity 6, routing 4, tools 8, gitops 10, clone 11, server 10, greeting 11)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 

@@ -71,6 +71,10 @@ try:  # the reachable loopback endpoint: micronaut://v1/chat
     import micronaut_server
 except ImportError:  # pragma: no cover
     micronaut_server = None
+try:  # Greeting-µ: the greeting graph, used to keep every intent in a multi-intent utterance
+    import greetings
+except ImportError:  # pragma: no cover
+    greetings = None
 import math
 import tempfile
 import shlex
@@ -1273,13 +1277,41 @@ class ChatApp(App):
         lines.append("`/plan <name> [term]` shows the graph; `/plan run <name> [term]` runs an admitted one.")
         self.say_system("\n".join(lines))
 
-    def local_answer(self, text: str) -> tuple[str, str] | None:
+    def multi_intent_answer(self, text: str, _depth: int = 0) -> str | None:
+        """Answer a multi-intent utterance from the graph, or hand the whole thing on.
+
+        "Hey, how are you, and what is the time?" is three intents. The bank would answer the greeting
+        and drop the rest, so each clause is routed through greeting.gml and answered; if any clause
+        cannot be answered locally, the whole utterance takes the normal path - half an answer is
+        worse than an honest handoff.
+        """
+        if greetings is None or _depth > 0:
+            return None
+        try:
+            routes = greetings.routes(text)
+        except Exception:
+            return None
+        if not routes.get("multi"):
+            return None
+        parts = []
+        for intent in routes["intents"]:
+            local = self.local_answer(intent["clause"], _depth=_depth + 1) if intent["clause"] else None
+            if local is None:
+                return None
+            kind, body = local
+            parts.append(f"**{intent['destination']}** — {body}")
+        return "\n\n---\n\n".join(parts)
+
+    def local_answer(self, text: str, _depth: int = 0) -> tuple[str, str] | None:
         """The daemon runs one cycle per turn; its closure decides, or defers to the model.
 
         Pop/Wo/Yax/Sek/Ch'en/Xul are recorded on `self.last_turn` (see `/daemon`). The engine can
         only ever *propose* a read-only verb or an admitted plan; the execution below is the same
         code path the model's tools use.
         """
+        combined = self.multi_intent_answer(text, _depth)
+        if combined:
+            return "aiml", combined
         if self.daemon is None:
             return self._local_answer_direct(text)
         turn = self.daemon.run(text)
