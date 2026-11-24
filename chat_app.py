@@ -95,6 +95,10 @@ try:  # live evidence capture for every turn
     import evidence_record
 except ImportError:  # pragma: no cover
     evidence_record = None
+try:  # the read-only runtime projection behind /runtime
+    import runtime_tree
+except ImportError:  # pragma: no cover
+    runtime_tree = None
 import math
 import tempfile
 import shlex
@@ -1351,6 +1355,20 @@ class ChatApp(App):
         block = links.block(query, limit=6, heading=f"Reference links for {query}")
         self.say_system(block or f"no reference links for {query!r}")
 
+    def action_runtime(self) -> None:
+        """The runtime projection: what the registries actually say about the running system."""
+        if runtime_tree is None:
+            self.say_system("The runtime projection (runtime_tree.py) is unavailable.")
+            return
+        try:
+            tree = runtime_tree.projection()
+        except Exception as error:
+            self.say_system(f"The runtime projection could not be built: {type(error).__name__}: {error}")
+            return
+        self.last_tree = tree
+        for line in runtime_tree.render(tree).splitlines():
+            self.say_system(line)
+
     def action_evidence(self) -> None:
         """What the recorder saw on the last turn, and whether the log still verifies."""
         if evidence_record is None:
@@ -1607,6 +1625,7 @@ class ChatApp(App):
         commands["links"] = ("Links: reference searches for a topic", self.action_links, "Wikipedia, Britannica, NASA, Space.com - searches, not pages I read")
         commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
         commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
+        commands["runtime"] = ("Runtime: the green-screen projection", self.action_runtime, "Read-only tree of phases, micronauts, models and evidence")
         commands["evidence"] = ("Evidence: the recorded turns and the chain state", self.action_evidence, "Request id, latency, execution vs admission; hash-chained")
         commands["gml"] = ("GML: what the tensor extension declares", self.action_gml, "Fields, constraints, and whether the documents validate")
         commands["mode"] = ("Mode: list the daemon response modes", self.action_modes, "Bias vectors as a style prior")

@@ -87,6 +87,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M47 | A third backend: Qwen3-1.7B planner (thinking off) fixes over-generation and is the cheapest of the three, but under-generates the full chain | **guard** | `data/models.json`, `task-engine.py --no-think`, `data/proposal-eval-qwen.json`, `tests_host/test_model_router.py` (20 tests) |
 | M48 | Inference on demand: a registered wake, owned stops, leases that keep a shared backend up | **guard** | `model_lifecycle.py`, `data/models.json`, `tests_host/test_model_lifecycle.py` (15 tests) |
 | M49 | The frozen evaluation corpus: reviewed expectations, nodes scored apart from edges, headline restricted to frozen cases | **guard** | `evaluation/`, `evaluation_harness.py`, `tests_host/test_evaluation_harness.py` (13 tests) |
+| M50 | `runtime://green-screen/v1`: one read-only tree over the registries, bound to the UI, answering 'why this model' | **guard** | `runtime_tree.py`, `chat_app /runtime`, `tests_host/test_runtime_tree.py` (13 tests) |
 
 ---
 
@@ -178,6 +179,44 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## The runtime projection (M50)
+
+One read-only tree over what already existed, so the phase hive and the UI read the same field:
+
+```
+runtime://green-screen/v1 · 28 node(s) · 51 edge(s)
+  corpus 5 · evidence 1 · micronaut 5 · model 3 · phase 6 · preference 4 · runtime 1 · schema 3
+  model://advisor        hot   port 9032
+  model://planner        hot   port 9041
+  model://worker         hot   port 9040
+  evidence://ledger      records 35 · chain ok
+  (read-only projection · the registries and XCFE are authoritative)
+```
+
+Nodes come from the phase manifests, the micronaut registry, the model declarations and lifecycle, the
+corpus declaration and the evidence ledger - not from a copy. Edges are typed: `has_phase`, `precedes`,
+`hands_off_to`, `accepts`, `binds_to`, `prefers`, `has_corpus`, `has_model`, `records_binding`.
+
+**The questions the review listed are now answerable from the tree:**
+
+```
+why did the router pick planner for compose?
+  explain_selection -> selected: planner · health {advisor: true, planner: true, worker: true}
+                       order: [planner, advisor, worker] · rejected: []
+who binds to the advisor?
+  users_of(advisor) -> []      (nothing declares it: it is the escalation target, listed in
+                                preference://plan as rank 1)
+```
+
+That last one is the honest answer rather than a convenient one: after M47 the advisor is the *fallback*,
+not a declared binding, and the tree shows the difference instead of inventing a user.
+
+`/runtime` in the app renders the same projection into the command panel, so the green screen is the
+Textual surface over this field - the registries stay authoritative, and the projection carries
+`execution: false`, `mutation: false` on every node.
 
 ---
 
@@ -1566,7 +1605,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 411 tests, OK (M3-M49) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
+host guards    : 424 tests, OK (M3-M50) · package suite 139 tests (14 vector-adapter, 16 program, 16 phase-manifest, 10 phase-ops)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
