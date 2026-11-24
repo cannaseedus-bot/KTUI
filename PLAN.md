@@ -66,6 +66,7 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 | M27 | EmbeddingGemma2 vector adapter verified against the real 99,524-row assets; similarity ranks, compatibility filters, XCFE admits | **guard** | `adapters/embeddinggemma2.py`, `tests/test_vector_adapter.py` (14 tests) |
 | M28 | K'UHUL program layer: the declared grammar parses, validates, serializes and traces (no execution) | **guard** | `core/program.py`, `tests/test_program.py` (15 tests) |
 | M29 | `kuhul-phases/v1` manifests: one JSON file per phase, chained by schema URI, regulated by a loader that executes nothing | **guard** | `core/phase_manifest.py`, `phases/json/*.json`, `tests/test_phase_manifest.py` (16 tests) |
+| M30 | `phase.resolve_aiml`: one input, one typed six-phase plan - evidence, delegation, no execution | **guard** | `phase_resolve.py`, `tests_host/test_phase_resolve.py` (15 tests) |
 
 ---
 
@@ -157,6 +158,43 @@ previous commit — correct, but worth stating rather than discovering.
 report can only attribute by name if the pre-patch state was captured. Run
 `host_gate.py --host … --capture before.json` *before* applying a patch, not after — every future
 gate cycle starts there.
+
+---
+
+## phase.resolve_aiml (M30)
+
+The integration point the review named, and nothing larger: one AIML input in, one **typed phase plan**
+out, read-only.
+
+```
+why does my dog act playful?
+  Pop    one candidate: WHY DOES * DOG *        (captures: my dog, playful)
+  Wo     subject=dog · attributes=[playful] · question_type=explanation · reflected "your dog"
+  Yax    0 redirects · 0 vectors · 3 recorded facts
+  Sek    filter / map / fold proposals over 3 candidates
+  Ch'en  3 evidence · problems: subject_not_recorded, unsupported_explanation
+  Xul    partial: "pet is described as playful, big, but there is no recorded cause for that behaviour."
+```
+
+Four closures, and the distinction is the point of the whole thing:
+
+| closure | when | response |
+|---|---|---|
+| `supported` | attributes recorded, question answerable | the answer |
+| `partial` | attributes recorded, **cause is not** | "described as …, but there is no recorded cause" |
+| `unknown` | nothing recorded | "Nothing recorded supports an answer yet" |
+| `delegated` | directive or identity (TOOL/IDENTITY/COMPOSE/…) | empty - the host owns it |
+| `none` | a statement, not a question | empty |
+
+Other properties: the plan is **deterministic** (no timestamps; identical JSON on repeat), **typed**
+(six phases in fixed order), and **read-only** (`execution false`, `authority declaration_only`, and
+`admitted: false` in Ch'en). Vector candidates are accepted from a retriever and stay in Yax - a guard
+asserts they never become evidence.
+
+Bugs the guards caught: the ELIZA reflection applied both directions, so `my -> your -> my` undid
+itself; `_sek` pre-filtered facts by a *guessed* subject and silently dropped everything when the guess
+was wrong (now Ch'en decides the subject and reports `subject_not_recorded`); and greetings/directives
+were being closed from memory until the delegation gate moved ahead of the statement gate.
 
 ---
 
@@ -831,7 +869,7 @@ gml_assemble   : tensor/assembled shape=(6, 2) dtype=float32 coverage=12/12 (pla
 gml_audit      : admitted and run through the planner
 package suite  : 80 tests, OK (rerun by M5 on every host-guard run)
 harness tests  : 14 tests, OK (python -m unittest test_host_gate, in the package)
-host guards    : 179 tests, OK (M3-M29) · package suite 129 tests (14 vector-adapter, 16 program, 16 phase-manifest)
+host guards    : 194 tests, OK (M3-M30) · package suite 129 tests (14 vector-adapter, 16 program, 16 phase-manifest)
 evidence chain : artifact commit's parent == report `tested_commit` (see the latest 'Evidence for' commit)
 ```
 
