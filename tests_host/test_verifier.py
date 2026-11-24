@@ -27,20 +27,21 @@ class LockTests(unittest.TestCase):
         self.assertGreater(record["count"], 100)
         self.assertEqual(len(record["hash"]), 64)
 
-    def test_the_shipped_source_matches_the_lock(self):
-        # the lock covers the committed source, so an uncommitted edit in the working tree is not drift
+    def test_the_lock_matches_the_tree_or_refuses_uncommitted_source(self):
+        """Either the tree matches the lock, or the lock says the tree is uncommitted - never a silent pass."""
         report = verifier.verify()
-        self.assertTrue(report["ok"], report.get("drift"))
-        self.assertEqual(report["current"]["count"], verifier.load()["record"]["count"])
+        if report["ok"]:
+            self.assertEqual(report["current"]["count"], verifier.load()["record"]["count"])
+            return
+        self.assertEqual(report["refused"], "dirty_source")
+        self.assertTrue(report["dirty"], "an uncommitted source must be named")
+        for name in report["dirty"]:
+            self.assertIsInstance(name, str)
 
-    def test_the_lock_hashes_head_not_the_working_tree(self):
-        import subprocess
-
+    def test_the_lock_describes_the_working_tree(self):
         record = verifier.load()["record"]
-        self.assertEqual(record["source"], "HEAD")
-        committed = verifier.manifest(committed=True)
-        self.assertEqual(committed["hash"], record["hash"],
-                         "the lock describes what was committed, not whatever is on disk")
+        self.assertEqual(record["source"], "working tree")
+        self.assertIn("uncommitted edits are refused", record["covers"])
 
     def test_the_lock_does_not_hash_its_own_volatile_artifacts(self):
         record = verifier.load()["record"]
@@ -66,7 +67,7 @@ class LockTests(unittest.TestCase):
         record["count"] = len(record["files"])
         record["hash"] = "f" * 64
         lock.write_text(json.dumps(record), encoding="utf-8")
-        report = verifier.verify(lock=lock)
+        report = verifier.verify(lock=lock, ignore_dirty=True)
         self.assertFalse(report["ok"])
         self.assertEqual(report["refused"], "drift")
         self.assertIn("README.md", report["drift"]["changed"])

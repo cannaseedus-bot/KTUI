@@ -34,6 +34,23 @@ class VerifierError(ValueError):
     """The lock cannot be built or read."""
 
 
+def dirty_tracked() -> list[str]:
+    """Tracked files with uncommitted changes - source the lock cannot certify."""
+    completed = subprocess.run(["git", "status", "--porcelain", "-uno", "-z"], cwd=str(HOST_ROOT),
+                               capture_output=True, timeout=60)
+    if completed.returncode != 0:
+        return []
+    names = []
+    for entry in completed.stdout.split(b"\0"):
+        if not entry:
+            continue
+        text_entry = entry.decode("utf-8", "replace")
+        name = text_entry[3:] if len(text_entry) > 3 else ""
+        if name and _keep(name):
+            names.append(name)
+    return sorted(names)
+
+
 def _keep(name: str) -> bool:
     normalized = name.replace("\\", "/")
     if normalized in EXCLUDED_NAMES or normalized.startswith(EXCLUDED_PREFIXES):
@@ -117,11 +134,12 @@ def manifest(*, committed: bool = True) -> dict:
 
 def build(*, lock: Path | None = None, note: str = "") -> dict:
     lock = Path(lock or LOCK)
-    current = manifest(committed=True)
+    current = manifest(committed=False)
     record = dict(schema=SCHEMA, algorithm="sha256", locked=True,
                   updated_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                   hash=current["hash"], files=current["files"], count=current["count"],
                   source=current["source"],
+                  covers="tracked working tree; uncommitted edits are refused by verify()",
                   note=(note or "one hash over the tracked source; update it only when the source updates"),
                   excludes=dict(names=list(EXCLUDED_NAMES), prefixes=list(EXCLUDED_PREFIXES),
                                 prefixes_by_name=list(EXCLUDED_GLOBS)),
@@ -144,14 +162,21 @@ def load(*, lock: Path | None = None) -> dict:
     return dict(ok=True, refused=None, record=record)
 
 
-def verify(*, lock: Path | None = None) -> dict:
+def verify(*, lock: Path | None = None, ignore_dirty: bool = False) -> dict:
     """Compare the locked hash with the working tree. Reports drift; never rewrites the lock."""
     loaded = load(lock=lock)
     if not loaded["ok"]:
         return dict(ok=False, refused=loaded["refused"], detail=loaded.get("detail"),
                     drift={}, locked=None, current=None)
     locked = loaded["record"]
-    current = manifest(committed=True)
+    current = manifest(committed=False)
+    dirty = [] if ignore_dirty else dirty_tracked()
+    if dirty:
+        return dict(ok=False, refused="dirty_source", drift={}, locked=dict(hash=locked.get("hash")),
+                    current=dict(hash=current["hash"], count=current["count"]), dirty=dirty,
+                    locked_flag=bool(locked.get("locked")),
+                    detail=("tracked source is uncommitted: " + ", ".join(dirty[:5])),
+                    note="a lock cannot certify uncommitted source; commit or revert, then update the lock")
     locked_files = locked.get("files") or {}
     changed = sorted(name for name in locked_files
                      if name in current["files"] and locked_files[name] != current["files"][name])
