@@ -119,6 +119,24 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 
 <!-- milestone:wo-instrumentation-and-write-verification -->
 <!-- milestone:learning-chain-end-to-end -->
+<!-- milestone:delivery-integrity-of-the-learning-chain -->
+## Delivery integrity of the learning chain
+
+Two failures that protect the ledger's meaning, both refused rather than absorbed.
+
+| failure | behaviour |
+|---|---|
+| the same verified message delivered twice | `duplicate_delivery`, naming the existing sequence; the row count does not move |
+| the same message with `allow_redelivery` | appended with `delivery: "redelivery"` and `original_sequence` set - counted once and labelled |
+| persistence fails after verification | `evidence_not_persisted`, `persisted: false`, `verification_ok: true` - a verification that was not written is not a record |
+| a dry run | touches nothing |
+
+The distinction the review asked for is explicit in the result: **`persisted`** and **`verification_ok`** are
+separate fields, so "the candidate passed" and "the evidence exists" can never be inferred from one another. A
+re-delivery is evidence of a delivery, not a second independent confirmation, and the record says which it is.
+
+---
+
 ## The learning chain is exercised end to end
 
 The chain existed as parts and is now walked in one call: candidate validated against `semantic-candidate:v1`,
