@@ -34,8 +34,16 @@ PRODUCER = "micronaut://v1/learning"
 VERIFIER = "micronaut://v1/ch_en"
 
 
+def _existing(message_id: str) -> dict | None:
+    """Has this exact verified message already been delivered to the ledger?"""
+    for index, row in enumerate(evidence_record.load()):
+        if str(row.get("request_id") or "") == message_id:
+            return dict(sequence=index, request_id=message_id)
+    return None
+
+
 def run(candidate: dict, *, verdict: str, evidence: str = "", registry: dict | None = None,
-        record: bool = True, path: Path | None = None) -> dict:
+        record: bool = True, path: Path | None = None, allow_redelivery: bool = False) -> dict:
     """One candidate through the whole chain, with every refusal reported rather than swallowed."""
     registry = registry or schema_bus.load()
     steps: list[dict] = []
@@ -79,12 +87,40 @@ def run(candidate: dict, *, verdict: str, evidence: str = "", registry: dict | N
                     verdict=verified, evidence=None, admitted=False, execution=False,
                     mutation=False)
 
-    appended = schema_bus.append_verified_delta(delta, verified, producer=VERIFIER, schema_version=1,
-                                               path=path)
+    # Duplicate delivery: the same verified message twice is not two independent pieces of evidence.
+    message_id = f"delta:{delta.get('payload', {}).get('target')}:1"
+    previous = _existing(message_id)
+    if previous is not None and not allow_redelivery:
+        steps.append(dict(hop="ledger", ok=False, refused="duplicate_delivery",
+                          existing_sequence=previous["sequence"]))
+        return dict(schema=SCHEMA, ok=False, refused="duplicate_delivery", steps=steps,
+                    delta=delta, verdict=verified, existing=previous, evidence=None,
+                    persisted=False, verification_ok=True, admitted=False, execution=False,
+                    mutation=False,
+                    note=("this verified message is already in the ledger; a second copy would look like "
+                          "independent evidence, so it is refused (allow_redelivery records it as a "
+                          "re-delivery instead)"))
+
+    try:
+        appended = schema_bus.append_verified_delta(delta, verified, producer=VERIFIER,
+                                                    schema_version=1, path=path)
+    except Exception as error:
+        # A verification that cannot be persisted is not a persisted record, and must not read as one.
+        steps.append(dict(hop="ledger", ok=False, refused="evidence_not_persisted",
+                          error=f"{type(error).__name__}: {error}"[:160]))
+        return dict(schema=SCHEMA, ok=False, refused="evidence_not_persisted", steps=steps,
+                    delta=delta, verdict=verified, evidence=None, persisted=False,
+                    verification_ok=True, admitted=False, execution=False, mutation=False,
+                    detail=f"{type(error).__name__}: {error}"[:200],
+                    note="the candidate was verified, but the evidence record was not written")
+
+    delivery = "redelivery" if previous is not None else "first"
     steps.append(dict(hop="ledger", ok=True, sequence=appended["evidence"]["sequence"],
-                      persistence=appended["record"]["persistence"]))
+                      persistence=appended["record"]["persistence"], delivery=delivery,
+                      original_sequence=(previous["sequence"] if previous else None)))
     return dict(schema=SCHEMA, ok=True, refused=None, steps=steps, delta=delta, verdict=verified,
                 evidence=appended["record"], ledger=appended["evidence"],
+                delivery=delivery, persisted=True, verification_ok=True,
                 admitted=False, execution=False, mutation=False,
                 note=("a verified proposal is recorded as evidence; nothing was admitted and no graph state "
                       "changed"))
