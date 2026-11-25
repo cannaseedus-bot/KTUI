@@ -150,6 +150,41 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:mcp-served-by-the-daemon -->
 <!-- milestone:first-executable-gml-chain -->
 <!-- milestone:uri-addressed-store -->
+<!-- milestone:sqlite-behind-the-same-router -->
+## SQLite behind the same router
+
+The storage question answered by adding a **backend**, not a second store: `SqliteBackend` plugs into the existing
+router, so `urn:db:records:` can be SQLite while `urn:db:finance:` stays a filesystem directory, in one `Store`.
+
+| table | shape |
+|---|---|
+| `schemas` | `schema_uri` primary key, `definition` JSONB, `created_at` |
+| `records` | `row_uri` primary key, `schema_uri` **references** `schemas`, `payload` JSONB with `json_valid` |
+
+What SQLite buys that files could not:
+
+- **the contract is enforced by the database.** A row naming an unregistered table is refused by the foreign key with
+  `foreign_keys` on, so restarting the process cannot bypass the in-memory validation cache.
+- **a JSON Pointer column can be indexed.** `declare_index()` creates
+  `CREATE INDEX … ON records(json_extract(payload, '$.amount')) WHERE schema_uri = '<table>'`, and `scan_indexed()`
+  returns the plan it actually got: `SEARCH records USING INDEX idx_… (<expr>>?)`.
+- **schemas persist with the rows**, so the store is self-describing on disk.
+
+Three defects caught while wiring, each worth recording:
+
+1. SQLite forbids bound parameters inside an index expression - the field is validated against a property-name
+   pattern and interpolated;
+2. the first indexed query used `CAST(json_extract(...) AS REAL) >= ?`, which the planner could not match to the
+   partial index; it fell back to the schema index and **scanned rows**. The query now repeats the indexed expression
+   and names the index with `INDEXED BY`, so a declared index is a guarantee rather than a decoration;
+3. `sqlite3`'s context manager commits but does not close, so every call leaked a handle and the tests could not
+   delete their temporary database on Windows.
+
+A filesystem backend reports `backend_has_no_index` rather than pretending to scan fast - the same honesty the
+`scan()` result already carries.
+
+---
+
 ## A URI-addressed store, and two limits made measurable
 
 `uri_store.py` turns the URI-DB mapping into code in this repository's idiom:
