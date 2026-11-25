@@ -1,7 +1,7 @@
 {
   "schema": "kuhul://evidence/gate/v1",
-  "captured_at": "2026-11-24T20:42:16Z",
-  "tested_commit": "3eda69ebf117719dc3ddb5aacf03c3ca95a24c1c",
+  "captured_at": "2026-11-25T00:44:31Z",
+  "tested_commit": "b758576585d7519bc32d82392d1449c67f0ba6f4",
   "suites": {
     "package": {
       "suite": "package",
@@ -12,8 +12,8 @@
       "failed": false,
       "minimum_tests": 139,
       "enough_tests": true,
-      "duration_ms": 1438,
-      "output_tail": "KE POP PHASE ['phases\\\\pop.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS SEK PHASE ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THE SEK OF * ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THETA 3 ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT DOES THE SEK GLYPH MEAN ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n\n...........................................................................................................................................\n----------------------------------------------------------------------\nRan 139 tests in 0.846s\n\nOK\n"
+      "duration_ms": 1454,
+      "output_tail": "KE POP PHASE ['phases\\\\pop.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS SEK PHASE ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THE SEK OF * ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT IS THETA 3 ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n  WHAT DOES THE SEK GLYPH MEAN ['phases\\\\sek.aiml', 'routing\\\\kuhul-phases.aiml']\n\n...........................................................................................................................................\n----------------------------------------------------------------------\nRan 139 tests in 0.838s\n\nOK\n"
     },
     "harness": {
       "suite": "harness",
@@ -31,14 +31,19 @@
       "suite": "host_guards",
       "executed": true,
       "exit_code": 0,
-      "tests": 768,
+      "tests": 896,
       "ok": true,
       "failed": false,
-      "minimum_tests": 768,
+      "minimum_tests": 896,
       "enough_tests": true,
-      "duration_ms": 110172,
-      "output_tail": "RROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n.........PARSE ERROR: Unexpected text inside <random> element (line 3383, column 0)\nPARSE ERROR: Unexpected <category> tag (line 18, column 0)\nPARSE ERROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n........\n----------------------------------------------------------------------\nRan 768 tests in 105.254s\n\nOK\n"
+      "duration_ms": 166500,
+      "output_tail": " 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n.........PARSE ERROR: Unexpected text inside <random> element (line 3383, column 0)\nPARSE ERROR: Unexpected <category> tag (line 18, column 0)\nPARSE ERROR: Unexpected </learn> tag (line 22, column 0)\nPARSE ERROR: Unexpected </template> tag (line 35, column 0)\nPARSE ERROR: Unexpected </category> tag (line 36, column 0)\n......................s........\n----------------------------------------------------------------------\nRan 896 tests in 157.708s\n\nOK (skipped=1)\n"
     }
+  },
+  "tree": {
+    "clean": true,
+    "dirty": [],
+    "error": null
   },
   "verdict": {
     "schema": "kuhul://evidence/gate/v1",
@@ -62,8 +67,8 @@
       "harness",
       "host_guards"
     ],
-    "tested_commit": "3eda69ebf117719dc3ddb5aacf03c3ca95a24c1c",
-    "head": "3eda69ebf117719dc3ddb5aacf03c3ca95a24c1c",
+    "tested_commit": "b758576585d7519bc32d82392d1449c67f0ba6f4",
+    "head": "b758576585d7519bc32d82392d1449c67f0ba6f4",
     "captured_clean": true,
     "problems": [],
     "evidence_satisfied": true,
