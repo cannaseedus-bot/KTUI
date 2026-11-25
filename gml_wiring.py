@@ -69,3 +69,13 @@ def validate(doc: Block, catalog: dict | None = None) -> dict:
                 contract=CONTRACT, state="BINDINGS_VALIDATED" if not problems else "REJECTED",
                 ok=not problems, edges=records, problems=problems,
                 authority="declaration_only", execution=False, mutation=False)
+
+
+def validate_edge_record(edge: dict, catalog: dict | None = None) -> dict:
+    """Validate one runtime-supplied edge record without parsing or dispatching a graph."""
+    catalog = catalog or gml_columns.load_catalog()
+    result = gml_columns.validate_edge(edge, catalog)
+    return dict(schema="gml-wiring-validation/1", contract=CONTRACT,
+                state="BINDINGS_VALIDATED" if result["ok"] else "REJECTED",
+                ok=result["ok"], edges=[result], problems=result["problems"],
+                authority="declaration_only", execution=False, mutation=False)

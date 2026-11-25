@@ -47,7 +47,8 @@ def host_banks() -> list[Path]:
     files = list(knowledge_files)
     files += [APP_ROOT / name for name in ("_override.aiml", "codex.aiml", "gitops.aiml",
                                           "identity.aiml", "memory.aiml", "smalltalk.aiml",
-                                          "micronaut.aiml", "micronaut-example.aiml")]
+                                          "micronaut.aiml", "micronaut-example.aiml",
+                                          "daemon_distilled.aiml")]
     files += phase_banks()
     files += [PACKAGE / "routing" / "kuhul-phases.aiml", PACKAGE / "routing" / "xcfe.aiml",
               PACKAGE / "integrations" / "daemon-modes.aiml",

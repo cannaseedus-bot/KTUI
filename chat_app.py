@@ -973,6 +973,11 @@ class ChatApp(App):
         learned = alice_dir / "knumatic_learned.aiml"
         if learned.is_file():
             kernel.learn(str(learned))
+        # GPT-OSS distillation is a separate, validated expansion bank. The vendored ALICE files
+        # remain unchanged; the bank is loaded before the hand-authored runtime overrides below.
+        distilled = APP_ROOT / "daemon_distilled.aiml"
+        if distilled.is_file():
+            kernel.learn(str(distilled))
         # Reuse this exact python-aiml Kernel; no second parser/compiler.
         # Prefer the existing compiled corpus directory, with a root fallback.
         codex = alice_dir / "codex.aiml"

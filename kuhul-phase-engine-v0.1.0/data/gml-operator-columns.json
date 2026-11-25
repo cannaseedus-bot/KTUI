@@ -44,7 +44,7 @@
       "columns": {
         "input": {"direction": "input", "type": "Lane<T>", "rank": 1, "shape": ["N"], "provenance": ["transform"]},
         "predicate": {"direction": "input", "type": "Predicate<T>", "rank": 0, "shape": [], "provenance": ["contract"]},
-        "accepted": {"direction": "output", "type": "Lane<T>", "rank": 1, "shape": ["M"], "provenance": ["selection"]},
+        "accepted": {"direction": "output", "type": "Lane<T>", "rank": 1, "shape": ["M"], "provenance": ["selection", "expansion"]},
         "rejected": {"direction": "output", "type": "Lane<T>", "rank": 1, "shape": ["K"], "provenance": ["selection"]}
       }
     },

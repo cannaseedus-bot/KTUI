@@ -9,8 +9,13 @@
       "input_schema": "kuhul://schema/utterance/v1",
       "output_schema": "kuhul://schema/candidates/v1",
       "dependencies": [],
-      "operators": ["filter", "map"],
-      "capabilities": ["graph.relations.read"],
+      "operators": [
+        "filter",
+        "map"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
       "authority": "declaration_only"
     },
     {
@@ -19,9 +24,19 @@
       "entry": "kuhul://phases/yax",
       "input_schema": "kuhul://schema/candidates/v1",
       "output_schema": "kuhul://schema/proposition/v1",
-      "dependencies": ["micronaut://v1/aiml"],
-      "operators": ["filter", "map", "fold", "accumulate", "reduce"],
-      "capabilities": ["graph.relations.read"],
+      "dependencies": [
+        "micronaut://v1/aiml"
+      ],
+      "operators": [
+        "filter",
+        "map",
+        "fold",
+        "accumulate",
+        "reduce"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
       "authority": "declaration_only"
     },
     {
@@ -31,8 +46,14 @@
       "input_schema": "kuhul://schema/candidates/v1",
       "output_schema": "kuhul://schema/proposition/v1",
       "dependencies": [],
-      "operators": ["filter", "map", "fold"],
-      "capabilities": ["graph.relations.read"],
+      "operators": [
+        "filter",
+        "map",
+        "fold"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
       "authority": "declaration_only"
     },
     {
@@ -41,9 +62,16 @@
       "entry": "kuhul://phases/wo",
       "input_schema": "kuhul://schema/proposition/v1",
       "output_schema": "kuhul://schema/utterance/v1",
-      "dependencies": ["micronaut://v1/memory"],
-      "operators": ["map", "reduce"],
-      "capabilities": ["graph.relations.read"],
+      "dependencies": [
+        "micronaut://v1/memory"
+      ],
+      "operators": [
+        "map",
+        "reduce"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
       "authority": "declaration_only"
     },
     {
@@ -52,9 +80,48 @@
       "entry": "kuhul://phases/sek",
       "input_schema": "kuhul://schema/proposition/v1",
       "output_schema": "kuhul://schema/answer/v1",
-      "dependencies": ["micronaut://v1/relations", "micronaut://v1/memory"],
-      "operators": ["fold", "accumulate", "reduce"],
-      "capabilities": ["graph.relations.read"],
+      "dependencies": [
+        "micronaut://v1/relations",
+        "micronaut://v1/memory"
+      ],
+      "operators": [
+        "fold",
+        "accumulate",
+        "reduce"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
+      "authority": "declaration_only"
+    },
+    {
+      "uri": "micronaut://gml/relations/operators/filter",
+      "role": "relation_filter",
+      "entry": "kuhul://phases/sek",
+      "input_schema": "kuhul://schema/relations/v1",
+      "output_schema": "kuhul://schema/relations/v1",
+      "dependencies": [],
+      "operators": [
+        "filter"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
+      "authority": "declaration_only"
+    },
+    {
+      "uri": "micronaut://gml/relations/operators/map",
+      "role": "relation_map",
+      "entry": "kuhul://phases/sek",
+      "input_schema": "kuhul://schema/relations/v1",
+      "output_schema": "kuhul://schema/relations/v1",
+      "dependencies": [],
+      "operators": [
+        "map"
+      ],
+      "capabilities": [
+        "graph.relations.read"
+      ],
       "authority": "declaration_only"
     }
   ]

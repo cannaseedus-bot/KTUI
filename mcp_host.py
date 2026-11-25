@@ -183,6 +183,17 @@ def last_phases() -> dict:
                     detail=f"{type(error).__name__}: {error}"[:200], authority=AUTHORITY, admitted=False)
 
 
+def gml_chain_status() -> dict:
+    """Read-only inspection of the registered FILTER -> MAP typed edge."""
+    try:
+        import micronaut_host_handlers
+        return micronaut_host_handlers.gml_chain_contract()
+    except Exception as error:
+        return dict(schema="kuhul://gml/chain/filter-map/v1", ok=False,
+                    refused="unavailable", detail=f"{type(error).__name__}: {error}"[:200],
+                    authority=AUTHORITY, admitted=False, execution=False)
+
+
 def build_server():
     """The MCP server object, with the tool and resource surface this host exposes."""
     version, sdk = _sdk()
@@ -208,6 +219,11 @@ def build_server():
         """Resolve a declared AIML/SRAI route name. Resolution only: no dispatch, no authority."""
         return json.dumps(resolve_route(route_name), sort_keys=True)
 
+    @server.tool()
+    def kuhul_gml_chain_status() -> str:
+        """Inspect the registered, typed GML FILTER -> MAP edge without invoking it."""
+        return json.dumps(gml_chain_status(), sort_keys=True, default=str)
+
     @server.resource("kuhul://host/authority")
     def host_authority() -> str:
         """What this host refuses to do over MCP."""
@@ -224,6 +240,10 @@ def build_server():
     def host_phases() -> str:
         return json.dumps(last_phases(), sort_keys=True, default=str)
 
+    @server.resource("kuhul://gml/chain/filter-map")
+    def gml_chain_resource() -> str:
+        return json.dumps(gml_chain_status(), sort_keys=True, default=str)
+
     return server, version
 
 
@@ -238,9 +258,10 @@ def main(argv: list[str] | None = None) -> int:
     server, version = build_server()
     if args.describe:
         print(json.dumps(dict(schema=SCHEMA, sdk=version, server=SERVER_NAME, authority=AUTHORITY,
-                              tools=["kuhul_list_handlers", "kuhul_invoke_readonly", "kuhul_resolve_route"],
+                              tools=["kuhul_list_handlers", "kuhul_invoke_readonly", "kuhul_resolve_route",
+                                     "kuhul_gml_chain_status"],
                               resources=["kuhul://host/authority", "kuhul://runtime/tree",
-                                         "kuhul://phases/last"]), indent=2))
+                                         "kuhul://phases/last", "kuhul://gml/chain/filter-map"]), indent=2))
         return 0
     if version == "v2":
         server.run(transport=args.transport)

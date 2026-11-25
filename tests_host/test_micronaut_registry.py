@@ -32,8 +32,15 @@ class RegistryTests(unittest.TestCase):
     # -- the catalogue ----------------------------------------------------------------------------
     def test_the_registry_loads_and_is_declaration_only(self):
         self.assertTrue(self.registry["ok"], self.registry["problems"])
-        self.assertEqual(len(self.registry["list"]), 5)
-        self.assertEqual(len(self.registry["edges"]), 6)
+        # Derived, not pinned: the registry grows when a handler is registered, and a hardcoded count
+        # turns that growth into a failing guard instead of a deliberate change.
+        import micronaut_host_handlers
+
+        self.assertEqual(len(self.registry["list"]), len(micronaut_host_handlers.bindings()))
+        self.assertEqual(len(self.registry["edges"]), 7)
+        self.assertIn(("micronaut://gml/relations/operators/filter",
+                       "micronaut://gml/relations/operators/map"),
+                      {(edge["source"], edge["target"]) for edge in self.registry["edges"]})
         self.assertEqual(self.registry["authority"], "declaration_only")
         for entry in self.registry["list"]:
             self.assertEqual(entry["authority"], "declaration_only")

@@ -14,11 +14,24 @@ from dataclasses import dataclass
 from typing import Callable
 
 import micronaut_registry
+import gml_wiring
 
 UTTERANCE = "kuhul://schema/utterance/v1"
+# The relation row set the GML operators compute over: read-only data, never a graph mutation.
+RELATIONS = "kuhul://schema/relations/v1"
 CANDIDATES = "kuhul://schema/candidates/v1"
 PROPOSITION = "kuhul://schema/proposition/v1"
 ANSWER = "kuhul://schema/answer/v1"
+GML_FILTER_URI = "micronaut://gml/relations/operators/filter"
+GML_MAP_URI = "micronaut://gml/relations/operators/map"
+GML_EDGE = {
+    "source_ref": GML_FILTER_URI + "/columns/accepted",
+    "target_ref": GML_MAP_URI + "/columns/input",
+    "type": "Lane<relation>",
+    "rank": 1,
+    "shape": ["*"],
+    "provenance": ["selection", "expansion"],
+}
 DENIED_KEYS = {"user", "user_id", "identity", "capabilities", "authority", "admitted",
                "execution", "mutation", "persistence"}
 MAX_PAYLOAD_BYTES = 64 * 1024
@@ -102,6 +115,17 @@ def _validate_payload(schema: str, payload: object) -> dict:
             if schema == PROPOSITION and any(not isinstance(row.get(name), str)
                                              for name in ("subject", "predicate", "value")):
                 raise HandlerRefused("proposition_shape_invalid")
+    elif schema == RELATIONS:
+        if not isinstance(payload.get("query"), str) or len(payload["query"]) > 4096:
+            raise HandlerRefused("query_required_or_too_large")
+        items = payload.get("items")
+        if not isinstance(items, list) or len(items) > 256 or any(not isinstance(row, dict) for row in items):
+            raise HandlerRefused("items_must_be_a_bounded_object_array")
+        for row in items:
+            if not isinstance(row.get("id"), str) or not isinstance(row.get("predicate"), str):
+                raise HandlerRefused("relation_row_shape_invalid")
+            if "value" not in row or not isinstance(row.get("accepted"), bool):
+                raise HandlerRefused("relation_row_shape_invalid")
     elif schema == ANSWER:
         if not isinstance(payload.get("text"), str) or not isinstance(payload.get("status"), str):
             raise HandlerRefused("answer_shape_invalid")
@@ -184,6 +208,29 @@ def _compose(payload: dict, identity: str) -> dict:
             "verification": verification, "evidence_refs": list(plan.get("used") or [])}
 
 
+def _gml_filter(payload: dict, identity: str) -> dict:
+    """Keep the accepted relations. Pure: same query, fewer rows, no mutation."""
+    rows = [dict(row) for row in payload["items"] if row.get("accepted") is True]
+    return {"$schema": RELATIONS, "query": payload["query"], "column": "accepted",
+            "items": rows, "status": "HANDLER_INVOKED", "operator": "filter"}
+
+
+def _gml_map(payload: dict, identity: str) -> dict:
+    """Project each row to an upper-cased predicate. Pure: same rows, one added column."""
+    rows = [dict(row, mapped=str(row.get("predicate", "")).upper()) for row in payload["items"]]
+    return {"$schema": RELATIONS, "query": payload["query"], "column": "mapped",
+            "items": rows, "status": "HANDLER_INVOKED", "operator": "map"}
+
+
+def gml_chain_contract() -> dict:
+    """The typed FILTER.accepted -> MAP.input contract, still declaration-only."""
+    result = gml_wiring.validate_edge_record(GML_EDGE)
+    return dict(schema="kuhul://gml/chain/filter-map/v1", chain="filter_to_map",
+                source=GML_FILTER_URI, target=GML_MAP_URI, edge=GML_EDGE,
+                validation=result, authority="declaration_only", admitted=False,
+                execution=False, mutation=False, persistence=False)
+
+
 def bindings() -> dict[str, HandlerBinding]:
     """Explicit handler allowlist; unimplemented declarations stay unbound."""
     rows = (
@@ -197,6 +244,11 @@ def bindings() -> dict[str, HandlerBinding]:
                        UTTERANCE, "graph.relations.read", "read_only", _eliza),
         HandlerBinding("micronaut://v1/compose", "compose.compose_verify.v1", PROPOSITION,
                        ANSWER, "graph.relations.read", "read_only", _compose),
+        # The first two executable GML operators: registered handlers, read-only computation over supplied rows.
+        HandlerBinding("micronaut://gml/relations/operators/filter", "gml.relations.filter.v1",
+                       RELATIONS, RELATIONS, "graph.relations.read", "read_only", _gml_filter),
+        HandlerBinding("micronaut://gml/relations/operators/map", "gml.relations.map.v1",
+                       RELATIONS, RELATIONS, "graph.relations.read", "read_only", _gml_map),
     )
     return {row.uri: row for row in rows}
 
@@ -253,7 +305,9 @@ class GraphTheoryHost:
 
 class HandlerHost:
     """One host invocation context with a trusted identity, grants, and explicit admission policy."""
-    ENTRYPOINTS = {"micronaut://v1/aiml"}
+    # Where a turn may begin. Only the head of the operator chain joins the AIML entrypoint: the second
+    # operator is reachable exclusively through its declared edge, which is what makes the edge meaningful.
+    ENTRYPOINTS = {"micronaut://v1/aiml", "micronaut://gml/relations/operators/filter"}
 
     def __init__(self, *, identity: str, granted: set[str], policy: Callable[[HandlerBinding, dict], bool]):
         if not isinstance(identity, str) or not identity.strip():

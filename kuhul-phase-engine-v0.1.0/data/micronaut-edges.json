@@ -49,6 +49,14 @@
       "input_schema_uri": "kuhul://schema/proposition/v1",
       "capability": "graph.relations.read",
       "authority": "declaration_only"
+    },
+    {
+      "from": "micronaut://gml/relations/operators/filter",
+      "to": "micronaut://gml/relations/operators/map",
+      "output_schema_uri": "kuhul://schema/relations/v1",
+      "input_schema_uri": "kuhul://schema/relations/v1",
+      "capability": "graph.relations.read",
+      "authority": "declaration_only"
     }
   ]
 }

@@ -88,8 +88,10 @@ class ProtocolTests(unittest.TestCase):
                     sorted(str(resource.uri) for resource in resources.resources))
 
         tools, resources = self.run_client(body)
-        self.assertEqual(sorted(tools), ["kuhul_invoke_readonly", "kuhul_list_handlers", "kuhul_resolve_route"])
-        self.assertEqual(resources, ["kuhul://host/authority", "kuhul://phases/last", "kuhul://runtime/tree"])
+        self.assertEqual(sorted(tools), ["kuhul_gml_chain_status", "kuhul_invoke_readonly",
+                                         "kuhul_list_handlers", "kuhul_resolve_route"])
+        self.assertEqual(resources, ["kuhul://gml/chain/filter-map", "kuhul://host/authority",
+                                     "kuhul://phases/last", "kuhul://runtime/tree"])
 
     def test_the_authority_resource_states_the_limits(self):
         async def body(client):
@@ -110,6 +112,19 @@ class ProtocolTests(unittest.TestCase):
         listing = self.run_client(body)
         self.assertTrue(listing["ok"])
         self.assertEqual(listing["schema"], mcp_host.SCHEMA)
+
+    def test_the_gml_status_tool_reports_the_typed_edge_without_execution(self):
+        async def body(client):
+            return tool_payload(await client.call_tool("kuhul_gml_chain_status", {}))
+
+        status = self.run_client(body)
+        self.assertTrue(status["validation"]["ok"])
+        self.assertEqual(status["edge"]["source_ref"],
+                         "micronaut://gml/relations/operators/filter/columns/accepted")
+        self.assertEqual(status["edge"]["target_ref"],
+                         "micronaut://gml/relations/operators/map/columns/input")
+        self.assertFalse(status["admitted"])
+        self.assertFalse(status["execution"])
 
     def test_a_bad_payload_is_reported_not_raised(self):
         async def body(client):

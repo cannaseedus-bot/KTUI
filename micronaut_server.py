@@ -93,6 +93,70 @@ class Engine:
             self.last_micronaut_invocation = host.invocations[-1]
         return result
 
+    def invoke_gml_filter_map(self, payload: dict) -> dict:
+        """Run the first typed GML edge through one host and one Engine-owned request lock."""
+        import micronaut_host_handlers
+
+        contract = micronaut_host_handlers.gml_chain_contract()
+        if not contract["validation"]["ok"]:
+            raise micronaut_host_handlers.HandlerRefused("gml_edge_validation_failed")
+        identity = str(getattr(self.app, "user_id", "") or "").strip()
+        if not identity:
+            raise micronaut_host_handlers.HandlerRefused("host_identity_unavailable")
+        granted = self.capabilities()
+
+        def host_policy(binding, _payload):
+            return (binding.effect == "read_only" and binding.capability in granted and
+                    binding.uri in micronaut_host_handlers.bindings())
+
+        host = micronaut_host_handlers.HandlerHost(identity=identity, granted=granted,
+                                                   policy=host_policy)
+        try:
+            with self.lock:
+                filtered_ticket = host.admit(micronaut_host_handlers.GML_FILTER_URI, payload)
+                filtered = host.invoke(filtered_ticket, payload)
+                filtered_payload = filtered["payload"]
+                mapped_ticket = host.admit(
+                    micronaut_host_handlers.GML_MAP_URI,
+                    filtered_payload,
+                    from_uri=micronaut_host_handlers.GML_FILTER_URI,
+                )
+                mapped = host.invoke(mapped_ticket, filtered_payload)
+                self.last_micronaut_invocation = host.invocations[-1]
+        except Exception as error:
+            return {
+                "$schema": "kuhul://schema/gml-chain-result/v1",
+                "chain": "filter_to_map",
+                "status": "REJECTED",
+                "typed_edge": contract,
+                "phases": [
+                    {"phase": "Ch'en", "status": "REJECTED",
+                     "reason": f"{type(error).__name__}: {error}"},
+                    {"phase": "Xul", "status": "NOT_CLOSED"},
+                ],
+                "invocations": list(host.invocations),
+                "authority": "host_read_only",
+                "admitted": False,
+                "effects": dict(tool_dispatch=False, mutation=False, persistence=False),
+            }
+        return {
+            "$schema": "kuhul://schema/gml-chain-result/v1",
+            "chain": "filter_to_map",
+            "status": "VERIFIED_READ_RESULT",
+            "typed_edge": contract,
+            "payload": mapped["payload"],
+            "phases": [
+                {"phase": "Sek", "status": "DISPATCHED", "operators": ["filter", "map"]},
+                {"phase": "Ch'en", "status": "VERIFIED", "edge": contract["edge"]},
+                {"phase": "Xul", "status": "CLOSED"},
+            ],
+            "invocations": list(host.invocations),
+            "engine_reused": True,
+            "authority": "host_read_only",
+            "admitted": True,
+            "effects": dict(tool_dispatch=False, mutation=False, persistence=False),
+        }
+
     def graph_query(self, payload: dict) -> dict:
         """Read an allowlisted repository GML graph and return a DATA_ONLY proposal."""
         import micronaut_host_handlers

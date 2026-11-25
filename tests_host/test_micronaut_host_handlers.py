@@ -9,6 +9,7 @@ sys.path.insert(0, str(ROOT))
 import micronaut_host_handlers as handlers  # noqa: E402
 import micronaut_audit  # noqa: E402
 import micronaut_server  # noqa: E402
+import mcp_host  # noqa: E402
 
 
 def allow_read(binding, payload):
@@ -71,22 +72,38 @@ class HostHandlerTests(unittest.TestCase):
         composed = self.host.invoke(
             self.host.admit("micronaut://v1/compose", compose_input, from_uri="micronaut://v1/memory"),
             compose_input)["payload"]
+        relation_input = {
+            "$schema": handlers.RELATIONS,
+            "query": "typed edge",
+            "items": [
+                {"id": "r1", "predicate": "likes", "value": "walks", "accepted": True},
+                {"id": "r2", "predicate": "owns", "value": "cat", "accepted": False},
+            ],
+        }
+        filtered = self.host.invoke(
+            self.host.admit(handlers.GML_FILTER_URI, relation_input), relation_input)["payload"]
+        mapped = self.host.invoke(
+            self.host.admit(handlers.GML_MAP_URI, filtered, from_uri=handlers.GML_FILTER_URI),
+            filtered)["payload"]
         outputs = {
             "micronaut://v1/aiml": aiml,
             "micronaut://v1/relations": relation,
             "micronaut://v1/memory": memory,
             "micronaut://v1/eliza": eliza,
             "micronaut://v1/compose": composed,
+            handlers.GML_FILTER_URI: filtered,
+            handlers.GML_MAP_URI: mapped,
         }
         for uri, payload in outputs.items():
             with self.subTest(uri=uri):
                 self.assertEqual(payload["$schema"], self.host.bindings[uri].output_schema)
         self.assertEqual({row["uri"] for row in self.host.invocations}, set(self.host.bindings))
+        self.assertEqual(mapped["items"][0]["mapped"], "LIKES")
 
     def test_static_audit_distinguishes_generic_handlers_and_local_graph_theory_handler(self):
         audit = micronaut_audit.report()
         phase = audit["phase_engine_registry"]
-        self.assertEqual(len(phase["host_handler_bindings"]), 5)
+        self.assertEqual(len(phase["host_handler_bindings"]), len(handlers.bindings()))
         self.assertTrue(all(row["host_handler_registered"] and row["input_contract_matches"] and
                             row["output_contract_matches"] for row in phase["host_handler_bindings"]))
         self.assertEqual(phase["runtime_handler_invocation"], "not_established_by_static_audit")
@@ -177,6 +194,67 @@ class HostHandlerTests(unittest.TestCase):
         self.assertFalse(result["effects"]["graph_write"])
         self.assertFalse(result["effects"]["mutation"])
         self.assertFalse(result["effects"]["persistence"])
+
+    def test_gml_filter_map_chain_reuses_engine_and_preserves_typed_edge(self):
+        class App:
+            user_id = "engine-session-user"
+
+            def granted_capabilities(self):
+                return {"graph.relations.read"}
+
+        engine = micronaut_server.Engine(app=App())
+        payload = {
+            "$schema": handlers.RELATIONS,
+            "query": "dogs",
+            "items": [
+                {"id": "1", "predicate": "likes", "value": "walks", "accepted": True},
+                {"id": "2", "predicate": "owns", "value": "cat", "accepted": False},
+            ],
+        }
+        result = engine.invoke_gml_filter_map(payload)
+        self.assertEqual(result["status"], "VERIFIED_READ_RESULT")
+        self.assertTrue(result["engine_reused"])
+        self.assertTrue(result["typed_edge"]["validation"]["ok"])
+        self.assertEqual([row["handler"] for row in result["invocations"]],
+                         ["gml.relations.filter.v1", "gml.relations.map.v1"])
+        self.assertEqual(result["payload"]["items"][0]["mapped"], "LIKES")
+        self.assertEqual(result["payload"]["items"][0]["accepted"], True)
+
+    def test_invalid_gml_transition_is_refused_before_downstream_invocation(self):
+        payload = {"$schema": handlers.RELATIONS, "query": "x", "items": []}
+        with self.assertRaisesRegex(handlers.HandlerRefused, "no_declared_edge"):
+            self.host.admit(handlers.GML_MAP_URI, payload, from_uri="micronaut://v1/relations")
+        self.assertEqual(self.host.invocations, [])
+
+    def test_gml_handler_failure_reaches_chen_and_leaves_xul_open(self):
+        class App:
+            user_id = "engine-session-user"
+
+            def granted_capabilities(self):
+                return {"graph.relations.read"}
+
+        engine = micronaut_server.Engine(app=App())
+        payload = {"$schema": handlers.RELATIONS, "query": "dogs", "items": []}
+        original = handlers._gml_map
+        try:
+            handlers._gml_map = lambda *_: (_ for _ in ()).throw(RuntimeError("map failed"))
+            result = engine.invoke_gml_filter_map(payload)
+        finally:
+            handlers._gml_map = original
+        self.assertEqual(result["status"], "REJECTED")
+        self.assertEqual(result["phases"][-2]["phase"], "Ch'en")
+        self.assertEqual(result["phases"][-1]["status"], "NOT_CLOSED")
+        self.assertEqual(len(result["invocations"]), 1)
+
+    def test_mcp_reports_the_typed_chain_without_admitting_it(self):
+        report = mcp_host.gml_chain_status()
+        self.assertTrue(report["validation"]["ok"])
+        self.assertFalse(report["admitted"])
+        self.assertFalse(report["execution"])
+        handlers_report = mcp_host.list_handlers()
+        uris = {row["uri"] for row in handlers_report["handlers"]}
+        self.assertIn(handlers.GML_FILTER_URI, uris)
+        self.assertIn(handlers.GML_MAP_URI, uris)
 
 
 if __name__ == "__main__":
