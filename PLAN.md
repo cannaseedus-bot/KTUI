@@ -148,6 +148,44 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:agent-md-has-a-consumer -->
 <!-- milestone:adopted-work-and-the-first-clean-gate -->
 <!-- milestone:mcp-served-by-the-daemon -->
+<!-- milestone:first-executable-gml-chain -->
+## The first executable GML chain
+
+Two operator Micronauts are **registered handlers**, joined by one declared edge that the host's admission reads.
+
+| operator | handler id | contract |
+|---|---|---|
+| `micronaut://gml/relations/operators/filter` | `gml.relations.filter.v1` | `relations/v1` → `relations/v1`, accepted rows only |
+| `micronaut://gml/relations/operators/map` | `gml.relations.map.v1` | `relations/v1` → `relations/v1`, projected column |
+
+```
+Engine.invoke_gml_filter_map(payload)
+  3 rows -> filter -> 2 rows -> map -> 2 rows with `mapped`
+  status VERIFIED_READ_RESULT · engine_reused true · typed_edge.validation.ok true
+  invocations [gml.relations.filter.v1, gml.relations.map.v1]
+  admitted false at the MCP layer, execution false, mutation false
+```
+
+Three properties worth keeping:
+
+- **the second operator cannot be entered directly.** `admit(map, from_uri="micronaut://v1/relations")` raises
+  `target_not_declared_by_edge`; the filter head is an admitted entrypoint precisely so the edge is what admits map.
+- **the edge asserts type, not width.** The catalog declares `Lane<T>[M]` and `Lane<T>[N]`, so the edge carries a
+  wildcard shape rather than inventing equal dimensions to make the check pass.
+- **a handler failure stops the chain honestly**: `REJECTED`, Ch'en rejected, Xul `NOT_CLOSED`, and only the hop that
+  ran is recorded.
+
+MCP reports it read-only at `kuhul://gml/chain/filter-map` with `admitted: false` and `execution: false`.
+
+Two guards that pinned `5` registered handlers now **derive** their count from `bindings()`: a registry that grows is a
+deliberate change, not a failing guard.
+
+Attribution: the engine method, the MCP report and the GML guards were written by the concurrent worker in this
+workspace; I restored the handler registration they depend on after an over-eager `git checkout` of mine removed it,
+and added `gml_chain_contract`.
+
+---
+
 ## MCP is served by the daemon itself
 
 `micronaut_server.py --mcp-port N` starts the MCP surface **in the daemon's own process**, beside its stdlib HTTP
