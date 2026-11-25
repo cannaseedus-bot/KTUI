@@ -146,6 +146,35 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:mcp-read-only-handlers-exposed -->
 <!-- milestone:both-destinations-are-live -->
 <!-- milestone:agent-md-has-a-consumer -->
+<!-- milestone:adopted-work-and-the-first-clean-gate -->
+## Adopted, and the first clean gate
+
+The GML operator work reported for this checkout - `gml_columns`, `gml_wiring`, `command_addresses`, and the registry
+and resolver updates - was present on disk but **untracked**. So were `micronaut_host_handlers.py` and
+`micronaut_audit.py`, which the app, `mcp_host.py` and `agent_profile.py` all import: **a clone of HEAD could not run
+the application.**
+
+Adopted after inspection, not on the report's word:
+
+| check | result |
+|---|---|
+| `command_addresses.resolve` | `model://`, `tool://`, `delta://`, `srai://` return `command_candidate: true` with `execution: false`; only `verb://graph/<op>` resolves a declaration |
+| `gml_columns` | operators accumulate, filter, fold, hylo, map, reduce, unfold; `resolve_column` and `validate_edge` are pure lookups |
+| `gml_wiring` | edge type/rank/shape/provenance validation returning `BINDINGS_VALIDATED` or `REJECTED` |
+| execution surface | none of the three imports `subprocess`, `eval`, `exec`, or opens a file |
+
+With adoption, the tracked tree is clean for the first time in many turns, so the gate reports
+**`evidence_satisfied: true`** at the tested commit: package 139, harness 14, host guards 896.
+
+**Two corrections to the report**, both material: "a real Yax retrieval handler is still unimplemented" is out of
+date - Yax is instrumented at `compose.retrieve` and observed in live turns since M87; and the cited 882 host guards
+is below this tree's 896, which includes guards added after that count was taken.
+
+Attribution: the adopted code was not written in this session. It was reviewed against its stated boundaries and
+committed so that results are reproducible from a clone.
+
+---
+
 ## AGENT.md has a consumer
 
 The file declares identity, persona and **route preferences**; `agent_profile.py` validates it and the conversation
