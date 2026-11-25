@@ -300,16 +300,47 @@ def serve(port: int = DEFAULT_PORT, host: str = DEFAULT_HOST, *, engine: Engine 
     return server
 
 
+def start_mcp(port: int, host: str = DEFAULT_HOST) -> dict:
+    """Serve the MCP surface from this same process, on its own listener.
+
+    This server is a stdlib ThreadingHTTPServer, and the MCP SDK's streamable transport is an ASGI app. Rather than
+    rewrite the HTTP layer, the ASGI app runs in a daemon thread beside it - one process, one command, two listeners,
+    and neither framework pretending to be the other.
+    """
+    import threading
+
+    import uvicorn
+
+    import mcp_host
+
+    server, version = mcp_host.build_server()
+    application = server.streamable_http_app()
+    config = uvicorn.Config(application, host=host, port=int(port), log_level="warning")
+    http = uvicorn.Server(config)
+    http.install_signal_handlers = lambda: None          # the main thread owns the signals
+    thread = threading.Thread(target=http.run, name="mcp-host", daemon=True)
+    thread.start()
+    return dict(url=f"http://{host}:{int(port)}/mcp", sdk=version, thread=thread, server=http)
+
+
 def main(argv: list[str] | None = None) -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Serve the daemon on loopback (micronaut://v1/chat).")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--host", default=DEFAULT_HOST)
+    parser.add_argument("--mcp-port", type=int, default=0,
+                        help="also serve the MCP surface on this port (0 or unset disables it)")
     args = parser.parse_args(argv)
     if args.host not in ("127.0.0.1", "localhost", "::1"):
         print(f"warning: binding {args.host} exposes the endpoint beyond loopback", flush=True)
     print(f"{uri()}  ->  {transport(args.port)}", flush=True)
+    if args.mcp_port:
+        try:
+            started = start_mcp(args.mcp_port, args.host)
+            print(f"mcp        ->  {started['url']}  (sdk {started['sdk']}, read-only surface)", flush=True)
+        except Exception as error:                       # a missing MCP dependency must not stop the daemon
+            print(f"mcp        ->  unavailable: {type(error).__name__}: {error}", flush=True)
     serve(args.port, args.host)
     return 0
 

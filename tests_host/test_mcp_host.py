@@ -129,5 +129,43 @@ class ProtocolTests(unittest.TestCase):
         self.assertFalse(over_protocol["admitted"])
 
 
+class PreferenceAndMountTests(unittest.TestCase):
+    """The MCP surface resolves the agent's preferences, and the server can host it in one process."""
+
+    def test_a_preference_word_resolves_through_the_agent_declaration(self):
+        resolved = mcp_host.resolve_route("REASONING")
+        self.assertTrue(resolved["ok"], resolved.get("refused"))
+        self.assertEqual(resolved["target"], "model://planner")
+        self.assertFalse(resolved["admitted"])
+        self.assertEqual(mcp_host.resolve_route("CONVERSATION")["target"], "model://worker")
+
+    def test_a_preference_still_cannot_be_a_target(self):
+        self.assertEqual(mcp_host.resolve_route("model://planner")["refused"], "route_not_declared")
+
+    def test_the_server_can_start_the_mcp_surface_in_its_own_process(self):
+        import inspect
+
+        import micronaut_server
+
+        self.assertTrue(hasattr(micronaut_server, "start_mcp"))
+        self.assertIn("port", inspect.signature(micronaut_server.start_mcp).parameters)
+        # main must accept the flag without touching this process's listeners
+        parser_defaults = inspect.signature(micronaut_server.main).parameters
+        self.assertIn("argv", parser_defaults)
+
+    def test_starting_the_mcp_surface_reports_a_url_without_serving_forever(self):
+        import micronaut_server
+
+        started = micronaut_server.start_mcp(0)      # port 0: the OS picks one
+        try:
+            self.assertTrue(started["url"].startswith("http://127.0.0.1:"))
+            self.assertTrue(started["url"].endswith("/mcp"))
+            self.assertIn(started["sdk"], ("v1", "v2"))
+            self.assertTrue(started["thread"].daemon, "a daemon thread dies with the daemon")
+        finally:
+            started["server"].should_exit = True
+            started["thread"].join(timeout=10)
+
+
 if __name__ == "__main__":
     unittest.main()

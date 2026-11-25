@@ -126,9 +126,27 @@ def spoken_to_route(spoken: str) -> str | None:
     return reply[len("ROUTE "):].strip() if str(reply or "").startswith("ROUTE ") else None
 
 
+PREFERENCE_WORDS = {"REASON": "reasoning", "REASONING": "reasoning",
+                    "CONVERSATION": "conversation", "RELATIONS": "relations"}
+
+
+def preference_route(word: str) -> str | None:
+    """The Micro Agent's preferred declared route for a kind of work, if its declaration is valid."""
+    kind = PREFERENCE_WORDS.get(str(word or "").strip().upper())
+    if not kind:
+        return None
+    try:
+        import agent_profile
+
+        return agent_profile.route_for(kind)
+    except Exception:
+        return None
+
+
 def resolve_route(route_name: str) -> dict:
     """Resolve a declared bridge route - resolution only. Dispatch stays with the host, not the protocol."""
-    name = spoken_to_route(route_name) or str(route_name or "").strip()
+    name = (preference_route(route_name) or spoken_to_route(route_name)
+            or str(route_name or "").strip())
     resolved = micro_agent_bridge.resolve(name, declaration=micro_agent_bridge.DECLARED_ROUTES)
     return dict(schema=SCHEMA, ok=bool(resolved.get("ok")), refused=resolved.get("refused"),
                 route=resolved.get("route") or str(route_name or ""), scheme=resolved.get("scheme"),
