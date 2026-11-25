@@ -1,0 +1,106 @@
+{
+  "schema": "kuhul://gml/operators/v1",
+  "version": "1",
+  "authority": "declaration_only",
+  "address_spaces": {
+    "micronaut": {"prefix": "micronaut://", "meaning": "registered capabilities and typed operator ports"},
+    "gml": {"prefix": "gml://", "meaning": "graph definitions and graph instances"},
+    "model": {"prefix": "model://", "meaning": "registered model aliases"}
+  },
+  "micronauts": {
+    "micronaut://gml/relations": {
+      "role": "graph_computation",
+      "graph_uri": "gml://relations",
+      "operators": ["unfold", "map", "filter", "fold", "accumulate", "reduce", "hylo"],
+      "authority": "declaration_only"
+    }
+  },
+  "operators": {
+    "unfold": {
+      "uri": "micronaut://gml/relations/operators/unfold",
+      "role": "coalgebra_expansion",
+      "description": "expands a seed into a bounded recursive layer",
+      "columns": {
+        "seed": {"direction": "input", "type": "Seed", "rank": 0, "shape": [], "provenance": ["query"]},
+        "coalgebra": {"direction": "input", "type": "Coalgebra<Seed,Node>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "branches": {"direction": "output", "type": "Lane<T>", "rank": 1, "shape": ["N"], "provenance": ["query", "expansion"]},
+        "terminal": {"direction": "output", "type": "Bool", "rank": 0, "shape": [], "provenance": ["termination"]}
+      }
+    },
+    "map": {
+      "uri": "micronaut://gml/relations/operators/map",
+      "role": "transform",
+      "description": "transforms each lane element without changing lane rank",
+      "columns": {
+        "input": {"direction": "input", "type": "Lane<T>", "rank": 1, "shape": ["N"], "provenance": ["expansion"]},
+        "transform": {"direction": "input", "type": "Transform<T,U>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "output": {"direction": "output", "type": "Lane<U>", "rank": 1, "shape": ["N"], "provenance": ["transform"]}
+      }
+    },
+    "filter": {
+      "uri": "micronaut://gml/relations/operators/filter",
+      "role": "select",
+      "description": "selects eligible lane elements",
+      "columns": {
+        "input": {"direction": "input", "type": "Lane<T>", "rank": 1, "shape": ["N"], "provenance": ["transform"]},
+        "predicate": {"direction": "input", "type": "Predicate<T>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "accepted": {"direction": "output", "type": "Lane<T>", "rank": 1, "shape": ["M"], "provenance": ["selection"]},
+        "rejected": {"direction": "output", "type": "Lane<T>", "rank": 1, "shape": ["K"], "provenance": ["selection"]}
+      }
+    },
+    "fold": {
+      "uri": "micronaut://gml/relations/operators/fold",
+      "role": "stateful_aggregation",
+      "description": "owns recursive aggregation state",
+      "columns": {
+        "input": {"direction": "input", "type": "Lane<T>", "rank": 1, "shape": ["M"], "provenance": ["selection"]},
+        "initial_state": {"direction": "input", "type": "State<A>", "rank": 0, "shape": [], "provenance": ["state"]},
+        "algebra": {"direction": "input", "type": "Algebra<A,T,A>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "result": {"direction": "output", "type": "Result<R>", "rank": 0, "shape": [], "provenance": ["aggregation"]},
+        "final_state": {"direction": "output", "type": "State<A>", "rank": 0, "shape": [], "provenance": ["aggregation"]}
+      }
+    },
+    "accumulate": {
+      "uri": "micronaut://gml/relations/operators/accumulate",
+      "role": "fold_internal_update",
+      "description": "updates fold state and cannot replace FOLD",
+      "columns": {
+        "state": {"direction": "input", "type": "State<A>", "rank": 0, "shape": [], "provenance": ["state"]},
+        "element": {"direction": "input", "type": "T", "rank": 0, "shape": [], "provenance": ["selection"]},
+        "combine": {"direction": "input", "type": "Algebra<A,T,A>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "next_state": {"direction": "output", "type": "State<A>", "rank": 0, "shape": [], "provenance": ["aggregation"]}
+      }
+    },
+    "reduce": {
+      "uri": "micronaut://gml/relations/operators/reduce",
+      "role": "finalize",
+      "description": "reduces a completed state along a declared axis",
+      "columns": {
+        "input": {"direction": "input", "type": "State<A>", "rank": 0, "shape": [], "provenance": ["aggregation"]},
+        "axis": {"direction": "input", "type": "Axis", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "reducer": {"direction": "input", "type": "Reducer<A,R>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "result": {"direction": "output", "type": "Summary<R>", "rank": 0, "shape": [], "provenance": ["reduction"]}
+      }
+    },
+    "hylo": {
+      "uri": "micronaut://gml/relations/operators/hylo",
+      "role": "hylomorphism",
+      "description": "declares compatible UNFOLD and FOLD contracts without executing recursion",
+      "columns": {
+        "seed": {"direction": "input", "type": "Seed", "rank": 0, "shape": [], "provenance": ["query"]},
+        "coalgebra": {"direction": "input", "type": "Coalgebra<Seed,Node>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "algebra": {"direction": "input", "type": "Algebra<Node,Result>", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "termination": {"direction": "input", "type": "TerminationPolicy", "rank": 0, "shape": [], "provenance": ["contract"]},
+        "result": {"direction": "output", "type": "Result<R>", "rank": 0, "shape": [], "provenance": ["aggregation"]}
+      },
+      "recursion": {
+        "unfold_operator": "unfold",
+        "fold_operator": "fold",
+        "cycle_policy": "visited_set",
+        "max_depth": 6,
+        "materialization": "optional",
+        "requires": ["termination", "cycle_detection"]
+      }
+    }
+  }
+}
