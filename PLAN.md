@@ -147,6 +147,35 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:both-destinations-are-live -->
 <!-- milestone:agent-md-has-a-consumer -->
 <!-- milestone:adopted-work-and-the-first-clean-gate -->
+<!-- milestone:mcp-served-by-the-daemon -->
+## MCP is served by the daemon itself
+
+`micronaut_server.py --mcp-port N` starts the MCP surface **in the daemon's own process**, beside its stdlib HTTP
+listener. The server is a `ThreadingHTTPServer` and the SDK's transport is ASGI, so the Starlette app runs in a daemon
+thread with uvicorn's signal handling disabled - one process, one command, two listeners, and no pretence that one
+framework is the other.
+
+Verified against that single process (`--port 8757 --mcp-port 8124`):
+
+```
+plain API   GET /v1/models            -> 200  ['gemma-3-1b', 'lfm2.5-1.2b', 'qwen3-1.7b-q4']
+mcp         initialize                -> 200 with a session id
+            notifications/initialized -> 202
+            tools/list                -> 200  three tools
+mcp invoke  micronaut://v1/aiml       -> ok, handler phase_resolve.resolve_aiml.pop.v1,
+                                         admitted false, authority host_read_only
+mcp unknown micronaut://v1/nope       -> handler_not_registered
+```
+
+`kuhul_resolve_route` now also resolves the Micro Agent's preference words through `AGENT.md`: `REASONING` ->
+`ASK_PLANNER` -> `model://planner`, `CONVERSATION` -> `ASK_WORKER` -> `model://worker`, while a raw `model://planner`
+stays `route_not_declared`. A preference chooses a route; it still grants nothing.
+
+Four guards: preference words resolve through the declaration and stay non-admitting, a raw target is still refused,
+`start_mcp` reports a loopback `/mcp` URL on a daemon thread, and starting it does not serve forever.
+
+---
+
 ## Adopted, and the first clean gate
 
 The GML operator work reported for this checkout - `gml_columns`, `gml_wiring`, `command_addresses`, and the registry
