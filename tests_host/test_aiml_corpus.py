@@ -152,7 +152,8 @@ class M21CorpusPort(unittest.TestCase):
         registries = nodes_of(self.parsed, "registry")
         modules = nodes_of(self.parsed, "module")
         documents = nodes_of(self.parsed, "document")
-        self.assertEqual(len(registries), 4, [item["name"] for item in registries])
+        self.assertEqual(len(registries), len(aiml_to_gml.registry_docs()),
+                         [item["name"] for item in registries])
         self.assertEqual(len(modules), len(aiml_to_gml.core_modules()),
                          "every core module must be projected")
         self.assertGreaterEqual(len(modules), 9, [item["name"] for item in modules])
@@ -188,7 +189,7 @@ class M21CorpusPort(unittest.TestCase):
         with_system = folder / "system.gml"
         written = aiml_to_gml.write(with_system, system=True)
         self.assertGreater(len(written["documents"]), 17)
-        self.assertGreater(len(written["registries"]), 4)
+        self.assertGreater(len(written["registries"]), len(aiml_to_gml.registry_docs()))
         self.assertEqual(len(written["banks"]), len(default_banks),
                          "the system scope must not change which banks are included")
 

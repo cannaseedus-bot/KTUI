@@ -15,6 +15,8 @@ one comes back as `refused` with the reason, and a request the local layer canno
     GET  /v1/models                                    -> {"models": ["gemma-3-1b", ...], "default": "..."}
     GET  /v1/phases                                    -> the six-phase trace of the last turn
     GET  /v1/identity                                  -> the daemon's self-description (plain text)
+    POST /api/atomic/call {"key":"graph-theory.query","query":{"operation":"inventory"}}
+                                                              -> bounded, read-only GML query proposal
 
 Loopback only: the server binds 127.0.0.1 and refuses to start on a routable address unless the caller
 insists, which is a deliberate speed bump rather than a security boundary.
@@ -64,6 +66,57 @@ class Engine:
             except Exception:
                 pass
         return granted
+
+    def invoke_micronaut(self, uri: str, payload: dict, *, from_uri: str | None = None) -> dict:
+        """Invoke one registered read-only handler through host admission.
+
+        Identity and capabilities come from this Engine's session; payload fields cannot assert them.
+        This method deliberately is not exposed as an unauthenticated HTTP route.
+        """
+        import micronaut_host_handlers
+
+        app = self.app
+        identity = str(getattr(app, "user_id", "") or "").strip()
+        if not identity:
+            raise micronaut_host_handlers.HandlerRefused("host_identity_unavailable")
+        granted = self.capabilities()
+
+        def host_policy(binding, _payload):
+            return (binding.effect == "read_only" and binding.capability in granted and
+                    binding.uri in micronaut_host_handlers.bindings())
+
+        host = micronaut_host_handlers.HandlerHost(identity=identity, granted=granted,
+                                                   policy=host_policy)
+        admission = host.admit(uri, payload, from_uri=from_uri)
+        with self.lock:  # AIML phase resolution holds shared per-process matching state
+            result = host.invoke(admission, payload)
+            self.last_micronaut_invocation = host.invocations[-1]
+        return result
+
+    def graph_query(self, payload: dict) -> dict:
+        """Read an allowlisted repository GML graph and return a DATA_ONLY proposal."""
+        import micronaut_host_handlers
+
+        granted = self.capabilities()
+
+        def host_policy(binding, _query):
+            return (binding.uri == "micronaut:GRAPH-THEORY" and
+                    binding.handler_id == "micronaut.graph_executor.execute_graph_query" and
+                    binding.capability == "read_graph_inventory" and
+                    binding.effect == "read_only" and "graph.relations.read" in granted)
+
+        host = micronaut_host_handlers.GraphTheoryHost(policy=host_policy)
+        with self.lock:
+            result = host.invoke(payload)
+            self.last_graph_invocation = host.invocations[-1]
+        return result
+
+    def graph_health(self) -> dict:
+        import micronaut_host_handlers
+        binding = micronaut_host_handlers.GRAPH_THEORY_BINDING
+        return dict(ok=True, micronaut=binding.uri, handler=binding.handler_id,
+                    input_schema=binding.input_schema, output_schema=binding.output_schema,
+                    effects=dict(tool_dispatch=False, mutation=False, persistence=False))
 
     def _trace(self) -> list[dict]:
         turn = getattr(self.app, "last_turn", None)
@@ -128,6 +181,9 @@ class Handler(BaseHTTPRequestHandler):
     # -- routes ---------------------------------------------------------------------------------
     def do_GET(self) -> None:
         route = self._path()
+        if route == "/api/health":
+            self._send(200, self.engine.graph_health())
+            return
         if route.startswith("/api/"):
             # kuhul-rest/v1: the manifest decides the route, this host serves it read-only.
             try:
@@ -157,14 +213,15 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, self.engine.app.identity_text(), text=True)
         elif route in ("/", "/v1"):
             self._send(200, dict(endpoints=["POST /v1/chat", "GET /v1/health", "GET /v1/models",
-                                            "GET /v1/phases", "GET /v1/identity"],
+                                            "GET /v1/phases", "GET /v1/identity",
+                                            "POST /v1/graph/query"],
                                  uri=uri(), transport=transport()))
         else:
             self._send(404, dict(error="unknown path", path=route))
 
     def do_POST(self) -> None:
         route = self._path()
-        if route not in ("/v1/chat", "/chat"):
+        if route not in ("/v1/chat", "/chat", "/v1/graph/query", "/api/atomic/call"):
             self._send(404, dict(error="unknown path", path=route))
             return
         try:
@@ -187,6 +244,35 @@ class Handler(BaseHTTPRequestHandler):
                 message = str(payload.get("message") or "")
             elif isinstance(payload, str):
                 message = payload
+        if route in ("/v1/graph/query", "/api/atomic/call"):
+            if not isinstance(locals().get("payload"), dict):
+                self._send(400, dict(error="body must be a JSON object with a query"))
+                return
+            if route == "/api/atomic/call":
+                key = payload.get("key")
+                if key not in ("graph-theory.query", "graph-theory.match"):
+                    self._send(404, dict(error="unregistered atomic key"))
+                    return
+                query = payload.get("query")
+                if not isinstance(query, dict):
+                    self._send(400, dict(error="query must be an object"))
+                    return
+                expected_op = "match" if key == "graph-theory.match" else None
+                if expected_op and query.get("operation") != expected_op:
+                    self._send(400, dict(error="graph-theory.match requires operation=match"))
+                    return
+                payload = {"$schema": "kuhul://schema/graph-query/v1", "query": query}
+            try:
+                result = self.engine.graph_query(payload)
+            except Exception as error:
+                import micronaut_host_handlers
+                import micronaut.graph_executor as graph_executor
+                status = 403 if isinstance(error, micronaut_host_handlers.HandlerRefused) else 400 \
+                    if isinstance(error, graph_executor.GraphQueryError) else 500
+                self._send(status, dict(error=f"{type(error).__name__}: {error}"))
+                return
+            self._send(200, result)
+            return
         if not message:
             message = self._query().get("message", "")
         if not message:

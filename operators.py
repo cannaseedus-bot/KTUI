@@ -31,6 +31,8 @@ for _candidate in (str(PACKAGE / "core"), str(PACKAGE), str(HOST_ROOT)):
         sys.path.insert(0, _candidate)
 
 import aiml_graph  # noqa: E402
+import command_addresses  # noqa: E402
+import gml_columns  # noqa: E402
 import phase_manifest  # noqa: E402
 import user_memory  # noqa: E402
 
@@ -171,12 +173,33 @@ def _gml(uri: str) -> list[dict]:
 
 
 def _micronaut(uri: str) -> list[dict]:
+    if uri.startswith("micronaut://gml/"):
+        try:
+            return [gml_columns.resolve_address(uri)]
+        except gml_columns.ColumnContractError as error:
+            raise OperatorError(str(error)) from error
     return [dict(ref=uri, endpoint="v1/chat", transport="http://127.0.0.1:8756/v1/chat",
                  note="the daemon endpoint; a request is still the host's to admit")]
 
 
+def _model(uri: str) -> list[dict]:
+    try:
+        return [command_addresses.resolve(uri)]
+    except command_addresses.CommandAddressError as error:
+        raise OperatorError(str(error)) from error
+
+
+def _command(uri: str) -> list[dict]:
+    try:
+        return [command_addresses.resolve(uri)]
+    except (command_addresses.CommandAddressError, gml_columns.ColumnContractError) as error:
+        raise OperatorError(str(error)) from error
+
+
 SCHEMES = {"kuhul://phases/": _phases, "aiml://": _aiml, "gml://": _gml, "micronaut://": _micronaut,
-           "srai://": lambda uri: [dict(ref=uri, note="an srai route name; the resolver owns routing")]}
+           "srai://": _command, "delta://": _command, "tool://": _command, "verb://": _command,
+           "model://": _model,
+           }
 
 
 def resolve_uri(uri: str, *, depth: int = 0, budget: dict | None = None,

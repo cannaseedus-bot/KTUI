@@ -1,5 +1,11 @@
 """Scheme dispatch for whole-graph and node-addressable GML references."""
+from pathlib import Path
+import sys
 from urllib.parse import urlsplit
+
+_HOST_ROOT = Path(__file__).resolve().parents[2]
+if str(_HOST_ROOT) not in sys.path:
+    sys.path.insert(0, str(_HOST_ROOT))
 
 class ResolutionError(ValueError): pass
 
@@ -23,9 +29,17 @@ def node_in_graph_resolver(ref, docs):
     if len(hits)!=1: raise ResolutionError(f'unresolved node: {ref!r}')
     return hits[0]
 
+
+def micronaut_column_resolver(ref, docs):
+    """Resolve a typed GML Micronaut column; resolution is not dispatch or admission."""
+    from gml_columns import resolve_column
+    catalog = docs.get("__gml_operator_catalog__") if isinstance(docs, dict) else None
+    return resolve_column(ref, catalog=catalog)
+
 SCHEMES = {
     'gml': ('whole_graph', whole_graph_resolver),
     'aiml': ('node_addressable', node_in_graph_resolver),
+    'micronaut': ('column_addressable', micronaut_column_resolver),
 }
 
 def resolve(ref, docs, expected=None, expected_schema=None):
@@ -38,6 +52,11 @@ def resolve(ref, docs, expected=None, expected_schema=None):
         raise ResolutionError(f'reference mode mismatch: expected {expected}, got {mode}')
     result = handler(ref,docs)
     if expected_schema is not None:
+        if mode == 'column_addressable':
+            schema = result.get('schema') if isinstance(result, dict) else None
+            if schema != expected_schema:
+                raise ResolutionError(f'reference schema mismatch: expected {expected_schema!r}, got {schema!r} for {ref!r}')
+            return result
         u=urlsplit(ref)
         gid=u.netloc+u.path
         document=docs[gid]
