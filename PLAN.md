@@ -149,6 +149,40 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:adopted-work-and-the-first-clean-gate -->
 <!-- milestone:mcp-served-by-the-daemon -->
 <!-- milestone:first-executable-gml-chain -->
+<!-- milestone:uri-addressed-store -->
+## A URI-addressed store, and two limits made measurable
+
+`uri_store.py` turns the URI-DB mapping into code in this repository's idiom:
+
+| traditional | here |
+|---|---|
+| table | `urn:db:<ns>:table:<name>:v1`, a registered schema required on every write |
+| row | `urn:db:<ns>:row:<name>:<id>`, carrying `$schema` and `$id` |
+| column | `<row>#/amount` or `#/properties/amount` - both styles resolve, and the style used is reported |
+| foreign key | a row URI in a field, dereferenced through the prefix router |
+| stored procedure | the registered handler, unchanged |
+
+Backends are selected by URI prefix, so the router is a dict and the first backend is a local directory of JSON
+documents: inspectable, diffable, no driver. SQLite or HTTP can be added without touching the store.
+
+**The two database problems are in the API, not assumed away:**
+
+- `scan()` is a linear read and says so in its result. There is no index; a scanning query is slow by construction,
+  the same trade-off already accepted for the ledger's duplicate check.
+- `delete()` **refuses** while another row references the target; `force=True` records the links it broke.
+  Referential integrity here is a write-gate check, not a database constraint - and saying that plainly is the point.
+
+A row whose `$schema` is unregistered is refused with `schema_not_registered`; a row that breaks its table is refused
+with the specific problem (`minimum`, `required`, `type`) before anything reaches disk.
+
+This is the first component that really writes data: it reports `mutation: true` when it writes, and it is
+**deliberately not reachable from the read-only MCP surface** - a guard asserts the store appears in no MCP tool.
+
+Two defects the guards caught: `table_of()` read the wrong URI segment, and `references_to()` counted a row's own
+`$id` as a foreign key to itself.
+
+---
+
 ## The first executable GML chain
 
 Two operator Micronauts are **registered handlers**, joined by one declared edge that the host's admission reads.
