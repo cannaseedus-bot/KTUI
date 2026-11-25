@@ -145,6 +145,39 @@ Status: `done` = in the tree and verified · `guard` = enforced by a test · `op
 <!-- milestone:one-live-turn-uses-the-bridge -->
 <!-- milestone:mcp-read-only-handlers-exposed -->
 <!-- milestone:both-destinations-are-live -->
+<!-- milestone:agent-md-has-a-consumer -->
+## AGENT.md has a consumer
+
+The file declares identity, persona and **route preferences**; `agent_profile.py` validates it and the conversation
+path uses it. Preferences name routes, never targets.
+
+| check | behaviour |
+|---|---|
+| `parent_micronaut` | must be `micronaut://` **and** a registered handler |
+| `*_route` | must be a declared route name; `model://planner` is refused as `preference_is_target` |
+| authority keys | `capabilities`, `grants`, `execution`, `api_key` refused at load; an authority **section** too |
+
+The shipped declaration resolves to `daemon-bot · parent micronaut://v1/aiml · conversation=ASK_WORKER,
+reasoning=ASK_PLANNER, relations=QUERY_RELATIONS`.
+
+The consumer is real: typing **REASONING** resolves through the agent's preference to `ASK_PLANNER` and dispatches to
+`planner`; **CONVERSATION** resolves to `ASK_WORKER`. A guard proves a preference cannot supply a capability - with no
+grant, the same REASONING turn refuses with `capability_not_granted` and calls no backend. `/agent` shows the
+declaration and says a preference cannot grant anything.
+
+Two fixes along the way:
+
+1. the first parser treated everything under a `## ` heading as prose, so the preferences in `## Preferred routes`
+   were **invisible** - fields may now live inside a section, headings only decide what is prose;
+2. the verifier now **refuses to write a lock from a dirty tree** (`--force` for tests). Locking content nobody
+   committed is the same mistake as a hardcoded clean flag, so the lock was deliberately not re-written this turn.
+
+`operators.py`, `aiml-corpus.gml`, `core/resolvers.py`, `schemas/registry.gml` and `tests_host/test_aiml_corpus.py`
+are modified in this checkout and are **not mine**; they were left untouched, and the host-guard floor was raised only
+by my own 14 tests.
+
+---
+
 ## Both destinations are live
 
 `QUERY RELATIONS` now dispatches through the **existing engine**, next to `ASK PLANNER` through the model manager.
