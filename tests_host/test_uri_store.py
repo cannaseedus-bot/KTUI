@@ -148,5 +148,97 @@ class StoreTests(unittest.TestCase):
             self.assertEqual(row["effect"], "read_only")
 
 
+class SqliteBackendTests(unittest.TestCase):
+    """SQLite behind the same router: contracts in a table, rows referencing them, and declared column indexes."""
+
+    TABLE = "urn:db:records:table:invoices:v1"
+
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.store = U.Store({"urn:db:records:row:":
+                              U.SqliteBackend(Path(self.folder.name) / "records.sqlite",
+                                              "urn:db:records:row:")})
+        self.store.register_schema(self.TABLE,
+                                   {"$id": self.TABLE, "type": "object",
+                                    "required": ["invoice_id", "amount"],
+                                    "properties": {"invoice_id": {"type": "string"},
+                                                   "amount": {"type": "number", "minimum": 0}}})
+
+    def tearDown(self):
+        self.folder.cleanup()
+
+    def put(self, index, amount):
+        return self.store.put(f"urn:db:records:row:invoices:inv_{index}",
+                              {"$schema": self.TABLE, "invoice_id": f"inv_{index}", "amount": amount})
+
+    def test_a_row_round_trips_through_sqlite(self):
+        self.assertTrue(self.put(1, 1450.0)["ok"])
+        self.assertEqual(self.store.get("urn:db:records:row:invoices:inv_1")["record"]["amount"], 1450.0)
+
+    def test_the_contract_table_refuses_an_unregistered_schema(self):
+        result = self.store.put("urn:db:records:row:invoices:inv_9",
+                                {"$schema": "urn:db:records:table:ghost:v1", "amount": 1,
+                                 "invoice_id": "inv_9"})
+        self.assertEqual(result["refused"], "row_invalid")
+        self.assertEqual(result["problems"][0]["code"], "schema_not_registered")
+        self.assertFalse(self.store.get("urn:db:records:row:invoices:inv_9")["ok"])
+
+    def test_the_database_itself_refuses_a_row_without_its_contract(self):
+        # the foreign key is the contract, so a row cannot slip in by another route
+        backend = next(iter(self.store.backends.values()))
+        with self.assertRaises(U.StoreError):
+            backend.write("urn:db:records:row:invoices:inv_x",
+                          {"$schema": "urn:db:records:table:ghost:v1", "amount": 1})
+
+    def test_a_declared_index_makes_the_query_a_seek(self):
+        for index, amount in ((1, 1450.0), (2, 40.0), (3, 2200.0)):
+            self.put(index, amount)
+        indexed = self.store.scan_indexed(self.TABLE, "amount", minimum=1000)
+        self.assertEqual(indexed["matched"], 2)
+        self.assertEqual(sorted(row["invoice_id"] for row in indexed["records"]), ["inv_1", "inv_3"])
+        self.assertIn("USING INDEX idx_", indexed["plan"])
+        self.assertNotIn("SCAN records", indexed["plan"])
+
+    def test_an_index_expression_that_is_not_a_property_is_refused(self):
+        with self.assertRaises(U.StoreError):
+            self.store.declare_index(self.TABLE, "amount; DROP TABLE records")
+
+    def test_schemas_are_persisted_with_the_rows(self):
+        backend = next(iter(self.store.backends.values()))
+        with backend._connection() as connection:
+            stored = connection.execute("SELECT schema_uri FROM schemas").fetchall()
+        self.assertEqual([row[0] for row in stored], [self.TABLE])
+
+    def test_a_filesystem_backend_reports_that_it_cannot_index(self):
+        store = U.default_store(Path(self.folder.name) / "fs")
+        store.register_schema("urn:db:finance:table:invoices:v1",
+                              {"$id": "urn:db:finance:table:invoices:v1", "required": ["amount"]})
+        self.assertEqual(store.declare_index("urn:db:finance:table:invoices:v1", "amount")["refused"],
+                         "backend_has_no_index")
+        self.assertEqual(store.scan_indexed("urn:db:finance:table:invoices:v1", "amount")["refused"],
+                         "backend_has_no_index")
+
+    def test_one_router_can_drive_two_engines(self):
+        hybrid = U.Store({"urn:db:records:row:":
+                          U.SqliteBackend(Path(self.folder.name) / "hybrid.sqlite",
+                                          "urn:db:records:row:"),
+                          "urn:db:finance:row:":
+                          U.DirectoryBackend(Path(self.folder.name) / "finance",
+                                             "urn:db:finance:row:")})
+        hybrid.register_schema(self.TABLE,
+                               {"$id": self.TABLE, "required": ["amount"],
+                                "properties": {"amount": {"type": "number"}}})
+        hybrid.register_schema("urn:db:finance:table:invoices:v1",
+                               {"$id": "urn:db:finance:table:invoices:v1", "required": ["amount"]})
+        self.assertTrue(hybrid.put("urn:db:records:row:invoices:inv_1",
+                                   {"$schema": self.TABLE, "amount": 5})["ok"])
+        self.assertTrue(hybrid.put("urn:db:finance:row:invoices:inv_1",
+                                   {"$schema": "urn:db:finance:table:invoices:v1", "amount": 7})["ok"])
+        self.assertEqual(hybrid.get("urn:db:records:row:invoices:inv_1")["record"]["amount"], 5)
+        self.assertEqual(hybrid.get("urn:db:finance:row:invoices:inv_1")["record"]["amount"], 7)
+        self.assertEqual(hybrid.scan("urn:db:records:row:")["scanned"], 1)
+        self.assertEqual(hybrid.scan("urn:db:finance:row:")["scanned"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
