@@ -132,8 +132,13 @@ def manifest(*, committed: bool = True) -> dict:
                 source="HEAD" if committed else "working tree")
 
 
-def build(*, lock: Path | None = None, note: str = "") -> dict:
+def build(*, lock: Path | None = None, note: str = "", force: bool = False) -> dict:
     lock = Path(lock or LOCK)
+    dirty = dirty_tracked()
+    if dirty and not force:
+        # A lock written from a dirty tree certifies content nobody committed.
+        raise VerifierError("refusing to lock a dirty tree: " + ", ".join(dirty[:5])
+                            + (" ..." if len(dirty) > 5 else ""))
     current = manifest(committed=False)
     record = dict(schema=SCHEMA, algorithm="sha256", locked=True,
                   updated_at=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -193,13 +198,13 @@ def verify(*, lock: Path | None = None, ignore_dirty: bool = False) -> dict:
                 (f"{len(changed)} changed, {len(added)} added, {len(missing)} missing"))
 
 
-def update(*, lock: Path | None = None, note: str = "") -> dict:
+def update(*, lock: Path | None = None, note: str = "", force: bool = False) -> dict:
     """Re-lock explicitly, keeping what the previous lock said so the change is traceable."""
     loaded = load(lock=lock)
     previous = dict(hash=(loaded.get("record") or {}).get("hash"),
                     count=(loaded.get("record") or {}).get("count"),
                     updated_at=(loaded.get("record") or {}).get("updated_at"))
-    record = build(lock=lock, note=note)
+    record = build(lock=lock, note=note, force=force)
     record["previous"] = previous
     Path(lock or LOCK).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return record
@@ -211,10 +216,13 @@ def summary(report: dict) -> str:
     if report["ok"]:
         return (f"verifier · locked and unchanged · {report['current']['count']} file(s) · "
                 f"{report['current']['hash'][:16]}")
+    if report.get("refused") == "dirty_source":
+        return (f"verifier · DIRTY TREE · {len(report.get('dirty') or [])} uncommitted file(s) · "
+                f"a lock cannot certify them · {report.get('detail') or ''}").strip()
     drift = report["drift"]
-    return (f"verifier · DRIFT · {len(drift['changed'])} changed · {len(drift['added'])} added · "
-            f"{len(drift['missing'])} missing · locked {report['locked']['hash'][:16]} vs "
-            f"current {report['current']['hash'][:16]}")
+    return (f"verifier · DRIFT · {len(drift.get('changed') or [])} changed · "
+            f"{len(drift.get('added') or [])} added · {len(drift.get('missing') or [])} missing · "
+            f"locked {report['locked']['hash'][:16]} vs current {report['current']['hash'][:16]}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -223,13 +231,23 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Lock or check one SHA-256 over the tracked source.")
     parser.add_argument("command", choices=("build", "verify", "update"), nargs="?", default="verify")
     parser.add_argument("--note", default="")
+    parser.add_argument("--force", action="store_true",
+                        help="lock a dirty tree (records that it did)")
     args = parser.parse_args(argv)
     if args.command == "build":
-        record = build(note=args.note)
+        try:
+            record = build(note=args.note, force=args.force)
+        except VerifierError as error:
+            print(f"refused: {error}")
+            return 1
         print(f"locked · {record['count']} file(s) · {record['hash'][:16]}")
         return 0
     if args.command == "update":
-        record = update(note=args.note)
+        try:
+            record = update(note=args.note, force=args.force)
+        except VerifierError as error:
+            print(f"refused: {error}")
+            return 1
         print(f"re-locked · {record['count']} file(s) · {record['hash'][:16]} "
               f"(was {(record.get('previous') or {}).get('hash', 'none')}")
         return 0

@@ -125,6 +125,10 @@ try:  # the AIML/SRAI redirect chain, used to resolve a spoken route name
     import srai_resolver
 except ImportError:  # pragma: no cover
     srai_resolver = None
+try:  # the Micro Agent's identity and route preferences: a declaration, never a grant
+    import agent_profile
+except ImportError:  # pragma: no cover
+    agent_profile = None
 try:  # AIML/SRAI -> a declared route -> one host dispatch, and text is never a route
     import micro_agent_bridge
 except ImportError:  # pragma: no cover
@@ -1194,6 +1198,15 @@ class ChatApp(App):
             raise LookupError("the micronaut engine is unavailable")
         return engine.invoke_micronaut(uri, payload or {})
 
+    def agent_preference(self, kind: str) -> str | None:
+        """The route this Micro Agent prefers for a kind of work, if its declaration is valid."""
+        if agent_profile is None:
+            return None
+        try:
+            return agent_profile.route_for(kind)
+        except Exception:
+            return None
+
     def route_lookup(self, pattern: str) -> str | None:
         """The AIML matcher for a route request: spoken name -> declared route token.
 
@@ -1201,6 +1214,13 @@ class ChatApp(App):
         table owns, so a rendered answer can never become a route.
         """
         spoken = str(pattern or "").strip().upper()
+        # The agent's preferences are consulted first: identity may choose which declared route, nothing more.
+        preferred = {"REASON": "reasoning", "REASONING": "reasoning", "CONVERSATION": "conversation",
+                     "RELATIONS": "relations"}.get(spoken)
+        if preferred:
+            route_name = self.agent_preference(preferred)
+            if route_name:
+                return f"ROUTE {route_name}"
         for name in (micro_agent_bridge.DECLARED_ROUTES if micro_agent_bridge else {}):
             if spoken == name:
                 return f"ROUTE {name}"
@@ -1684,6 +1704,20 @@ class ChatApp(App):
         self.set_interval(2.0, self.poll_runtime)
         self.set_interval(30.0, self.sweep_idle)
 
+    def action_agent(self) -> None:
+        """Show the Micro Agent declaration, and say plainly that it grants nothing."""
+        if agent_profile is None:
+            self.say_system("The agent declaration (agent_profile.py) is unavailable.")
+            return
+        loaded = agent_profile.load()
+        self.say_system(agent_profile.summary(loaded))
+        if loaded.get("persona"):
+            self.say_system(f"persona: {loaded['persona'][:200]}")
+        for problem in loaded.get("problems") or []:
+            self.say_system(f"refused · {problem['code']}: {problem['detail']}")
+        self.say_system("A preference names a declared route; it cannot name a target, grant a capability, or "
+                        "authorise execution.")
+
     def action_profile(self) -> None:
         """Show the local profile for this user, and say plainly that it grants nothing."""
         if user_profile is None:
@@ -1979,6 +2013,7 @@ class ChatApp(App):
         commands["links"] = ("Links: reference searches for a topic", self.action_links, "Wikipedia, Britannica, NASA, Space.com - searches, not pages I read")
         commands["memory"] = ("Memory: what is remembered about this user", self.action_memory, "JSONL history, GML projection, write grant")
         commands["allow_memory"] = ("Memory: grant writes", partial(self.action_memory_grant, "on"), "Facts may be recorded; erasure always allowed")
+        commands["agent"] = ("Agent: the Micro Agent's identity and route preferences", self.action_agent, "Declaration only: no grants, no execution")
         commands["profile"] = ("Profile: what the bot may know about you", self.action_profile, "Configuration only; no capabilities, no secrets")
         commands["runtime"] = ("Runtime: the green-screen projection", self.action_runtime, "Read-only tree of phases, micronauts, models and evidence")
         commands["evidence"] = ("Evidence: the recorded turns and the chain state", self.action_evidence, "Request id, latency, execution vs admission; hash-chained")

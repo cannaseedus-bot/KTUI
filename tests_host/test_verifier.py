@@ -60,7 +60,7 @@ class LockTests(unittest.TestCase):
     def test_a_changed_file_is_reported_as_drift(self):
         folder = Path(tempfile.mkdtemp())
         lock = folder / "verifier.json"
-        record = verifier.build(lock=lock)
+        record = verifier.build(lock=lock, force=True)
         self.assertTrue(record["hash"])
         # a lock over a folder whose files are not tracked by git is empty; give it one entry by hand
         record["files"]["README.md"] = "0" * 64
@@ -75,11 +75,20 @@ class LockTests(unittest.TestCase):
     def test_an_update_records_the_previous_hash(self):
         folder = Path(tempfile.mkdtemp())
         lock = folder / "verifier.json"
-        verifier.build(lock=lock)
+        verifier.build(lock=lock, force=True)
         first = json.loads(lock.read_text(encoding="utf-8"))
-        second = verifier.update(lock=lock, note="re-locked after an edit")
+        second = verifier.update(lock=lock, note="re-locked after an edit", force=True)
         self.assertEqual(second["previous"]["hash"], first["hash"])
         self.assertNotEqual(second["hash"], first["hash"] + "x")
+
+    def test_a_dirty_tree_is_never_locked_by_default(self):
+        folder = Path(tempfile.mkdtemp())
+        lock = folder / "verifier.json"
+        if not verifier.dirty_tracked():
+            self.skipTest("the tree is clean, so there is nothing to refuse")
+        with self.assertRaises(verifier.VerifierError):
+            verifier.build(lock=lock)
+        self.assertFalse(lock.is_file(), "a refused build writes nothing")
 
     def test_the_lock_says_the_attestation_ledger_is_optional(self):
         record = verifier.load()["record"]
